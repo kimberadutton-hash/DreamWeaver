@@ -152,6 +152,35 @@ Respond conversationally in 2-4 paragraphs. Be specific, warm, and analytically 
   return call({ messages: [{ role: 'user', content: prompt }], maxTokens: 1024 });
 }
 
+// ── Generate personal recurring themes from dream archive ────────────────────
+
+export async function generatePersonalThemes({ tags, titles, moods, totalDreams }) {
+  const prompt = `You are a Jungian analyst with deep knowledge of depth psychology. Based on the following dream data from a person's personal archive, identify 3-5 deeply personal recurring psychological themes that are unique to THIS dreamer. These should go beyond universal Jungian archetypes and name the specific patterns, tensions, preoccupations, and developmental threads that appear most strongly in their unconscious life. Look for what is personally meaningful and specific to their story — not generic dream content.
+
+For each theme provide:
+- name: A short evocative name (2-5 words, poetic, not clinical)
+- description: One warm, insightful sentence describing what this theme represents in this person's psyche
+- keywords: An array of 5-10 specific words/phrases from their tags that point to this theme
+- color: A warm hex color code that feels emotionally right for this theme
+
+Dream data:
+Tags: ${tags.join(', ')}
+Dream titles: ${titles.join(', ')}
+Moods: ${moods.join(', ')}
+Total dreams: ${totalDreams}
+
+Respond ONLY with a valid JSON array. No preamble, no markdown.`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: prompt }],
+    maxTokens: 1024,
+  });
+
+  const match = text.match(/\[[\s\S]*\]/);
+  if (!match) throw new AiError('Unexpected response format from AI.', 'api_error');
+  return JSON.parse(match[0]);
+}
+
 // ── Transcribe handwritten text from an image ────────────────────────────────
 
 export async function transcribeImage(base64Image) {

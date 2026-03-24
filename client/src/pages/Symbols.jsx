@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { quickTagDream, hasApiKey } from '../lib/ai';
+import { quickTagDream, generatePersonalThemes, hasApiKey } from '../lib/ai';
 import { format, parseISO } from 'date-fns';
 
 // ── SVG Icon Components ──────────────────────────────────────────────────────
@@ -605,18 +605,28 @@ export default function Symbols() {
   const [tagging, setTagging] = useState(false);
   const [tagProgress, setTagProgress] = useState(null);
   const [tagError, setTagError] = useState('');
+  const [savedThemes, setSavedThemes] = useState(null); // null = not loaded yet, [] = loaded but empty
 
   useEffect(() => { fetchData(); }, []);
 
   async function fetchData() {
-    const { data } = await supabase
-      .from('dreams')
-      .select('id, dream_date, title, body, tags, archetypes, symbols, mood, has_analysis')
-      .eq('user_id', user.id);
-    if (!data) { setLoading(false); return; }
+    const [dreamsRes, themesRes] = await Promise.all([
+      supabase
+        .from('dreams')
+        .select('id, dream_date, title, body, tags, archetypes, symbols, mood, has_analysis')
+        .eq('user_id', user.id),
+      supabase
+        .from('user_themes')
+        .select('themes, generated_at, dream_count_at_generation')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+    ]);
+    const data = dreamsRes.data;
+    if (!data) { setLoading(false); setSavedThemes([]); return; }
     setAllDreams(data);
     setTotalDreams(data.length);
     setCatData(buildData(data));
+    setSavedThemes(themesRes.data?.themes || []);
     setLoading(false);
   }
 
@@ -728,6 +738,217 @@ export default function Symbols() {
           ))}
         </div>
       )}
+
+      {/* Personal recurring themes */}
+      {savedThemes !== null && (
+        <RecurringThemes
+          allDreams={allDreams}
+          totalDreams={totalDreams}
+          savedThemes={savedThemes}
+          userId={user.id}
+          onThemesSaved={setSavedThemes}
+        />
+      )}
+    </div>
+  );
+}
+
+// ── RecurringThemes ───────────────────────────────────────────────────────────
+
+const MIN_DREAMS = 10;
+
+function RecurringThemes({ allDreams, totalDreams, savedThemes, userId, onThemesSaved }) {
+  const [generating, setGenerating] = useState(false);
+  const [error, setError] = useState('');
+  const [confirmRegen, setConfirmRegen] = useState(false);
+
+  const hasThemes = savedThemes?.length > 0;
+  const enoughDreams = totalDreams >= MIN_DREAMS;
+
+  function collectArchiveData() {
+    const tags = new Set();
+    const titles = [];
+    const moods = new Set();
+    allDreams.forEach(d => {
+      (d.tags || []).forEach(t => t && tags.add(t));
+      (d.archetypes || []).forEach(t => t && tags.add(t));
+      (d.symbols || []).forEach(t => t && tags.add(t));
+      if (d.title) titles.push(d.title);
+      if (d.mood) d.mood.split(', ').filter(Boolean).forEach(m => moods.add(m));
+    });
+    return {
+      tags: [...tags].slice(0, 200),
+      titles: titles.slice(0, 100),
+      moods: [...moods],
+    };
+  }
+
+  async function handleGenerate() {
+    setGenerating(true);
+    setError('');
+    setConfirmRegen(false);
+    try {
+      const { tags, titles, moods } = collectArchiveData();
+      const themes = await generatePersonalThemes({ tags, titles, moods, totalDreams });
+
+      // Upsert into user_themes
+      await supabase.from('user_themes').upsert({
+        user_id: userId,
+        themes,
+        generated_at: new Date().toISOString(),
+        dream_count_at_generation: totalDreams,
+      }, { onConflict: 'user_id' });
+
+      onThemesSaved(themes);
+    } catch (err) {
+      setError(err.message || 'Couldn\'t generate themes right now — please try again.');
+    } finally {
+      setGenerating(false);
+    }
+  }
+
+  return (
+    <div className="mt-16 pt-10 border-t border-black/10 dark:border-white/10">
+      {/* Section header */}
+      <div className="flex items-baseline justify-between mb-2">
+        <div>
+          <p className="text-xs uppercase tracking-widest font-body text-gold/70 dark:text-gold/60 mb-1">
+            Personally Yours
+          </p>
+          <h2 className="font-display italic text-3xl text-ink dark:text-white">
+            My Recurring Themes
+          </h2>
+        </div>
+        {hasThemes && !confirmRegen && (
+          <button
+            onClick={() => setConfirmRegen(true)}
+            className="text-xs font-body text-ink/30 dark:text-white/25 hover:text-ink/60 dark:hover:text-white/50 transition-colors"
+          >
+            ↺ Regenerate
+          </button>
+        )}
+      </div>
+
+      {/* Regenerate confirmation */}
+      {confirmRegen && (
+        <div className="mb-4 flex items-center gap-3 px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+          <p className="text-sm font-body text-amber-800 dark:text-amber-300 flex-1">
+            Regenerate your personal themes? This will replace your current themes.
+          </p>
+          <button onClick={handleGenerate} className="text-sm font-body font-medium text-amber-800 dark:text-amber-300 hover:opacity-70">
+            Confirm
+          </button>
+          <button onClick={() => setConfirmRegen(false)} className="text-sm font-body text-amber-700/60 dark:text-amber-400/60 hover:opacity-70">
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Error */}
+      {error && (
+        <div className="mb-4 flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800">
+          <p className="text-sm font-body text-red-700 dark:text-red-400">{error}</p>
+          <button onClick={handleGenerate} className="text-sm font-body font-medium text-red-700 dark:text-red-400 hover:opacity-70 shrink-0">
+            Try again
+          </button>
+        </div>
+      )}
+
+      {/* Generating state */}
+      {generating && (
+        <div className="py-12 text-center">
+          <p className="font-display italic text-xl text-ink/40 dark:text-white/30 animate-pulse">
+            Reading the patterns in your unconscious…
+          </p>
+        </div>
+      )}
+
+      {/* No themes yet */}
+      {!generating && !hasThemes && (
+        <div className="mt-4 px-8 py-10 rounded-2xl border border-gold/20 bg-gold/[0.03] text-center">
+          <p className="font-body text-sm text-ink/60 dark:text-white/50 max-w-md mx-auto leading-relaxed mb-6">
+            Discover the psychological patterns that are uniquely yours. Unlike the universal archetypes above,
+            these themes emerge from your personal dream history.
+          </p>
+          {enoughDreams ? (
+            <button
+              onClick={handleGenerate}
+              disabled={!hasApiKey()}
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-body text-sm font-medium text-white disabled:opacity-40 transition-opacity hover:opacity-90"
+              style={{ backgroundColor: '#b8924a' }}
+            >
+              ✦ Discover My Themes
+            </button>
+          ) : (
+            <p className="text-sm font-body text-ink/35 dark:text-white/30 italic">
+              Add more dreams to unlock your personal themes — we recommend at least {MIN_DREAMS} to see meaningful patterns.
+              <span className="ml-1 not-italic">({totalDreams}/{MIN_DREAMS})</span>
+            </p>
+          )}
+          {enoughDreams && !hasApiKey() && (
+            <p className="text-xs font-body text-ink/35 dark:text-white/25 mt-3">
+              Requires an API key in <a href="/settings" className="underline">Settings</a>.
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Themes grid */}
+      {!generating && hasThemes && (
+        <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+          {savedThemes.map((theme, i) => (
+            <ThemeCard key={i} theme={theme} />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── ThemeCard ─────────────────────────────────────────────────────────────────
+
+function ThemeCard({ theme }) {
+  const color = theme.color || '#b8924a';
+
+  return (
+    <div
+      className="rounded-2xl p-5 border relative"
+      style={{ borderColor: `${color}30`, backgroundColor: `${color}07` }}
+    >
+      {/* AI badge */}
+      <span
+        className="absolute top-4 right-4 text-base leading-none"
+        style={{ color, opacity: 0.5 }}
+        title="AI-generated from your archive"
+      >
+        ✦
+      </span>
+
+      <h3 className="font-display italic text-xl leading-tight pr-6" style={{ color }}>
+        {theme.name}
+      </h3>
+      <p className="text-sm font-body text-ink/65 dark:text-white/55 mt-2 leading-relaxed">
+        {theme.description}
+      </p>
+
+      {/* Keyword chips */}
+      {theme.keywords?.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 mt-3">
+          {theme.keywords.map(kw => (
+            <span
+              key={kw}
+              className="px-2.5 py-0.5 rounded-full text-xs font-body"
+              style={{ backgroundColor: `${color}18`, color, opacity: 0.85 }}
+            >
+              {kw}
+            </span>
+          ))}
+        </div>
+      )}
+
+      <p className="text-xs font-body mt-3" style={{ color, opacity: 0.35 }}>
+        AI-generated based on your archive
+      </p>
     </div>
   );
 }

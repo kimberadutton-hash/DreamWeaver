@@ -107,6 +107,29 @@ create policy "Users can delete own queries" on archive_queries
 
 create index if not exists archive_queries_user_id on archive_queries(user_id, created_at desc);
 
+-- Personal recurring themes (AI-generated from dream archive)
+create table if not exists user_themes (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null unique,
+  themes jsonb not null,
+  generated_at timestamptz default now(),
+  dream_count_at_generation int
+);
+
+alter table user_themes enable row level security;
+
+create policy "Users can view own themes" on user_themes
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own themes" on user_themes
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own themes" on user_themes
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own themes" on user_themes
+  for delete using (auth.uid() = user_id);
+
 -- Index for performance
 create index if not exists dreams_user_id_created_at on dreams(user_id, created_at desc);
 create index if not exists dreams_user_id_dream_date on dreams(user_id, dream_date desc);
