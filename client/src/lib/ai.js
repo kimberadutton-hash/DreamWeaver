@@ -63,8 +63,8 @@ async function call({ messages, maxTokens = 1024, model = 'claude-opus-4-5', api
 
 // ── Analyze a dream ──────────────────────────────────────────────────────────
 
-export async function analyzeDream({ title, body, mood }) {
-  const prompt = `You are a Jungian analyst with deep knowledge of dream symbolism, archetypes, and the unconscious. Analyze the following dream with warmth, depth, and insight.
+export async function analyzeDream({ title, body, mood, privacySettings, notes, analyst_session }) {
+  let prompt = `You are a Jungian analyst with deep knowledge of dream symbolism, archetypes, and the unconscious. Analyze the following dream with warmth, depth, and insight.
 
 ${title ? `Dream Title: ${title}` : ''}
 ${mood ? `Dreamer's Mood: ${mood}` : ''}
@@ -76,9 +76,18 @@ Respond ONLY with valid JSON in this exact structure:
   "reflection": "A 2-4 paragraph Jungian reflection. Warm, personal, insightful. Explore the psychological meaning, the emotional landscape, what the unconscious may be communicating. Reference specific images from the dream.",
   "archetypes": ["array of Jungian archetypes present — e.g. Shadow, Anima, Wise Old Man, Trickster, Hero"],
   "symbols": ["array of significant symbols in the dream — single words or short phrases only"],
-  "tags": ["array of tags — emotions, animals, archetypes, or symbols only. Single words or max 2-word phrases. No sentences. 5-10 tags."],
+  "tags": ["5-10 tags. Each must be ONE of: a pure emotion (grief, joy, rage, shame), an animal name (snake, wolf, owl), a Jungian term (shadow, anima, individuation), a place or setting (forest, school, basement), or a concrete symbol (fire, mirror, key). Single words or 2-word phrases MAX. Never a sentence, description, or clause."],
   "invitation": "A single sentence closing invitation for the dreamer to reflect further — a gentle question or contemplation"
 }`;
+
+  // Append optional private fields only when the dreamer has explicitly enabled sharing.
+  // These are sent to Anthropic but never stored in the reflection field in the database.
+  if (privacySettings?.share_notes_with_ai && notes?.trim()) {
+    prompt += `\n\nMY PERSONAL NOTES (shared by the dreamer for additional context):\n${notes.trim()}`;
+  }
+  if (privacySettings?.share_analyst_session_with_ai && analyst_session?.trim()) {
+    prompt += `\n\nANALYST SESSION NOTES (shared by the dreamer):\n${analyst_session.trim()}`;
+  }
 
   const text = await call({
     messages: [{ role: 'user', content: prompt }],
@@ -117,9 +126,9 @@ Dream: ${body.slice(0, 800)}${mood ? `\nMood: ${mood}` : ''}
 
 Respond ONLY with valid JSON — no other text:
 {
-  "tags": ["5–8 tags: emotions, animals, themes. Single words or 2-word phrases only."],
-  "symbols": ["objects, figures, or places with symbolic weight. Single words or 2-word phrases only."],
-  "archetypes": ["Jungian archetypes present — e.g. Shadow, Anima, Hero, Trickster, Wise Old Man"]
+  "tags": ["5-8 tags. Each must be ONE of: a pure emotion (grief, joy, rage), an animal name (snake, wolf), a place (forest, school, basement), or a concrete symbol (fire, mirror, key). Single words or 2-word phrases MAX. No sentences."],
+  "symbols": ["3-6 objects, places, or figures with symbolic weight. Single words or 2-word phrases only. Examples: snake, old house, dark water, locked door."],
+  "archetypes": ["Jungian archetypes ONLY if clearly present. Use canonical names: Shadow, Anima, Animus, Trickster, Wise Old Man, Wise Woman, Inner Child, Hero, Great Mother. Do not include generic terms."]
 }`;
 
   const text = await call({
@@ -135,10 +144,18 @@ Respond ONLY with valid JSON — no other text:
 
 // ── Ask the archive a natural-language question ──────────────────────────────
 
-export async function askArchive({ question, dreams }) {
-  const summaries = dreams.map((d, i) =>
-    `Dream ${i + 1} (${d.dream_date}): "${d.title}" — ${d.body.slice(0, 300)}${d.body.length > 300 ? '...' : ''} [Tags: ${(d.tags || []).join(', ')}]`
-  ).join('\n\n');
+export async function askArchive({ question, dreams, privacySettings }) {
+  const summaries = dreams.map((d, i) => {
+    let entry = `Dream ${i + 1} (${d.dream_date}): "${d.title}" — ${d.body.slice(0, 300)}${d.body.length > 300 ? '...' : ''} [Tags: ${(d.tags || []).join(', ')}]`;
+    // Include private fields only when the dreamer has explicitly enabled sharing.
+    if (privacySettings?.share_notes_with_ai && d.notes?.trim()) {
+      entry += `\n  Personal notes: ${d.notes.trim().slice(0, 300)}${d.notes.trim().length > 300 ? '...' : ''}`;
+    }
+    if (privacySettings?.share_analyst_session_with_ai && d.analyst_session?.trim()) {
+      entry += `\n  Analyst session: ${d.analyst_session.trim().slice(0, 300)}${d.analyst_session.trim().length > 300 ? '...' : ''}`;
+    }
+    return entry;
+  }).join('\n\n');
 
   const prompt = `You are a Jungian analyst reviewing a dreamer's personal dream archive. Answer the following question about their dreams with insight, warmth, and psychological depth. Cite specific dreams by title or date when relevant.
 

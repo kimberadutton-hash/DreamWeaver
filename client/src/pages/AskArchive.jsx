@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { askArchive, hasApiKey } from '../lib/ai';
+import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { Link } from 'react-router-dom';
 import { format, parseISO } from 'date-fns';
@@ -16,6 +17,7 @@ const EXAMPLE_QUESTIONS = [
 
 export default function AskArchive() {
   const { user } = useAuth();
+  const { privacySettings } = usePrivacySettings();
   const [question, setQuestion] = useState('');
   const [answer, setAnswer] = useState('');
   const [askedQuestion, setAskedQuestion] = useState('');
@@ -54,7 +56,7 @@ export default function AskArchive() {
 
     const { data: dreams, error: dbErr } = await supabase
       .from('dreams')
-      .select('dream_date, title, body, tags, archetypes, symbols, mood')
+      .select('dream_date, title, body, tags, archetypes, symbols, mood, notes, analyst_session')
       .eq('user_id', user.id)
       .order('dream_date', { ascending: false })
       .limit(50);
@@ -66,7 +68,7 @@ export default function AskArchive() {
     }
 
     try {
-      const text = await askArchive({ question: query, dreams });
+      const text = await askArchive({ question: query, dreams, privacySettings });
       setAnswer(text);
     } catch (err) {
       setAiError(err);

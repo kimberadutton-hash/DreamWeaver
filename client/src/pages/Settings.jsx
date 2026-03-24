@@ -1,11 +1,15 @@
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useApiKey } from '../hooks/useApiKey';
+import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import { supabase } from '../lib/supabase';
 
 export default function Settings() {
   const { user, profile, updateProfile } = useAuth();
   const { apiKey, saveApiKey, hasKey } = useApiKey();
+  const { privacySettings, savePrivacySettings } = usePrivacySettings();
+  const [privacySaving, setPrivacySaving] = useState(null); // key currently being saved
+  const [privacySaved, setPrivacySaved] = useState(null);   // key last saved (for flash)
 
   const [form, setForm] = useState({
     display_name: profile?.display_name || '',
@@ -42,6 +46,14 @@ export default function Settings() {
     saveApiKey(keyDraft);
     setKeySaved(true);
     setTimeout(() => setKeySaved(false), 3000);
+  }
+
+  async function togglePrivacy(key) {
+    setPrivacySaving(key);
+    await savePrivacySettings({ [key]: !privacySettings[key] });
+    setPrivacySaving(null);
+    setPrivacySaved(key);
+    setTimeout(() => setPrivacySaved(null), 2000);
   }
 
   return (
@@ -169,6 +181,71 @@ export default function Settings() {
             )}
           </div>
         </form>
+      </section>
+
+      {/* ── AI Privacy Controls ──────────────────────────────── */}
+      {/* NOTE: AI-generated reflections stored in Supabase may have been informed
+          by notes or analyst_session content when sharing was enabled at analysis
+          time. The notes/analyst_session themselves are never stored in the
+          reflection field — only the AI's interpretation of them. Disabling
+          sharing stops future inclusion but does not alter past analyses. */}
+      <section>
+        <h2 className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-5">
+          AI Privacy Controls
+        </h2>
+        <p className="text-sm font-body text-ink/60 dark:text-white/50 leading-relaxed mb-6">
+          Choose which private fields are included in your Anthropic API prompts during dream analysis. When enabled, that content is sent to Anthropic — it is not stored on our servers.
+        </p>
+
+        <div className="space-y-1">
+          {/* Share My Notes */}
+          <div className="flex items-center justify-between py-4 border-t border-black/8 dark:border-white/8">
+            <div>
+              <p className="text-sm font-body text-ink dark:text-white">Share "My Notes" with AI</p>
+              <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-0.5">
+                Sends your personal notes to Anthropic as context for dream analysis
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={privacySaving === 'share_notes_with_ai'}
+              onClick={() => togglePrivacy('share_notes_with_ai')}
+              className={`relative w-12 h-6 rounded-full transition-colors disabled:opacity-60 ${
+                privacySettings.share_notes_with_ai ? 'bg-amber-500' : 'bg-black/20 dark:bg-white/20'
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                privacySettings.share_notes_with_ai ? 'translate-x-6' : ''
+              }`} />
+            </button>
+          </div>
+
+          {/* Share Analyst Session */}
+          <div className="flex items-center justify-between py-4 border-t border-b border-black/8 dark:border-white/8">
+            <div>
+              <p className="text-sm font-body text-ink dark:text-white">Share "Analyst Session" with AI</p>
+              <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-0.5">
+                Sends your analyst session notes to Anthropic as context for dream analysis
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={privacySaving === 'share_analyst_session_with_ai'}
+              onClick={() => togglePrivacy('share_analyst_session_with_ai')}
+              className={`relative w-12 h-6 rounded-full transition-colors disabled:opacity-60 ${
+                privacySettings.share_analyst_session_with_ai ? 'bg-amber-500' : 'bg-black/20 dark:bg-white/20'
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                privacySettings.share_analyst_session_with_ai ? 'translate-x-6' : ''
+              }`} />
+            </button>
+          </div>
+        </div>
+
+        {privacySaved && (
+          <p className="text-xs font-body text-green-700 dark:text-green-400 mt-3">Privacy setting saved.</p>
+        )}
       </section>
 
       {/* ── Data & Maintenance ───────────────────────────────── */}

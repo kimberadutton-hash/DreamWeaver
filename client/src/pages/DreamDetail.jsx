@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { analyzeDream } from '../lib/ai';
+import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { format, parseISO } from 'date-fns';
 
@@ -10,6 +11,7 @@ export default function DreamDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { privacySettings } = usePrivacySettings();
 
   const [dream, setDream] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +47,14 @@ export default function DreamDetail() {
     setAnalyzing(true);
     setAiError(null);
     try {
-      const data = await analyzeDream({ title: dream.title, body: dream.body, mood: dream.mood });
+      const data = await analyzeDream({
+        title: dream.title,
+        body: dream.body,
+        mood: dream.mood,
+        privacySettings,
+        notes: dream.notes,
+        analyst_session: dream.analyst_session,
+      });
 
       const { data: updated, error: dbErr } = await supabase
         .from('dreams')
@@ -178,7 +187,13 @@ export default function DreamDetail() {
 
       {/* My Notes */}
       {dream.notes && (
-        <Section title="My Notes">
+        <Section
+          title="My Notes"
+          badge={privacySettings.share_notes_with_ai
+            ? <span className="text-amber-500 normal-case tracking-normal text-xs font-normal">◈ shared with AI</span>
+            : <span className="text-ink/30 dark:text-white/30 normal-case tracking-normal text-xs font-normal">◎ private</span>
+          }
+        >
           <p className="text-sm font-body text-ink/70 dark:text-white/60 leading-relaxed whitespace-pre-wrap">
             {dream.notes}
           </p>
@@ -201,7 +216,13 @@ export default function DreamDetail() {
 
       {/* Analyst Session */}
       {dream.analyst_session && (
-        <Section title={`${analystLabel} Session`}>
+        <Section
+          title={`${analystLabel} Session`}
+          badge={privacySettings.share_analyst_session_with_ai
+            ? <span className="text-amber-500 normal-case tracking-normal text-xs font-normal">◈ shared with AI</span>
+            : <span className="text-ink/30 dark:text-white/30 normal-case tracking-normal text-xs font-normal">◎ private</span>
+          }
+        >
           <p className="text-sm font-body text-ink/70 dark:text-white/60 leading-relaxed whitespace-pre-wrap">
             {dream.analyst_session}
           </p>
@@ -211,11 +232,12 @@ export default function DreamDetail() {
   );
 }
 
-function Section({ title, children, accent }) {
+function Section({ title, children, accent, badge }) {
   return (
     <div className={`mb-8 ${accent ? 'pl-5 border-l-2 border-gold/40' : ''}`}>
-      <h2 className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-3">
+      <h2 className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-3 flex items-center gap-2">
         {title}
+        {badge}
       </h2>
       {children}
     </div>

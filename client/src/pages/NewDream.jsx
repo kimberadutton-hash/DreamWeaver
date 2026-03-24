@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { analyzeDream, transcribeImage, hasApiKey } from '../lib/ai';
+import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { format } from 'date-fns';
 
@@ -26,6 +27,7 @@ function getDailyPrompt() {
 export default function NewDream() {
   const navigate = useNavigate();
   const { user, profile } = useAuth();
+  const { privacySettings } = usePrivacySettings();
 
   const [form, setForm] = useState({
     dream_date: format(new Date(), 'yyyy-MM-dd'),
@@ -147,7 +149,14 @@ export default function NewDream() {
       let analysisData = {};
       const moodStr = form.moods.join(', ');
       if (withAnalysis) {
-        analysisData = await analyzeDream({ title: form.title, body: form.body, mood: moodStr });
+        analysisData = await analyzeDream({
+          title: form.title,
+          body: form.body,
+          mood: moodStr,
+          privacySettings,
+          notes: form.notes,
+          analyst_session: form.analyst_session,
+        });
       }
 
       const tagsFromForm = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -263,14 +272,26 @@ export default function NewDream() {
 
         {/* My Notes */}
         <div>
-          <label className="field-label">My Notes <span className="text-xs text-ink/30 dark:text-white/30 normal-case tracking-normal">Private — never shared with AI</span></label>
+          <label className="field-label">
+            My Notes{' '}
+            {privacySettings.share_notes_with_ai
+              ? <span className="text-xs text-amber-500 normal-case tracking-normal font-body font-normal">◈ shared with AI</span>
+              : <span className="text-xs text-ink/30 dark:text-white/30 normal-case tracking-normal font-body font-normal">◎ private</span>
+            }
+          </label>
           <textarea value={form.notes} onChange={e => setField('notes', e.target.value)} rows={3}
             placeholder="Personal associations, life context, what was happening that day…" className="field-input resize-y" />
         </div>
 
         {/* Analyst session */}
         <div>
-          <label className="field-label">{analystLabel} Session</label>
+          <label className="field-label">
+            {analystLabel} Session{' '}
+            {privacySettings.share_analyst_session_with_ai
+              ? <span className="text-xs text-amber-500 normal-case tracking-normal font-body font-normal">◈ shared with AI</span>
+              : <span className="text-xs text-ink/30 dark:text-white/30 normal-case tracking-normal font-body font-normal">◎ private</span>
+            }
+          </label>
           <textarea value={form.analyst_session} onChange={e => setField('analyst_session', e.target.value)} rows={3}
             placeholder={`Notes from your session with ${analystLabel}…`} className="field-input resize-y" />
         </div>
