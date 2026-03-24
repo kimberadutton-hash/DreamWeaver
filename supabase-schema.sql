@@ -1,4 +1,6 @@
--- Run this in your Supabase SQL Editor
+-- Dream Weaver — Full Schema
+-- Run this in your Supabase SQL Editor for a fresh install.
+-- For existing installs, run migration_001.sql instead.
 
 -- Profiles (extends auth.users)
 create table if not exists profiles (
@@ -7,6 +9,7 @@ create table if not exists profiles (
   analyst_name text default 'Analyst',
   analyst_email text,
   dark_mode boolean default false,
+  privacy_settings jsonb default '{"share_notes_with_ai": false, "share_analyst_session_with_ai": false}',
   created_at timestamptz default now()
 );
 
@@ -17,17 +20,23 @@ create table if not exists dreams (
   dream_date date not null default current_date,
   title text,
   body text not null,
-  mood text,
-  notes text,           -- My Notes — never sent to AI
-  analyst_session text, -- Therapy notes
+  mood text[],                   -- Array of mood strings e.g. '{"Anxious","Melancholic"}'
+  notes text,                    -- My Notes — never sent to AI by default
+  analyst_session text,          -- Therapy session notes
+  incubation_intention text,     -- Intention set before sleeping
   tags text[],
   archetypes text[],
   symbols text[],
-  reflection text,      -- AI Jungian reflection
-  invitation text,      -- AI closing sentence
+  waking_resonances text[] default '{}', -- Moments where dream symbols appeared in waking life
+  reflection text,               -- AI Jungian reflection
+  invitation text,               -- AI closing sentence
+  summary text,                  -- AI-generated 2-3 sentence summary (used in archive queries)
+  is_big_dream boolean default false,    -- Numinous / archetypal dream of unusual significance
+  series_id uuid,                -- Self-referencing FK for dream series (SET NULL on delete)
   has_analysis boolean default false,
   created_at timestamptz default now(),
-  updated_at timestamptz default now()
+  updated_at timestamptz default now(),
+  foreign key (series_id) references dreams(id) on delete set null
 );
 
 -- Auto-create profile on signup
@@ -130,6 +139,61 @@ create policy "Users can update own themes" on user_themes
 create policy "Users can delete own themes" on user_themes
   for delete using (auth.uid() = user_id);
 
--- Index for performance
+-- Analyst focuses (questions/themes given by analyst to hold between sessions)
+create table if not exists analyst_focuses (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  focus_text text not null,
+  given_date date not null default current_date,
+  end_date date,
+  notes text,
+  is_active boolean default true,
+  created_at timestamptz default now()
+);
+
+alter table analyst_focuses enable row level security;
+
+create policy "Users can view own focuses" on analyst_focuses
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own focuses" on analyst_focuses
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own focuses" on analyst_focuses
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own focuses" on analyst_focuses
+  for delete using (auth.uid() = user_id);
+
+create index if not exists analyst_focuses_user_id on analyst_focuses(user_id, is_active);
+
+-- Individuation narratives (AI-generated Jungian journey narrative, versioned)
+create table if not exists individuation_narratives (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  narrative text not null,
+  generated_at timestamptz default now(),
+  dream_count int,
+  last_dream_id uuid references dreams(id) on delete set null,
+  is_current boolean default true
+);
+
+alter table individuation_narratives enable row level security;
+
+create policy "Users can view own narratives" on individuation_narratives
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own narratives" on individuation_narratives
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own narratives" on individuation_narratives
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own narratives" on individuation_narratives
+  for delete using (auth.uid() = user_id);
+
+create index if not exists individuation_narratives_user_id on individuation_narratives(user_id, generated_at desc);
+
+-- Indexes for performance
 create index if not exists dreams_user_id_created_at on dreams(user_id, created_at desc);
 create index if not exists dreams_user_id_dream_date on dreams(user_id, dream_date desc);

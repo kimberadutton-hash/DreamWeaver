@@ -15,6 +15,7 @@ import { useAuth } from '../contexts/AuthContext';
 const DEFAULTS = {
   share_notes_with_ai: false,
   share_analyst_session_with_ai: false,
+  share_analyst_focus_with_ai: false,
 };
 
 export function usePrivacySettings() {

@@ -9,6 +9,8 @@ import DreamDetail from './pages/DreamDetail';
 import Symbols from './pages/Symbols';
 import Timeline from './pages/Timeline';
 import AskArchive from './pages/AskArchive';
+import AnalystFocus from './pages/AnalystFocus';
+import Individuation from './pages/Individuation';
 import ImportCSV from './pages/ImportCSV';
 import Settings from './pages/Settings';
 
@@ -46,6 +48,8 @@ export default function App() {
                     <Route path="/symbols" element={<Symbols />} />
                     <Route path="/timeline" element={<Timeline />} />
                     <Route path="/ask" element={<AskArchive />} />
+                    <Route path="/focus" element={<AnalystFocus />} />
+                    <Route path="/individuation" element={<Individuation />} />
                     <Route path="/import" element={<ImportCSV />} />
                     <Route path="/settings" element={<Settings />} />
                   </Routes>

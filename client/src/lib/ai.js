@@ -63,11 +63,12 @@ async function call({ messages, maxTokens = 1024, model = 'claude-opus-4-5', api
 
 // ── Analyze a dream ──────────────────────────────────────────────────────────
 
-export async function analyzeDream({ title, body, mood, privacySettings, notes, analyst_session }) {
+export async function analyzeDream({ title, body, mood, privacySettings, notes, analyst_session, analystFocus }) {
+  const moodStr = Array.isArray(mood) ? mood.join(', ') : (mood || '');
   let prompt = `You are a Jungian analyst with deep knowledge of dream symbolism, archetypes, and the unconscious. Analyze the following dream with warmth, depth, and insight.
 
 ${title ? `Dream Title: ${title}` : ''}
-${mood ? `Dreamer's Mood: ${mood}` : ''}
+${moodStr ? `Dreamer's Mood: ${moodStr}` : ''}
 Dream: ${body}
 
 Respond ONLY with valid JSON in this exact structure:
@@ -88,6 +89,9 @@ Respond ONLY with valid JSON in this exact structure:
   if (privacySettings?.share_analyst_session_with_ai && analyst_session?.trim()) {
     prompt += `\n\nANALYST SESSION NOTES (shared by the dreamer):\n${analyst_session.trim()}`;
   }
+  if (privacySettings?.share_analyst_focus_with_ai && analystFocus?.trim()) {
+    prompt += `\n\nThe dreamer's current analytical focus (shared with consent): ${analystFocus.trim()}`;
+  }
 
   const text = await call({
     messages: [{ role: 'user', content: prompt }],
@@ -102,9 +106,10 @@ Respond ONLY with valid JSON in this exact structure:
 // ── Generate a title for an untitled dream ───────────────────────────────────
 
 export async function generateTitle({ body, mood }) {
+  const moodStr = Array.isArray(mood) ? mood.join(', ') : (mood || '');
   const prompt = `Give this dream a short, evocative title — poetic but specific to the imagery in the dream. 3–6 words. No punctuation. No quotes. Just the title itself.
 
-${mood ? `Mood: ${mood}\n` : ''}Dream: ${body.slice(0, 600)}`;
+${moodStr ? `Mood: ${moodStr}\n` : ''}Dream: ${body.slice(0, 600)}`;
 
   const text = await call({
     messages: [{ role: 'user', content: prompt }],
@@ -120,9 +125,10 @@ ${mood ? `Mood: ${mood}\n` : ''}Dream: ${body.slice(0, 600)}`;
 // Used for batch-tagging imported or unanalyzed dreams.
 
 export async function quickTagDream({ body, mood }) {
+  const moodStr = Array.isArray(mood) ? mood.join(', ') : (mood || '');
   const prompt = `Extract the Jungian symbols, archetypes, and themes from this dream. Be precise and concise.
 
-Dream: ${body.slice(0, 800)}${mood ? `\nMood: ${mood}` : ''}
+Dream: ${body.slice(0, 800)}${moodStr ? `\nMood: ${moodStr}` : ''}
 
 Respond ONLY with valid JSON — no other text:
 {
@@ -146,7 +152,12 @@ Respond ONLY with valid JSON — no other text:
 
 export async function askArchive({ question, dreams, privacySettings }) {
   const summaries = dreams.map((d, i) => {
-    let entry = `Dream ${i + 1} (${d.dream_date}): "${d.title}" — ${d.body.slice(0, 300)}${d.body.length > 300 ? '...' : ''} [Tags: ${(d.tags || []).join(', ')}]`;
+    // Prefer AI-generated summary if available; fall back to body excerpt.
+    const excerpt = d.summary?.trim()
+      ? d.summary.trim()
+      : `${d.body.slice(0, 300)}${d.body.length > 300 ? '...' : ''}`;
+    const moodStr = Array.isArray(d.mood) ? d.mood.join(', ') : (d.mood || '');
+    let entry = `Dream ${i + 1} (${d.dream_date}): "${d.title}" — ${excerpt} [Tags: ${(d.tags || []).join(', ')}${moodStr ? ` | Mood: ${moodStr}` : ''}]`;
     // Include private fields only when the dreamer has explicitly enabled sharing.
     if (privacySettings?.share_notes_with_ai && d.notes?.trim()) {
       entry += `\n  Personal notes: ${d.notes.trim().slice(0, 300)}${d.notes.trim().length > 300 ? '...' : ''}`;
@@ -196,6 +207,128 @@ Respond ONLY with a valid JSON array. No preamble, no markdown.`;
   const match = text.match(/\[[\s\S]*\]/);
   if (!match) throw new AiError('Unexpected response format from AI.', 'api_error');
   return JSON.parse(match[0]);
+}
+
+// ── Generate a 2-3 sentence summary of a dream ──────────────────────────────
+// Uses Haiku (fast, cheap). Output is plain prose — no JSON.
+// Stored in dreams.summary and used by askArchive instead of body excerpts.
+
+export async function generateDreamSummary({ title, body, mood }) {
+  const moodStr = Array.isArray(mood) ? mood.join(', ') : (mood || '');
+  const prompt = `Summarize this dream in 2-3 sentences of plain prose. Capture the core narrative arc and emotional tone. Do not interpret or analyze — just summarize what happened and how it felt. No quotes, no labels, no bullet points.
+
+${title ? `Title: ${title}` : ''}
+${moodStr ? `Mood: ${moodStr}` : ''}
+Dream: ${body.slice(0, 1200)}`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: prompt }],
+    maxTokens: 150,
+    model: 'claude-haiku-4-5-20251001',
+  });
+
+  return text.trim();
+}
+
+// ── Generate an individuation narrative from the full dream archive ──────────
+// ⚠️ EXPENSIVE: Uses Claude Opus on the full dream archive.
+// Recommended no more than once per month. Warn the user before calling.
+// Input: array of dreams with { dream_date, title, summary, body, archetypes,
+//        symbols, mood, is_big_dream }
+
+export async function generateIndividuationNarrative({ dreams }) {
+  const dreamList = dreams.map((d, i) => {
+    const moodStr = Array.isArray(d.mood) ? d.mood.join(', ') : (d.mood || '');
+    const excerpt = d.summary?.trim() || d.body.slice(0, 300);
+    const bigFlag = d.is_big_dream ? ' ✦ [BIG DREAM]' : '';
+    return `Dream ${i + 1} — ${d.dream_date}${bigFlag}: "${d.title || 'Untitled'}"
+Mood: ${moodStr || '—'}
+Summary: ${excerpt}
+Archetypes: ${(d.archetypes || []).join(', ') || '—'}
+Symbols: ${(d.symbols || []).join(', ') || '—'}`;
+  }).join('\n\n---\n\n');
+
+  const systemPrompt = `You are a Jungian analyst with 30 years of experience. You are reading someone's complete dream record to understand where they are in their individuation process.`;
+
+  const userPrompt = `Given these dreams in chronological order, write a 4-6 paragraph narrative about this person's individuation journey. Cover: what complexes appear to be active, what the psyche seems to be moving toward, what shadow material is pressing up, and what the most recent dreams suggest about where the work is right now. Write with warmth and depth. This is not a summary — it is an analyst's perspective on a life of inner work. Dreams marked ✦ [BIG DREAM] are numinous or archetypal dreams of unusual significance — weight them accordingly.
+
+DREAM RECORD (chronological):
+${dreamList}`;
+
+  return call({
+    messages: [{ role: 'user', content: userPrompt }],
+    maxTokens: 2048,
+    model: 'claude-opus-4-5',
+  });
+}
+
+// ── Suggest additional tags for an already-analyzed dream ────────────────────
+// Uses Haiku (fast, cheap). Returns only NEW items not already present.
+
+export async function suggestAdditionalTags({ body, mood, tags, symbols, archetypes }) {
+  const moodStr = Array.isArray(mood) ? mood.join(', ') : (mood || '');
+  const prompt = `A dream has already been tagged with these items:
+Tags: ${tags.join(', ') || 'none'}
+Symbols: ${symbols.join(', ') || 'none'}
+Archetypes: ${archetypes.join(', ') || 'none'}
+
+Dream: ${body.slice(0, 800)}${moodStr ? `\nMood: ${moodStr}` : ''}
+
+Suggest additional tags, symbols, or archetypes that were missed. Return ONLY items not already listed above. If nothing meaningful is missing, return empty arrays.
+
+Respond ONLY with valid JSON:
+{
+  "tags": ["NEW tags only. Each must be ONE of: a pure emotion (grief, joy, rage), an animal name (snake, wolf), a Jungian term (shadow, anima), a place (forest, basement), or a concrete symbol (fire, key). Single words or 2-word phrases MAX."],
+  "symbols": ["NEW symbols only. Single words or 2-word phrases. Significant objects, figures, or places with symbolic weight."],
+  "archetypes": ["NEW Jungian archetypes only if clearly present and not already listed. Use canonical names: Shadow, Anima, Animus, Trickster, Wise Old Man, Wise Woman, Inner Child, Hero, Great Mother."]
+}`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: prompt }],
+    maxTokens: 256,
+    model: 'claude-haiku-4-5-20251001',
+  });
+
+  const match = text.match(/\{[\s\S]*\}/);
+  if (!match) throw new AiError('Unexpected response format.', 'api_error');
+  return JSON.parse(match[0]);
+}
+
+// ── Update an existing individuation narrative with new dreams ────────────────
+// ⚠️ EXPENSIVE: Uses Claude Opus. Only sends dreams since last generation.
+// previousNarrative: string (the existing 4-6 paragraph narrative)
+// newDreams: array of dream objects since last_dream_id
+
+export async function updateIndividuationNarrative({ previousNarrative, newDreams }) {
+  const dreamList = newDreams.map((d, i) => {
+    const moodStr = Array.isArray(d.mood) ? d.mood.join(', ') : (d.mood || '');
+    const excerpt = d.summary?.trim() || d.body.slice(0, 300);
+    const bigFlag = d.is_big_dream ? ' ✦ [BIG DREAM]' : '';
+    return `Dream ${i + 1} — ${d.dream_date}${bigFlag}: "${d.title || 'Untitled'}"
+Mood: ${moodStr || '—'}
+Summary: ${excerpt}
+Archetypes: ${(d.archetypes || []).join(', ') || '—'}
+Symbols: ${(d.symbols || []).join(', ') || '—'}`;
+  }).join('\n\n---\n\n');
+
+  const userPrompt = `You previously wrote this individuation narrative for a dreamer:
+
+---
+${previousNarrative}
+---
+
+Since that narrative was written, the dreamer has recorded these new dreams:
+
+NEW DREAMS (chronological):
+${dreamList}
+
+Update the narrative to incorporate these new dreams. Maintain continuity with the existing analysis while integrating what the new material reveals. Write 4-6 paragraphs of continuous prose — an analyst's perspective on the ongoing individuation journey. Dreams marked ✦ [BIG DREAM] are numinous or archetypal dreams of unusual significance — weight them accordingly. Do not explicitly say "since the last narrative" or reference the update process itself — just write the living, current narrative.`;
+
+  return call({
+    messages: [{ role: 'user', content: userPrompt }],
+    maxTokens: 2048,
+    model: 'claude-opus-4-5',
+  });
 }
 
 // ── Transcribe handwritten text from an image ────────────────────────────────

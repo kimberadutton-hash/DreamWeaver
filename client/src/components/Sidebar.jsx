@@ -5,8 +5,10 @@ const navItems = [
   { to: '/archive', label: 'Archive', icon: '◎' },
   { to: '/new', label: 'New Dream', icon: '✦' },
   { to: '/symbols', label: 'Symbols & Archetypes', icon: '◈' },
+  { to: '/focus', label: 'Analyst Focus', icon: '◇' },
   { to: '/timeline', label: 'Timeline', icon: '◌' },
-  { to: '/ask', label: 'Ask Your Archive', icon: '◇' },
+  { to: '/ask', label: 'Ask Your Archive', icon: '◉' },
+  { to: '/individuation', label: 'Individuation', icon: '⌾' },
   { to: '/import', label: 'Import CSV', icon: '⊕' },
   { to: '/settings', label: 'Settings', icon: '◦' },
 ];

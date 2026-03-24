@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { analyzeDream, transcribeImage, hasApiKey } from '../lib/ai';
+import { analyzeDream, generateDreamSummary, transcribeImage, hasApiKey } from '../lib/ai';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { format } from 'date-fns';
@@ -34,6 +34,8 @@ export default function NewDream() {
     title: '',
     body: '',
     moods: [],
+    is_big_dream: false,
+    incubation_intention: '',
     notes: '',
     analyst_session: '',
     tags: '',
@@ -43,6 +45,7 @@ export default function NewDream() {
   const [aiError, setAiError] = useState(null);
   const [hasTodayDream, setHasTodayDream] = useState(true);
   const [keyPresent, setKeyPresent] = useState(hasApiKey);
+  const [activeFocus, setActiveFocus] = useState(null);
 
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
@@ -51,9 +54,21 @@ export default function NewDream() {
 
   useEffect(() => {
     checkTodayDream();
+    fetchActiveFocus();
     // Re-check key presence each time page mounts (user may have just added it)
     setKeyPresent(hasApiKey());
   }, []);
+
+  async function fetchActiveFocus() {
+    const { data } = await supabase
+      .from('analyst_focuses')
+      .select('id, focus_text')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .limit(1)
+      .single();
+    if (data) setActiveFocus(data);
+  }
 
   async function checkTodayDream() {
     const today = format(new Date(), 'yyyy-MM-dd');
@@ -147,16 +162,20 @@ export default function NewDream() {
 
     try {
       let analysisData = {};
-      const moodStr = form.moods.join(', ');
+      let summaryText = null;
       if (withAnalysis) {
-        analysisData = await analyzeDream({
-          title: form.title,
-          body: form.body,
-          mood: moodStr,
-          privacySettings,
-          notes: form.notes,
-          analyst_session: form.analyst_session,
-        });
+        [analysisData, summaryText] = await Promise.all([
+          analyzeDream({
+            title: form.title,
+            body: form.body,
+            mood: form.moods,
+            privacySettings,
+            notes: form.notes,
+            analyst_session: form.analyst_session,
+            analystFocus: activeFocus?.focus_text,
+          }),
+          generateDreamSummary({ title: form.title, body: form.body, mood: form.moods }),
+        ]);
       }
 
       const tagsFromForm = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
@@ -166,14 +185,17 @@ export default function NewDream() {
         dream_date: form.dream_date,
         title: analysisData.title || form.title || null,
         body: form.body,
-        mood: moodStr || null,
+        mood: form.moods.length > 0 ? form.moods : null,
         notes: form.notes || null,
         analyst_session: form.analyst_session || null,
+        incubation_intention: form.incubation_intention || null,
+        is_big_dream: form.is_big_dream,
         tags: withAnalysis ? (analysisData.tags || []) : tagsFromForm,
         archetypes: analysisData.archetypes || [],
         symbols: analysisData.symbols || [],
         reflection: analysisData.reflection || null,
         invitation: analysisData.invitation || null,
+        summary: summaryText || null,
         has_analysis: withAnalysis && !!analysisData.reflection,
       }).select().single();
 
@@ -215,6 +237,32 @@ export default function NewDream() {
       <h1 className="font-display italic text-4xl text-ink dark:text-white mb-8">Record a Dream</h1>
 
       <div className="space-y-6">
+        {/* Incubation intention */}
+        <div>
+          <p className="font-display italic text-base text-ink/50 dark:text-white/40 mb-2">
+            Was there an intention you set before sleeping?
+          </p>
+          <input
+            type="text"
+            value={form.incubation_intention}
+            onChange={e => setField('incubation_intention', e.target.value)}
+            placeholder="e.g. I asked to understand my fear of change…"
+            className="field-input"
+          />
+        </div>
+
+        {/* Active analyst focus — read-only banner */}
+        {activeFocus && (
+          <div className="px-5 py-4 rounded-xl border border-plum/20 bg-plum/5 dark:bg-plum/10">
+            <p className="text-xs uppercase tracking-widest text-plum/50 dark:text-white/30 font-body mb-1">
+              Current Analytical Focus
+            </p>
+            <p className="text-sm font-body text-ink/70 dark:text-white/60 leading-relaxed italic">
+              {activeFocus.focus_text}
+            </p>
+          </div>
+        )}
+
         {/* Date + Title */}
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -268,6 +316,25 @@ export default function NewDream() {
               );
             })}
           </div>
+        </div>
+
+        {/* Big Dream toggle */}
+        <div className="flex items-center justify-between py-3 border-t border-b border-black/8 dark:border-white/8">
+          <div>
+            <p className="text-sm font-body text-ink dark:text-white flex items-center gap-1.5">
+              <span className="text-gold">✦</span> Big Dream
+            </p>
+            <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-0.5">
+              A numinous or archetypal dream of unusual significance
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setField('is_big_dream', !form.is_big_dream)}
+            className={`relative w-12 h-6 rounded-full transition-colors ${form.is_big_dream ? 'bg-gold' : 'bg-black/20 dark:bg-white/20'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.is_big_dream ? 'translate-x-6' : ''}`} />
+          </button>
         </div>
 
         {/* My Notes */}

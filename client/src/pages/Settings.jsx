@@ -221,7 +221,7 @@ export default function Settings() {
           </div>
 
           {/* Share Analyst Session */}
-          <div className="flex items-center justify-between py-4 border-t border-b border-black/8 dark:border-white/8">
+          <div className="flex items-center justify-between py-4 border-t border-black/8 dark:border-white/8">
             <div>
               <p className="text-sm font-body text-ink dark:text-white">Share "Analyst Session" with AI</p>
               <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-0.5">
@@ -238,6 +238,28 @@ export default function Settings() {
             >
               <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
                 privacySettings.share_analyst_session_with_ai ? 'translate-x-6' : ''
+              }`} />
+            </button>
+          </div>
+
+          {/* Share Analyst Focus */}
+          <div className="flex items-center justify-between py-4 border-t border-b border-black/8 dark:border-white/8">
+            <div>
+              <p className="text-sm font-body text-ink dark:text-white">Share "Analyst Focus" with AI</p>
+              <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-0.5">
+                Sends your current analytical focus to Anthropic as context for dream analysis
+              </p>
+            </div>
+            <button
+              type="button"
+              disabled={privacySaving === 'share_analyst_focus_with_ai'}
+              onClick={() => togglePrivacy('share_analyst_focus_with_ai')}
+              className={`relative w-12 h-6 rounded-full transition-colors disabled:opacity-60 ${
+                privacySettings.share_analyst_focus_with_ai ? 'bg-amber-500' : 'bg-black/20 dark:bg-white/20'
+              }`}
+            >
+              <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
+                privacySettings.share_analyst_focus_with_ai ? 'translate-x-6' : ''
               }`} />
             </button>
           </div>
