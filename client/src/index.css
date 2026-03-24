@@ -1,0 +1,66 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    font-family: 'DM Sans', system-ui, sans-serif;
+    background-color: #faf7f2;
+    color: #1a1714;
+  }
+
+  /* Dark mode */
+  html.dark {
+    background-color: #1a1520;
+    color: #e8e0d5;
+  }
+}
+
+@layer utilities {
+  .font-dream {
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-size: 17px;
+    line-height: 1.9;
+  }
+
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #5a3f6b transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background-color: #5a3f6b;
+    border-radius: 2px;
+  }
+}
+
+/* Reusable field components */
+@layer components {
+  .field-label {
+    @apply block text-xs uppercase tracking-widest text-ink/50 dark:text-white/40 mb-1.5 font-body;
+  }
+
+  .field-input {
+    @apply w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 text-ink dark:text-white/90 text-sm font-body focus:outline-none focus:ring-2 focus:ring-gold/40;
+  }
+}
+
+/* Prose-like feel for dream text */
+.dream-body {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  font-size: 17px;
+  line-height: 1.9;
+  color: #1a1714;
+}
+
+.dark .dream-body {
+  color: #e8e0d5;
+}
