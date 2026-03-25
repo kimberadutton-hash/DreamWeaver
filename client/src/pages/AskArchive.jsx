@@ -56,7 +56,7 @@ export default function AskArchive() {
 
     const { data: dreams, error: dbErr } = await supabase
       .from('dreams')
-      .select('dream_date, title, body, tags, archetypes, symbols, mood, notes, analyst_session')
+      .select('dream_date, title, body, summary, tags, archetypes, symbols, mood, notes, analyst_session')
       .eq('user_id', user.id)
       .order('dream_date', { ascending: false })
       .limit(50);

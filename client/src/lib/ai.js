@@ -346,12 +346,16 @@ Symbols: ${(d.symbols || []).join(', ') || '—'}`;
 
   const userPrompt = `Given these dreams in chronological order, write a 4-6 paragraph narrative about this person's individuation journey. Cover: what complexes appear to be active, what the psyche seems to be moving toward, what shadow material is pressing up, and what the most recent dreams suggest about where the work is right now. Write with warmth and depth. This is not a summary — it is an analyst's perspective on a life of inner work. Dreams marked ✦ [BIG DREAM] are numinous or archetypal dreams of unusual significance — weight them accordingly.
 
+Write in flowing prose paragraphs separated by blank lines. Do not use any markdown formatting — no headers, no pound signs (#), no bold (**text**), no horizontal rules (---), no asterisks for emphasis. Plain prose only.
+
+When you reference a specific dream, embed an inline marker so the reader can identify it on hover. Format: [[your prose text|Exact Dream Title|YYYY-MM-DD]]. Example: "In [[the dream of the flooded basement|The Flooded Basement|2024-03-15]], a new threshold appeared..." — only wrap specific dream references, not general statements about the dreamer.
+
 DREAM RECORD (chronological):
 ${dreamList}`;
 
   return call({
     messages: [{ role: 'user', content: userPrompt }],
-    maxTokens: 2048,
+    maxTokens: 4096,
     model: AI_MODELS.narrative,
   });
 }
@@ -416,11 +420,15 @@ Since that narrative was written, the dreamer has recorded these new dreams:
 NEW DREAMS (chronological):
 ${dreamList}
 
-Update the narrative to incorporate these new dreams. Maintain continuity with the existing analysis while integrating what the new material reveals. Write 4-6 paragraphs of continuous prose — an analyst's perspective on the ongoing individuation journey. Dreams marked ✦ [BIG DREAM] are numinous or archetypal dreams of unusual significance — weight them accordingly. Do not explicitly say "since the last narrative" or reference the update process itself — just write the living, current narrative.`;
+Update the narrative to incorporate these new dreams. Maintain continuity with the existing analysis while integrating what the new material reveals. Write 4-6 paragraphs of continuous prose — an analyst's perspective on the ongoing individuation journey. Dreams marked ✦ [BIG DREAM] are numinous or archetypal dreams of unusual significance — weight them accordingly. Do not explicitly say "since the last narrative" or reference the update process itself — just write the living, current narrative.
+
+Write in flowing prose paragraphs separated by blank lines. Do not use any markdown formatting — no headers, no pound signs (#), no bold (**text**), no horizontal rules (---), no asterisks for emphasis. Plain prose only.
+
+When you reference a specific dream, embed an inline marker so the reader can identify it on hover. Format: [[your prose text|Exact Dream Title|YYYY-MM-DD]]. Example: "In [[the dream of the flooded basement|The Flooded Basement|2024-03-15]], a new threshold appeared..." — only wrap specific dream references, not general statements about the dreamer.`;
 
   return call({
     messages: [{ role: 'user', content: userPrompt }],
-    maxTokens: 2048,
+    maxTokens: 4096,
     model: AI_MODELS.narrative,
   });
 }

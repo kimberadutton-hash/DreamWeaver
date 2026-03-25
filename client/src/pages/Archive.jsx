@@ -22,7 +22,7 @@ export default function Archive() {
     setLoading(true);
     const { data, error } = await supabase
       .from('dreams')
-      .select('id, dream_date, title, body, mood, tags, has_analysis, created_at')
+      .select('id, dream_date, title, body, mood, tags, has_analysis, is_big_dream, created_at')
       .eq('user_id', user.id)
       .order('dream_date', { ascending: false });
 
@@ -66,7 +66,7 @@ export default function Archive() {
     return (
       d.title?.toLowerCase().includes(q) ||
       d.body?.toLowerCase().includes(q) ||
-      d.mood?.toLowerCase().includes(q) ||
+      d.mood?.some(m => m.toLowerCase().includes(q)) ||
       d.tags?.some(t => t.toLowerCase().includes(q))
     );
   });
@@ -170,9 +170,14 @@ function DreamCard({ dream, onClick }) {
     >
       <div className="flex items-start justify-between mb-3">
         <span className="text-xs font-body text-ink/40 dark:text-white/40">{date}</span>
-        {dream.has_analysis && (
-          <span className="text-xs font-body text-gold/70 ml-2">✦ analyzed</span>
-        )}
+        <div className="flex items-center gap-2 ml-2 shrink-0">
+          {dream.is_big_dream && (
+            <span className="text-xs font-body text-gold">✦ big dream</span>
+          )}
+          {dream.has_analysis && (
+            <span className="text-xs font-body text-gold/60">analyzed</span>
+          )}
+        </div>
       </div>
       <h3 className="font-display italic text-xl text-ink dark:text-white group-hover:text-plum dark:group-hover:text-gold transition-colors mb-2">
         {dream.title || <span className="text-ink/30 dark:text-white/20">Untitled Dream</span>}

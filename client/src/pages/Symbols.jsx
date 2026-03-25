@@ -366,69 +366,293 @@ function OtherIcon({ color }) {
   );
 }
 
-// ── CATEGORIES ───────────────────────────────────────────────────────────────
+// ── Matching helpers ──────────────────────────────────────────────────────────
 
-const CATEGORIES = [
-  { key: 'shadow', label: 'The Shadow', color: '#3d2b4a', Icon: ShadowIcon,
-    keywords: ['shadow','darkness','dark','unknown','fear','rage','anger','shame','hidden','repressed','monster','villain','enemy','threat','evil','sinister','stalker','pursuer','chased','nightmare','terror','dread','horror'] },
-  { key: 'animus', label: 'The Animus', color: '#4a5c7c', Icon: AnimusIcon,
-    keywords: ['animus','masculine','warrior','sword','logic','assertion','authority','critic','hero','guide','king','structure','discipline','order','man','father figure','boyfriend','husband'] },
-  { key: 'anima', label: 'The Anima', color: '#c9748a', Icon: AnimaIcon,
-    keywords: ['anima','feminine','soul','muse','beloved','mysterious woman','goddess','creative','enchantress','moon','water spirit','inner woman','beauty','inspiration','longing'] },
-  { key: 'great-mother', label: 'The Great Mother', color: '#4a7c74', Icon: GreatMotherIcon,
-    keywords: ['mother','womb','earth','nature','nurturing','nourishment','container','cave','ocean','moon','grandmother','maternal','great mother','earth mother','devouring','fertile','abundant','holding'] },
-  { key: 'wise-guide', label: 'The Wise Guide', color: '#7c5c3a', Icon: WiseGuideIcon,
-    keywords: ['wise','guide','mentor','healer','teacher','elder','therapist','priest','oracle','wizard','sage','counselor','magical helper','animal guide','speaking animal'] },
-  { key: 'child', label: 'The Child', color: '#c9974a', Icon: ChildIcon,
-    keywords: ['child','innocence','potential','rebirth','wonder','beginning','vulnerability','baby','youth','future','inner child','magical child','divine child','playful','small','helpless','new'] },
-  { key: 'trickster', label: 'The Trickster', color: '#c96a4a', Icon: TricksterIcon,
-    keywords: ['trickster','chaos','humor','paradox','fool','coyote','unexpected','reversal','shapeshifting','disruption','joke','trick','absurd','nonsensical','bizarre','chaotic','interference'] },
-  { key: 'self', label: 'The Self', color: '#b8924a', Icon: SelfIcon,
-    keywords: ['self','wholeness','mandala','circle','center','integration','individuation','god','divine','light','gold','radiance','completion','unity','transcendence','holy','sacred','luminous'] },
-  { key: 'animals', label: 'Animals & Creatures', color: '#5a7c4a', Icon: AnimalsIcon,
-    keywords: ['snake','serpent','wolf','bird','horse','cat','dog','bear','deer','spider','fox','lion','tiger','fish','owl','rabbit','rat','dolphin','whale','crow','raven','eagle','hawk','butterfly','dragon','creature','beast','coyote','elk','alligator','crocodile','frog','turtle','bat','fly','bee','wasp','ant','worm','beetle','mouse','pig','cow','bull','goat','sheep','lamb','elephant','giraffe','zebra','peacock','swan','duck','parrot','squirrel','raccoon'] },
-  { key: 'body', label: 'The Body', color: '#9a4a4a', Icon: BodyIcon,
-    keywords: ['blood','wound','healing','birth','death','pregnancy','illness','pain','hunger','breath','hands','eyes','mouth','heart','stomach','throat','chest','skin','bones','hair','teeth','legs','arms','feet','body','flesh','scar','surgery','medical','organs','spine','head','face','hand','eye'] },
-  { key: 'journeys', label: 'Thresholds & Journeys', color: '#6b4d80', Icon: JourneysIcon,
-    keywords: ['door','bridge','road','path','cave','stairs','staircase','threshold','crossing','travel','flying','falling','running','lost','maze','corridor','tunnel','passage','gate','portal','journey','quest','wandering','descending','ascending','climbing','swimming','driving','leaving','arriving','escape','pursuit','pursued','chasing'] },
-  { key: 'structures', label: 'Structures & Spaces', color: '#5c6b7c', Icon: HousesIcon,
-    keywords: ['house','room','basement','attic','school','hospital','church','theater','theatre','prison','hotel','garden','city','building','office','store','market','library','museum','castle','palace','apartment','childhood home','old house','unfamiliar building','bathroom','kitchen','bedroom','classroom'] },
-  { key: 'nature', label: 'Natural Elements', color: '#4a7c5c', Icon: NatureIcon,
-    keywords: ['water','fire','earth','air','storm','flood','earthquake','mountain','forest','desert','ocean','river','lake','rain','snow','ice','wind','lightning','thunder','sun','moon','stars','sky','clouds','darkness','light','seasons','spring','summer','autumn','winter','nature','landscape','weather','volcano'] },
-  { key: 'transformation', label: 'Transformation', color: '#c97a3a', Icon: TransformationIcon,
-    keywords: ['metamorphosis','dissolving','explosion','destruction','renewal','transformation','change','ending','beginning','dying','reborn','consuming','flood washing','collapse','crumbling','melting','crystallizing','emerging','cocoon','chrysalis','becoming'] },
-  { key: 'emotions', label: 'Core Emotions', color: '#9a6a7a', Icon: EmotionsIcon,
-    keywords: ['grief','joy','rage','shame','love','longing','despair','wonder','peace','anxiety','terror','ecstasy','confusion','hope','guilt','pride','envy','jealousy','awe','dread','loneliness','belonging','freedom','trapped','abandoned','cherished','betrayed','forgiven','empty','numb','alive','peaceful','ecstatic','melancholic','confused','hopeful','unsettled','mysterious','joyful','anxious','fearful','melancholy','sorrow','sadness'] },
-  { key: 'relational', label: 'Relational Figures', color: '#6b7c4a', Icon: RelationalIcon,
-    keywords: ['husband','wife','partner','boyfriend','girlfriend','ex','lover','friend','enemy','stranger','boss','colleague','sibling','brother','sister','aunt','uncle','cousin','neighbor','community','group','crowd','family','ex partner'] },
-  { key: 'voice', label: 'Voice & Expression', color: '#7a6b9a', Icon: VoiceIcon,
-    keywords: ['singing','voice','speaking','silenced','frozen','perform','audience','stage','microphone','music','song','lyrics','screaming','whispering','heard','unheard','mute','articulate','throat','communication','words','language','expression','choral'] },
-  { key: 'belonging', label: 'Belonging & Identity', color: '#7a8c6b', Icon: BelongingIcon,
-    keywords: ['belonging','fitting in','outsider','identity','authentic','fake','performance','role','mask','accepted','rejected','seen','unseen','invisible','recognized','misunderstood','conformity','rebellion','true self','false self','social','alone'] },
-  { key: 'feminine', label: 'Feminine Power', color: '#9a7a4a', Icon: FeminineIcon,
-    keywords: ['liberation','feminine power','agency','unleashed','wild woman','sisterhood','goddess','embodied','sexuality','desire','repression','awakening','strength','softness','empowerment','wildness'] },
-];
-
-const OTHER_CATEGORY = { key: 'other', label: 'Other', color: '#7a7268', Icon: OtherIcon };
-
-// ── Matching & Data Functions ────────────────────────────────────────────────
-
-function matchesCategory(symbol, keywords) {
-  const sym = symbol.toLowerCase().trim();
-  return keywords.some(kw => sym.includes(kw.toLowerCase()));
+function containsWholeWord(tag, words) {
+  return words.some(w => {
+    const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return new RegExp('\\b' + escaped + 's?\\b', 'i').test(tag);
+  });
 }
 
-const CATEGORY_LABEL_KEYS = new Set(CATEGORIES.map(c => c.label.toLowerCase()));
+function exactMatch(tag, words) {
+  const t = tag.toLowerCase().trim();
+  return words.some(w => t === w.toLowerCase() || t === 'the ' + w.toLowerCase());
+}
+
+// ── CATEGORIES ────────────────────────────────────────────────────────────────
+
+const CATEGORIES = [
+  {
+    key: 'shadow', label: 'The Shadow', color: '#3d2b4a', Icon: ShadowIcon,
+    match: t => containsWholeWord(t, [
+      'shadow','darkness','dark figure','villain','monster','enemy','threat',
+      'shame','hidden','repressed','suppressed','denied','rejected','feared',
+      'stalker','pursuer','being chased','nightmare','sinister','evil figure',
+      'dark side','shadow self','shadow work',
+    ]) && !containsWholeWord(t, ['shadowing','foreshadow']),
+  },
+  {
+    key: 'animus', label: 'The Animus', color: '#4a5c7c', Icon: AnimusIcon,
+    match: t => containsWholeWord(t, [
+      'animus','wise old man','wise man','authority figure','authority conflict',
+      'authority failure','king','warrior','father figure','male guide',
+      'stage manager','conductor','mentor figure','assertion',
+      'lovemaking','romantic idealization',
+    ]) || exactMatch(t, ['hero','the hero','animus','wise old man','authority',
+      'masculine energy','inner masculine']),
+  },
+  {
+    key: 'anima', label: 'The Anima', color: '#c9748a', Icon: AnimaIcon,
+    match: t => containsWholeWord(t, [
+      'anima','muse','beloved','enchantress','moon goddess',
+      'mysterious woman','inner feminine','soul image','creative feminine',
+      'feminine guide','girls as future self',
+    ]) || exactMatch(t, ['anima','the anima','feminine soul','inner woman']),
+  },
+  {
+    key: 'great-mother', label: 'The Great Mother', color: '#4a7c74', Icon: GreatMotherIcon,
+    match: t => containsWholeWord(t, [
+      'great mother','earth mother','mother archetype','devouring mother',
+      'nurturing mother','womb','fertile','abundant','nourishment','container',
+      'mother figure','grandmother figure','caretaking','caregiver',
+    ]) || exactMatch(t, ['caretaking','nourishment','mother wound']),
+  },
+  {
+    key: 'wise-guide', label: 'The Wise Guide', color: '#7c5c3a', Icon: WiseGuideIcon,
+    match: t => containsWholeWord(t, [
+      'wise woman','wise guide','oracle','spiritual guide',
+      'therapist figure','teacher figure','magical helper',
+      'transformed mentor','inner voice of reason','sage','elder',
+    ]) || exactMatch(t, ['wise woman','wise guide','the wise woman',
+      'wise old woman','transformed mentor']),
+  },
+  {
+    key: 'child', label: 'The Child', color: '#c9974a', Icon: ChildIcon,
+    match: t => containsWholeWord(t, [
+      'inner child','divine child','magical child','wounded child','child archetype',
+      'childlike wonder','innocence','vulnerability','playfulness',
+      'little girl','little boy',
+    ]) || exactMatch(t, ['inner child','child archetype','divine child','wounded child']),
+  },
+  {
+    key: 'trickster', label: 'The Trickster', color: '#c96a4a', Icon: TricksterIcon,
+    match: t => containsWholeWord(t, [
+      'trickster','chaos energy','necessary chaos','chaotic','paradox',
+      'unexpected reversal','disruption','interference','shape-shift','fool',
+      'coyote energy','trickster energy','scapegoat','scapegoating',
+    ]) || exactMatch(t, ['trickster','the trickster','chaos','paradox',
+      'necessary chaos','scapegoat','scapegoating']),
+  },
+  {
+    key: 'self', label: 'The Self', color: '#b8924a', Icon: SelfIcon,
+    match: t => containsWholeWord(t, [
+      'individuation','wholeness','mandala','integration','transcendence',
+      'divine light','sacred','radiance','holy','completion','unity',
+      'higher self','true self','authentic self','self realization',
+    ]) || exactMatch(t, ['the self','individuation','wholeness','integration',
+      'authentic self','true self']),
+  },
+  {
+    key: 'animals', label: 'Animals & Creatures', color: '#5a7c4a', Icon: AnimalsIcon,
+    match: t => {
+      const ANIMALS = [
+        'snake','wolf','bird','horse','cat','dog','bear','deer','spider',
+        'fox','lion','tiger','fish','owl','rabbit','rat','dolphin','whale',
+        'crow','raven','eagle','hawk','butterfly','dragon','coyote','frog',
+        'turtle','bat','bee','ant','mouse','pig','cow','bull','sheep','lamb',
+        'elephant','swan','duck','parrot','squirrel','raccoon','peacock',
+        'sparrow','robin','hummingbird','stag','puppy','kitten','cub','foal',
+        'alligator','crocodile','jaguar','panther','cheetah','zebra','giraffe',
+        'hippo','gorilla','monkey','penguin','seal','otter','beaver','badger',
+        'hedgehog','porcupine','skunk','lynx','bobcat','cougar','moose',
+        'bison','buffalo','boar','goat','ram','rooster','hen','turkey','goose',
+        'pigeon','dove','vulture','falcon','osprey','heron','crane','stork',
+        'flamingo','toucan','macaw','cockatoo','canary','finch','swallow',
+        'wren','thrush','magpie','jay','starling','nightingale','caterpillar',
+        'moth','dragonfly','firefly','ladybug','grasshopper','cricket',
+        'scorpion','tarantula','crab','lobster','octopus','squid','jellyfish',
+        'seahorse','shark','salmon','trout','bass','carp','willow bird',
+        'killer whale','black snake','white snake','pink snake','blue bird',
+        'ducklings','black bird',
+      ];
+      return ANIMALS.some(a =>
+        new RegExp('\\b' + a.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?\\b', 'i').test(t)
+      );
+    },
+  },
+  {
+    key: 'body', label: 'The Body', color: '#9a4a4a', Icon: BodyIcon,
+    match: t => {
+      const BODY = [
+        'blood','wound','healing','birth','death','pregnancy','pregnant',
+        'illness','pain','hunger','breath','breathing','hands','heart',
+        'stomach','throat','chest','skin','bones','bone','hair','teeth','tooth',
+        'legs','arms','feet','foot','flesh','scar','surgery','organs','spine',
+        'head','face','eyes','mouth','body','dying','dead body','severed',
+        'bare feet','heart pain','body wisdom','wound healing','death anxiety',
+        'cancer','physical','somatic','embodied','sensory','numb','paralyzed',
+        'frozen body','sleep paralysis','muscle','brain','gut','belly','womb',
+        'back','shoulder','neck','knee','ankle','elbow','wrist','finger','toe',
+        'nail','lip','tongue','ear','nose','forehead','chin','jaw','cheek',
+        'breast','hip','pelvis','reproductive','menstrual','visceral',
+        'brown skin','long hair','blue head',
+      ];
+      return BODY.some(w =>
+        new RegExp('\\b' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + 's?\\b', 'i').test(t)
+      );
+    },
+  },
+  {
+    key: 'journeys', label: 'Thresholds & Journeys', color: '#6b4d80', Icon: JourneysIcon,
+    match: t => containsWholeWord(t, [
+      'door','bridge','road','forest','path','cave','stairs','staircase',
+      'threshold','crossing','travel','flying','falling','running','lost',
+      'maze','corridor','tunnel','passage','gate','portal','journey','quest',
+      'wandering','descending','ascending','climbing','swimming','driving',
+      'leaving','arriving','escape','pursuit','being chased','running away',
+      'elevator','ladder','descent','ascent','underworld','vortex','rabbit hole',
+    ]),
+  },
+  {
+    key: 'structures', label: 'Structures & Spaces', color: '#5c6b7c', Icon: HousesIcon,
+    match: t => containsWholeWord(t, [
+      'house','room','basement','attic','school','hospital','church','theater',
+      'theatre','prison','hotel','garden','city','building','office','store',
+      'market','library','museum','castle','palace','apartment','childhood home',
+      'old house','unfamiliar building','bathroom','kitchen','bedroom',
+      'classroom','cathedral','temple','sanctuary','stadium','warehouse',
+      'factory','laboratory','cabin','cottage','mansion','estate','campus',
+      'neighborhood','village','town','street','alley','plaza','courtyard',
+      'tower','hallway','windowless',
+    ]),
+  },
+  {
+    key: 'nature', label: 'Natural Elements', color: '#4a7c5c', Icon: NatureIcon,
+    match: t => containsWholeWord(t, [
+      'water','fire','earth','air','storm','flood','earthquake','mountain',
+      'ocean','river','lake','rain','snow','ice','wind','lightning','thunder',
+      'sun','moon','stars','sky','clouds','seasons','spring','summer',
+      'autumn','winter','nature','landscape','weather','volcano','lava',
+      'tornado','hurricane','tsunami','avalanche','desert','jungle','swamp',
+      'marsh','meadow','field','cliff','valley','canyon','waterfall','mist',
+      'fog','rainbow','aurora','eclipse','comet','meteor','galaxy','cosmos',
+    ]),
+  },
+  {
+    key: 'transformation', label: 'Transformation', color: '#c97a3a', Icon: TransformationIcon,
+    match: t => containsWholeWord(t, [
+      'transformation','metamorphosis','dissolving','explosion','destruction',
+      'renewal','rebirth','dying and rising','phoenix','cocoon','chrysalis',
+      'emerging','shedding','molting','shapeshifting','transmutation','alchemy',
+      'death rebirth','purification','initiation','awakening','enlightenment',
+      'breakthrough','collapse','crumbling','disintegration','resurrection',
+      'transfiguration',
+    ]),
+  },
+  {
+    key: 'emotions', label: 'Core Emotions', color: '#9a6a7a', Icon: EmotionsIcon,
+    match: t => {
+      const EMOTIONS = [
+        'grief','joy','rage','fear','shame','love','longing','despair','wonder',
+        'peace','anxiety','terror','ecstasy','confusion','hope','guilt','pride',
+        'envy','jealousy','awe','dread','loneliness','freedom','trapped',
+        'abandoned','cherished','betrayed','forgiven','lost','found','empty',
+        'alive','numb','anger','sadness','happiness','excitement','boredom',
+        'frustration','satisfaction','disappointment','relief','surprise',
+        'disgust','admiration','hatred','resentment','gratitude','compassion',
+        'regret','remorse','nostalgia','euphoria','melancholy','apathy',
+        'enthusiasm','passion','desire','tenderness','affection','devotion',
+        'humility','vulnerability','courage','resilience','exhaustion',
+        'overwhelm','powerlessness','liberation','isolation','connection',
+        'rejection','acceptance','worthiness','inadequacy','trust','safety',
+        'danger','intimacy','clarity','uncertainty','contentment','restlessness',
+      ];
+      const words = t.trim().split(/\s+/).length;
+      if (words > 3) return false;
+      return EMOTIONS.some(e =>
+        new RegExp('^(the |a |an )?' + e.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '$', 'i').test(t.trim())
+      );
+    },
+  },
+  {
+    key: 'relational', label: 'Relational Figures', color: '#6b7c4a', Icon: RelationalIcon,
+    match: t => containsWholeWord(t, [
+      'husband','wife','partner','boyfriend','girlfriend','ex-husband','ex-wife',
+      'ex-boyfriend','ex-girlfriend','fiancé','fiancée','best friend',
+      'acquaintance','neighbor','colleague','coworker','boss','employee',
+      'stranger','intruder','visitor','guest','sibling','stepbrother','stepsister',
+      'stepparent','stepfather','stepmother','mother-in-law','father-in-law',
+      'aunt','uncle','cousin','niece','nephew','grandparent','grandchild',
+      'stepson','stepdaughter','congregation','gathering','household',
+    ]) || exactMatch(t, ['ex','lover','friend','enemy','brother','sister',
+      'parent','son','daughter','family','couple','community','crowd','group','team']),
+  },
+  {
+    key: 'voice', label: 'Voice & Expression', color: '#7a6b9a', Icon: VoiceIcon,
+    match: t => containsWholeWord(t, [
+      'singing','voiceless','silenced','frozen mouth','cannot speak',
+      'performing','performance','performer','microphone','lyrics','screaming',
+      'whispering','being heard','unheard','mute','articulate','inarticulate',
+      'communication','creative expression','artistic expression','storytelling',
+      'public speaking','presentation','choir','musical','opera','concert',
+      'recital','audition','vocal','instrument','musician','conductor',
+      'mouth full','frozen','paralyzed voice','lost voice','taffy',
+    ]) || exactMatch(t, ['voice','song','music','stage','audience','expression',
+      'language','words','writing','poetry','journaling']),
+  },
+  {
+    key: 'belonging', label: 'Belonging & Identity', color: '#7a8c6b', Icon: BelongingIcon,
+    match: t => containsWholeWord(t, [
+      'belonging','fitting in','outsider','authentic','social mask',
+      'accepted','rejected','seen','unseen','invisible','recognized',
+      'misunderstood','conformity','rebellion','social conformity',
+      'false self','social anxiety','social pressure','standing out',
+      'self-abandonment','people pleasing','approval','validation',
+      'self worth','self esteem','self image','self concept','who am i',
+      'persona','imposter','fraud',
+    ]) || exactMatch(t, ['identity','authentic self','true self','role','mask']),
+  },
+  {
+    key: 'feminine', label: 'Feminine Power', color: '#9a7a4a', Icon: FeminineIcon,
+    match: t => containsWholeWord(t, [
+      'liberation','feminine power','agency','constraint','wild woman',
+      'untamed','domesticated','unleashed','feminine rage','sisterhood',
+      'embodied','repression','sovereignty','reclaiming','self-determination',
+      'bodily autonomy','female rage','witch','priestess','warrior woman',
+      'amazon','huntress','creatrix','sacred feminine','divine feminine',
+      'moon energy','earth energy','womanhood','girlhood','maiden','crone',
+    ]) || exactMatch(t, ['freedom','desire','sexuality','strength','softness',
+      'empowerment','wildness','feminist']),
+  },
+];
+
+// ── Categorization ────────────────────────────────────────────────────────────
+
+// Category labels — never show these as chips inside their own card
+const CATEGORY_LABEL_SET = new Set([
+  ...CATEGORIES.map(c => c.label.toLowerCase()),
+  ...CATEGORIES.map(c => c.key.toLowerCase()),
+]);
+
+function categorizeTag(tag) {
+  const t = tag.trim();
+  if (CATEGORY_LABEL_SET.has(t.toLowerCase())) return null; // skip label-as-tag
+  for (const cat of CATEGORIES) {
+    if (cat.match(t)) return cat.key;
+  }
+  return 'uncategorized';
+}
 
 function buildData(dreams) {
-  const itemMap = {};
+  const itemMap = {}; // lowerKey → { display, dreams[] }
 
   dreams.forEach(dream => {
     const items = [
       ...(dream.archetypes || []),
       ...(dream.symbols || []),
       ...(dream.tags || []),
-      ...(dream.mood ? dream.mood.split(', ').filter(Boolean) : []),
+      ...(Array.isArray(dream.mood) ? dream.mood : (dream.mood ? dream.mood.split(', ').filter(Boolean) : [])),
     ];
     const seen = new Set();
     items.forEach(raw => {
@@ -443,19 +667,12 @@ function buildData(dreams) {
 
   const catItems = {};
   CATEGORIES.forEach(c => { catItems[c.key] = []; });
-  catItems.other = [];
+  catItems.uncategorized = [];
 
-  Object.entries(itemMap).forEach(([key, { display, dreams }]) => {
-    if (CATEGORY_LABEL_KEYS.has(key)) return;
-    let matched = false;
-    for (const cat of CATEGORIES) {
-      if (matchesCategory(key, cat.keywords)) {
-        catItems[cat.key].push({ key, display, count: dreams.length, dreams });
-        matched = true;
-        break;
-      }
-    }
-    if (!matched) catItems.other.push({ key, display, count: dreams.length, dreams });
+  Object.entries(itemMap).forEach(([, { display, dreams }]) => {
+    const dest = categorizeTag(display);
+    if (dest === null) return;
+    catItems[dest].push({ key: display.toLowerCase(), display, count: dreams.length, dreams });
   });
 
   Object.keys(catItems).forEach(k => {
@@ -662,10 +879,7 @@ export default function Symbols() {
   }
 
   const visibleCategories = catData
-    ? [
-        ...CATEGORIES.filter(c => catData[c.key]?.length > 0),
-        ...(catData.other?.length > 0 ? [OTHER_CATEGORY] : []),
-      ]
+    ? CATEGORIES.filter(c => catData[c.key]?.length > 0)
     : [];
 
   const totalUnique = catData
@@ -739,6 +953,11 @@ export default function Symbols() {
         </div>
       )}
 
+      {/* Uncategorized — flat collapsible list */}
+      {catData?.uncategorized?.length > 0 && (
+        <UncategorizedSection items={catData.uncategorized} onNavigateDream={id => navigate(`/dream/${id}`)} />
+      )}
+
       {/* Personal recurring themes */}
       {savedThemes !== null && (
         <RecurringThemes
@@ -748,6 +967,71 @@ export default function Symbols() {
           userId={user.id}
           onThemesSaved={setSavedThemes}
         />
+      )}
+    </div>
+  );
+}
+
+// ── UncategorizedSection ──────────────────────────────────────────────────────
+
+function UncategorizedSection({ items, onNavigateDream }) {
+  const [open, setOpen] = useState(false);
+  const [activeItem, setActiveItem] = useState(null);
+
+  return (
+    <div className="mt-6 pt-5 border-t border-black/8 dark:border-white/8">
+      <button
+        onClick={() => { setOpen(v => !v); if (open) setActiveItem(null); }}
+        className="flex items-center gap-2 text-xs font-body text-ink/30 dark:text-white/25 hover:text-ink/55 dark:hover:text-white/45 transition-colors"
+      >
+        <span>{open ? '▲' : '▼'}</span>
+        <span>Other Symbols ({items.length})</span>
+      </button>
+
+      {open && (
+        <div className="mt-3 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {items.map(item => {
+              const isActive = activeItem?.key === item.key;
+              return (
+                <button
+                  key={item.key}
+                  onClick={() => setActiveItem(prev => prev?.key === item.key ? null : item)}
+                  className={`px-3 py-1 rounded-full text-xs font-body border transition-all duration-150 ${
+                    isActive
+                      ? 'bg-ink/15 dark:bg-white/15 border-ink/20 dark:border-white/20 text-ink dark:text-white'
+                      : 'bg-black/4 dark:bg-white/5 border-black/8 dark:border-white/8 text-ink/45 dark:text-white/35 hover:bg-black/8 dark:hover:bg-white/10'
+                  }`}
+                >
+                  {item.display}
+                  <span className="ml-1 opacity-50">×{item.count}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {activeItem && (
+            <div className="pl-2 space-y-2">
+              <p className="text-xs font-body text-ink/35 dark:text-white/25">
+                Dreams featuring "{activeItem.display}"
+              </p>
+              {activeItem.dreams.map(dream => (
+                <button
+                  key={dream.id}
+                  onClick={() => onNavigateDream(dream.id)}
+                  className="block w-full text-left px-3 py-2 rounded-lg bg-black/3 dark:bg-white/4 hover:bg-black/6 dark:hover:bg-white/7 transition-colors"
+                >
+                  <p className="text-xs font-body text-ink/30 dark:text-white/25">
+                    {dream.dream_date ? format(parseISO(dream.dream_date), 'MMM d, yyyy') : ''}
+                  </p>
+                  <p className="font-display italic text-sm text-ink dark:text-white">
+                    {dream.title || 'Untitled Dream'}
+                  </p>
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -25,7 +25,8 @@ export default function EditDream() {
       dream_date: data.dream_date,
       title: data.title || '',
       body: data.body || '',
-      moods: data.mood ? data.mood.split(', ').filter(Boolean) : [],
+      moods: data.mood || [],
+      is_big_dream: data.is_big_dream || false,
       notes: data.notes || '',
       analyst_session: data.analyst_session || '',
       tags: (data.tags || []).join(', '),
@@ -42,7 +43,7 @@ export default function EditDream() {
     setError('');
     const { moods, tags: rawTags, ...rest } = form;
     const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
-    const mood = moods.join(', ') || null;
+    const mood = moods.length > 0 ? moods : null;
     const { error: dbErr } = await supabase
       .from('dreams')
       .update({ ...rest, mood, tags })
@@ -95,6 +96,25 @@ export default function EditDream() {
               );
             })}
           </div>
+        </div>
+
+        {/* Big Dream toggle */}
+        <div className="flex items-center justify-between py-3 border-t border-b border-black/8 dark:border-white/8">
+          <div>
+            <p className="text-sm font-body text-ink dark:text-white flex items-center gap-1.5">
+              <span className="text-gold">✦</span> Big Dream
+            </p>
+            <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-0.5">
+              A numinous or archetypal dream of unusual significance
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setField('is_big_dream', !form.is_big_dream)}
+            className={`relative w-12 h-6 rounded-full transition-colors ${form.is_big_dream ? 'bg-gold' : 'bg-black/20 dark:bg-white/20'}`}
+          >
+            <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.is_big_dream ? 'translate-x-6' : ''}`} />
+          </button>
         </div>
 
         <div>

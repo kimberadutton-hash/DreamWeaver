@@ -51,10 +51,12 @@ export default function AnalystFocus() {
     setSaving(false);
   }
 
-  async function handleComplete(id) {
+  async function handleComplete(id, currentNotes) {
+    // Write notes + completion in a single update so no race condition between
+    // the autosave blur and the "Mark complete" click can lose the final notes.
     const { data, error } = await supabase
       .from('analyst_focuses')
-      .update({ is_active: false, end_date: today() })
+      .update({ is_active: false, end_date: today(), notes: currentNotes ?? null })
       .eq('id', id)
       .select()
       .single();
@@ -113,8 +115,9 @@ export default function AnalystFocus() {
       {/* Active Focus */}
       {activeFocus ? (
         <ActiveFocusCard
+          key={activeFocus.id}
           focus={activeFocus}
-          onComplete={() => handleComplete(activeFocus.id)}
+          onComplete={(currentNotes) => handleComplete(activeFocus.id, currentNotes)}
           onUpdateNotes={(notes) => handleUpdateNotes(activeFocus.id, notes)}
           onDelete={() => handleDelete(activeFocus.id)}
         />
@@ -257,7 +260,7 @@ function ActiveFocusCard({ focus, onComplete, onUpdateNotes, onDelete }) {
       </div>
 
       <button
-        onClick={onComplete}
+        onClick={() => onComplete(notes || null)}
         className="text-sm font-body font-medium text-plum dark:text-gold hover:opacity-70 transition-opacity"
       >
         Mark complete →
@@ -284,6 +287,11 @@ function PastFocusCard({ focus, onDelete }) {
           <p className="text-sm font-body text-ink/80 dark:text-white/70 leading-snug">
             {focus.focus_text}
           </p>
+          {!expanded && focus.notes && (
+            <p className="text-xs font-body text-ink/30 dark:text-white/25 italic mt-1.5 leading-snug">
+              {focus.notes.slice(0, 80)}{focus.notes.length > 80 ? '…' : ''}
+            </p>
+          )}
         </div>
         <span className="text-ink/30 dark:text-white/20 text-xs mt-1 shrink-0">
           {expanded ? '▲' : '▼'}

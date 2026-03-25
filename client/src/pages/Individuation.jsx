@@ -264,9 +264,10 @@ export default function Individuation() {
           )}
 
           <div className="pl-5 border-l-2 border-gold/30">
-            <p className="font-dream whitespace-pre-wrap text-ink dark:text-white/90 leading-[1.85] text-[16px]">
-              {currentNarrative.narrative}
-            </p>
+            <NarrativeText
+              text={currentNarrative.narrative}
+              paraClassName="font-dream text-ink dark:text-white/90 leading-[1.85] text-[16px]"
+            />
           </div>
         </div>
       )}
@@ -360,6 +361,84 @@ function RegenWarning({ dreamCount, onProceed, onCancel }) {
   );
 }
 
+// Hoverable inline reference to a specific dream.
+// Rendered when the AI embeds [[display text|Dream Title|YYYY-MM-DD]] markers.
+function DreamRef({ displayText, title, date }) {
+  const [hovered, setHovered] = useState(false);
+  let formattedDate = '';
+  try { formattedDate = date ? format(parseISO(date), 'MMM d, yyyy') : ''; } catch {}
+
+  return (
+    <span
+      className="relative cursor-default"
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      <span className="border-b border-dotted border-gold/60 dark:border-gold/40">{displayText}</span>
+      {hovered && (
+        <span className="absolute bottom-full left-0 mb-2 z-20 px-3 py-2 rounded-lg bg-ink dark:bg-ink text-white text-xs font-body whitespace-nowrap shadow-xl pointer-events-none">
+          <span className="block font-medium leading-tight">{title}</span>
+          {formattedDate && <span className="block text-white/50 mt-0.5">{formattedDate}</span>}
+        </span>
+      )}
+    </span>
+  );
+}
+
+// Splits a paragraph's text on [[display|title|date]] markers and renders
+// plain text interleaved with DreamRef chips.
+function NarrativeParagraph({ text, className }) {
+  const REF_RE = /\[\[([^\]|]+)\|([^\]|]+)\|([^\]]+)\]\]/g;
+  const segments = [];
+  let last = 0;
+  let m;
+  REF_RE.lastIndex = 0;
+  while ((m = REF_RE.exec(text)) !== null) {
+    if (m.index > last) segments.push({ type: 'text', val: text.slice(last, m.index) });
+    segments.push({ type: 'ref', display: m[1].trim(), title: m[2].trim(), date: m[3].trim() });
+    last = REF_RE.lastIndex;
+  }
+  if (last < text.length) segments.push({ type: 'text', val: text.slice(last) });
+
+  return (
+    <p className={className}>
+      {segments.map((seg, i) =>
+        seg.type === 'text'
+          ? seg.val
+          : <DreamRef key={i} displayText={seg.display} title={seg.title} date={seg.date} />
+      )}
+    </p>
+  );
+}
+
+// Strips legacy markdown and renders paragraphs with hoverable dream references.
+function NarrativeText({ text, paraClassName }) {
+  if (!text) return null;
+  const paragraphs = text
+    .split(/\n{2,}/)
+    .map(para =>
+      para
+        .replace(/^#{1,6}\s*/gm, '')       // strip # headers
+        .replace(/\*\*(.*?)\*\*/g, '$1')   // strip **bold**
+        .replace(/\*(.*?)\*/g, '$1')       // strip *italic*
+        .replace(/^---+$/gm, '')           // strip --- dividers
+        .trim()
+    )
+    .filter(Boolean);
+
+  return (
+    <>
+      {paragraphs.map((para, i) => (
+        <NarrativeParagraph
+          key={i}
+          text={para}
+          className={`${paraClassName}${i < paragraphs.length - 1 ? ' mb-5' : ''}`}
+        />
+      ))}
+    </>
+  );
+}
+
 function PastNarrativeEntry({ narrative }) {
   const [expanded, setExpanded] = useState(false);
   const date = format(parseISO(narrative.generated_at), 'MMMM d, yyyy');
@@ -383,9 +462,10 @@ function PastNarrativeEntry({ narrative }) {
 
       {expanded && (
         <div className="px-5 pb-5 border-t border-black/5 dark:border-white/5 pt-4">
-          <p className="font-dream whitespace-pre-wrap text-ink/80 dark:text-white/70 text-[15px] leading-relaxed">
-            {narrative.narrative}
-          </p>
+          <NarrativeText
+            text={narrative.narrative}
+            paraClassName="font-dream text-ink/80 dark:text-white/70 text-[15px] leading-relaxed"
+          />
         </div>
       )}
     </div>
