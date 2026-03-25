@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { analyzeDream, generateDreamSummary, suggestAdditionalTags } from '../lib/ai';
+import { analyzeDream, buildDreamContext, generateDreamSummary, suggestAdditionalTags } from '../lib/ai';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { format, parseISO } from 'date-fns';
@@ -50,6 +50,23 @@ export default function DreamDetail() {
     setAnalyzing(true);
     setAiError(null);
     try {
+      // Fetch recent dream history for contextual analysis — fail silently if unavailable
+      let dreamContext = null;
+      try {
+        const { data: recentDreams } = await supabase
+          .from('dreams')
+          .select('dream_date, title, summary, archetypes, symbols, mood, is_big_dream, body')
+          .eq('user_id', user.id)
+          .neq('id', id)
+          .order('dream_date', { ascending: false })
+          .limit(15);
+        if (recentDreams?.length) {
+          dreamContext = buildDreamContext(recentDreams);
+        }
+      } catch (ctxErr) {
+        console.warn('Dream context fetch failed — proceeding without context:', ctxErr);
+      }
+
       const [data, summaryText] = await Promise.all([
         analyzeDream({
           title: dream.title,
@@ -58,6 +75,7 @@ export default function DreamDetail() {
           privacySettings,
           notes: dream.notes,
           analyst_session: dream.analyst_session,
+          dreamContext,
         }),
         generateDreamSummary({ title: dream.title, body: dream.body, mood: dream.mood }),
       ]);

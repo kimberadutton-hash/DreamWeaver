@@ -4,6 +4,18 @@
 const API_URL = 'https://api.anthropic.com/v1/messages';
 const KEY_NAME = 'anthropic_api_key';
 
+// ── Model configuration ───────────────────────────────────────────────────────
+// To upgrade a model, change it here only.
+const AI_MODELS = {
+  analysis:     'claude-opus-4-5',
+  narrative:    'claude-opus-4-5',
+  transcription:'claude-opus-4-5',
+  tagging:      'claude-haiku-4-5-20251001',
+  title:        'claude-haiku-4-5-20251001',
+  summary:      'claude-haiku-4-5-20251001',
+  suggestions:  'claude-haiku-4-5-20251001',
+};
+
 export function getStoredApiKey() {
   return localStorage.getItem(KEY_NAME) || '';
 }
@@ -20,7 +32,7 @@ export class AiError extends Error {
   }
 }
 
-async function call({ messages, maxTokens = 1024, model = 'claude-opus-4-5', apiKey }) {
+async function call({ messages, maxTokens = 1024, model = AI_MODELS.analysis, apiKey }) {
   const key = apiKey || getStoredApiKey();
   if (!key) {
     throw new AiError(
@@ -61,15 +73,96 @@ async function call({ messages, maxTokens = 1024, model = 'claude-opus-4-5', api
   return data.content[0].text;
 }
 
+// ── Build dream context from recent dreams (pure JS, no API call) ─────────────
+// Input: array of recent dream objects from Supabase (most-recent-first order).
+// Output: dreamContext object for use in analyzeDream().
+
+export function buildDreamContext(dreams) {
+  if (!dreams?.length) return null;
+
+  // Tally archetype and symbol frequencies across all provided dreams
+  const archetypeCounts = {};
+  const symbolCounts = {};
+
+  dreams.forEach(d => {
+    (d.archetypes || []).forEach(a => {
+      archetypeCounts[a] = (archetypeCounts[a] || 0) + 1;
+    });
+    (d.symbols || []).forEach(s => {
+      symbolCounts[s] = (symbolCounts[s] || 0) + 1;
+    });
+  });
+
+  const topN = (counts, n) =>
+    Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, n)
+      .map(([key]) => key);
+
+  return {
+    // Reverse so the slice passed to the prompt will be oldest→newest
+    recentDreams: [...dreams].reverse().map(d => ({
+      date: d.dream_date,
+      title: d.title || 'Untitled',
+      summary: d.summary?.trim() || d.body.slice(0, 200),
+      archetypes: d.archetypes || [],
+      symbols: d.symbols || [],
+      mood: Array.isArray(d.mood) ? d.mood : (d.mood ? [d.mood] : []),
+      is_big_dream: d.is_big_dream || false,
+    })),
+    activeComplexes: topN(archetypeCounts, 5),
+    recurringSymbols: topN(symbolCounts, 5),
+  };
+}
+
 // ── Analyze a dream ──────────────────────────────────────────────────────────
 
-export async function analyzeDream({ title, body, mood, privacySettings, notes, analyst_session, analystFocus }) {
+export async function analyzeDream({
+  title, body, mood,
+  privacySettings, notes, analyst_session,
+  analystFocus,
+  dreamContext,   // optional — pass result of buildDreamContext()
+}) {
   const moodStr = Array.isArray(mood) ? mood.join(', ') : (mood || '');
-  let prompt = `You are a Jungian analyst with deep knowledge of dream symbolism, archetypes, and the unconscious. Analyze the following dream with warmth, depth, and insight.
 
-${title ? `Dream Title: ${title}` : ''}
-${moodStr ? `Dreamer's Mood: ${moodStr}` : ''}
-Dream: ${body}
+  // ── Context section (prepended when recent history is available) ──
+  let contextSection = '';
+  if (dreamContext?.recentDreams?.length) {
+    const dreamLines = dreamContext.recentDreams.map(d => {
+      const bigFlag = d.is_big_dream ? ' ✦' : '';
+      const archetypeStr = d.archetypes.length ? `Archetypes: ${d.archetypes.join(', ')}` : '';
+      const symbolStr = d.symbols.length ? `Symbols: ${d.symbols.join(', ')}` : '';
+      const meta = [archetypeStr, symbolStr].filter(Boolean).join(' | ');
+      return `${d.date}${bigFlag} — "${d.title}" — ${d.summary}${meta ? `\n  [${meta}]` : ''}`;
+    }).join('\n');
+
+    const complexStr = dreamContext.activeComplexes.length
+      ? dreamContext.activeComplexes.join(', ')
+      : 'none identified yet';
+    const symbolStr = dreamContext.recurringSymbols.length
+      ? dreamContext.recurringSymbols.join(', ')
+      : 'none identified yet';
+
+    contextSection = `RECENT DREAM HISTORY (for context):
+This dreamer has been working with these themes recently.
+
+Active archetypes across recent dreams: ${complexStr}
+
+Recurring symbols: ${symbolStr}
+
+Most recent dreams (oldest to newest):
+${dreamLines}
+
+Analyze the following new dream IN THIS CONTEXT. Note what continues, what deepens, what shifts, and what appears for the first time. Do not simply describe the dream in isolation — relate it to the patterns above where relevant.
+
+---
+
+`;
+  }
+
+  const prompt = `You are a Jungian analyst working with a patient over time. You have access to their recent dream history and are tracking the development of themes, complexes, and symbols across sessions. When context is provided, your analysis should feel like a continuation of ongoing work — not a first meeting.
+
+${contextSection}${title ? `Dream Title: ${title}\n` : ''}${moodStr ? `Dreamer's Mood: ${moodStr}\n` : ''}Dream: ${body}
 
 Respond ONLY with valid JSON in this exact structure:
 {
@@ -83,19 +176,21 @@ Respond ONLY with valid JSON in this exact structure:
 
   // Append optional private fields only when the dreamer has explicitly enabled sharing.
   // These are sent to Anthropic but never stored in the reflection field in the database.
+  let fullPrompt = prompt;
   if (privacySettings?.share_notes_with_ai && notes?.trim()) {
-    prompt += `\n\nMY PERSONAL NOTES (shared by the dreamer for additional context):\n${notes.trim()}`;
+    fullPrompt += `\n\nMY PERSONAL NOTES (shared by the dreamer for additional context):\n${notes.trim()}`;
   }
   if (privacySettings?.share_analyst_session_with_ai && analyst_session?.trim()) {
-    prompt += `\n\nANALYST SESSION NOTES (shared by the dreamer):\n${analyst_session.trim()}`;
+    fullPrompt += `\n\nANALYST SESSION NOTES (shared by the dreamer):\n${analyst_session.trim()}`;
   }
   if (privacySettings?.share_analyst_focus_with_ai && analystFocus?.trim()) {
-    prompt += `\n\nThe dreamer's current analytical focus (shared with consent): ${analystFocus.trim()}`;
+    fullPrompt += `\n\nThe dreamer's current analytical focus (shared with consent): ${analystFocus.trim()}`;
   }
 
   const text = await call({
-    messages: [{ role: 'user', content: prompt }],
+    messages: [{ role: 'user', content: fullPrompt }],
     maxTokens: 1024,
+    model: AI_MODELS.analysis,
   });
 
   const match = text.match(/\{[\s\S]*\}/);
@@ -114,7 +209,7 @@ ${moodStr ? `Mood: ${moodStr}\n` : ''}Dream: ${body.slice(0, 600)}`;
   const text = await call({
     messages: [{ role: 'user', content: prompt }],
     maxTokens: 32,
-    model: 'claude-haiku-4-5-20251001',
+    model: AI_MODELS.title,
   });
 
   return text.trim().replace(/^["']|["']$/g, '');
@@ -140,7 +235,7 @@ Respond ONLY with valid JSON — no other text:
   const text = await call({
     messages: [{ role: 'user', content: prompt }],
     maxTokens: 256,
-    model: 'claude-haiku-4-5-20251001',
+    model: AI_MODELS.tagging,
   });
 
   const match = text.match(/\{[\s\S]*\}/);
@@ -177,7 +272,7 @@ QUESTION: ${question}
 
 Respond conversationally in 2-4 paragraphs. Be specific, warm, and analytically thoughtful.`;
 
-  return call({ messages: [{ role: 'user', content: prompt }], maxTokens: 1024 });
+  return call({ messages: [{ role: 'user', content: prompt }], maxTokens: 1024, model: AI_MODELS.analysis });
 }
 
 // ── Generate personal recurring themes from dream archive ────────────────────
@@ -202,6 +297,7 @@ Respond ONLY with a valid JSON array. No preamble, no markdown.`;
   const text = await call({
     messages: [{ role: 'user', content: prompt }],
     maxTokens: 1024,
+    model: AI_MODELS.analysis,
   });
 
   const match = text.match(/\[[\s\S]*\]/);
@@ -224,7 +320,7 @@ Dream: ${body.slice(0, 1200)}`;
   const text = await call({
     messages: [{ role: 'user', content: prompt }],
     maxTokens: 150,
-    model: 'claude-haiku-4-5-20251001',
+    model: AI_MODELS.summary,
   });
 
   return text.trim();
@@ -248,8 +344,6 @@ Archetypes: ${(d.archetypes || []).join(', ') || '—'}
 Symbols: ${(d.symbols || []).join(', ') || '—'}`;
   }).join('\n\n---\n\n');
 
-  const systemPrompt = `You are a Jungian analyst with 30 years of experience. You are reading someone's complete dream record to understand where they are in their individuation process.`;
-
   const userPrompt = `Given these dreams in chronological order, write a 4-6 paragraph narrative about this person's individuation journey. Cover: what complexes appear to be active, what the psyche seems to be moving toward, what shadow material is pressing up, and what the most recent dreams suggest about where the work is right now. Write with warmth and depth. This is not a summary — it is an analyst's perspective on a life of inner work. Dreams marked ✦ [BIG DREAM] are numinous or archetypal dreams of unusual significance — weight them accordingly.
 
 DREAM RECORD (chronological):
@@ -258,7 +352,7 @@ ${dreamList}`;
   return call({
     messages: [{ role: 'user', content: userPrompt }],
     maxTokens: 2048,
-    model: 'claude-opus-4-5',
+    model: AI_MODELS.narrative,
   });
 }
 
@@ -286,7 +380,7 @@ Respond ONLY with valid JSON:
   const text = await call({
     messages: [{ role: 'user', content: prompt }],
     maxTokens: 256,
-    model: 'claude-haiku-4-5-20251001',
+    model: AI_MODELS.suggestions,
   });
 
   const match = text.match(/\{[\s\S]*\}/);
@@ -327,7 +421,7 @@ Update the narrative to incorporate these new dreams. Maintain continuity with t
   return call({
     messages: [{ role: 'user', content: userPrompt }],
     maxTokens: 2048,
-    model: 'claude-opus-4-5',
+    model: AI_MODELS.narrative,
   });
 }
 
@@ -353,5 +447,6 @@ export async function transcribeImage(base64Image) {
       ],
     }],
     maxTokens: 2048,
+    model: AI_MODELS.transcription,
   });
 }
