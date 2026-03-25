@@ -4,7 +4,19 @@
 
 ## Git Cheat Sheet
 
-### Save a snapshot (do this before any big change!)
+### Save a permanent checkpoint (do this after finishing a session)
+```
+git add -A
+git status
+git commit -m "describe what is working"
+git push
+```
+- `git add -A` stages every changed and new file
+- `git status` shows you exactly what will be saved — review it before committing
+- `git commit` saves the snapshot locally
+- `git push` sends it to GitHub so it's backed up offsite
+
+### Save a quick snapshot (before a big change)
 ```
 git add .
 git commit -m "describe what is working"
