@@ -14,6 +14,8 @@ import AnalystFocus from './pages/AnalystFocus';
 import Individuation from './pages/Individuation';
 import ImportCSV from './pages/ImportCSV';
 import Settings from './pages/Settings';
+import GuideLetter from './pages/GuideLetter';
+import Reference from './pages/Reference';
 
 function LoadingScreen() {
   return (
@@ -65,6 +67,8 @@ export default function App() {
                     <Route path="/timeline" element={<Timeline />} />
                     <Route path="/ask" element={<AskArchive />} />
                     <Route path="/focus" element={<AnalystFocus />} />
+                    <Route path="/letter" element={<GuideLetter />} />
+                    <Route path="/reference" element={<Reference />} />
                     <Route path="/individuation" element={<Individuation />} />
                     <Route path="/import" element={<ImportCSV />} />
                     <Route path="/settings" element={<Settings />} />

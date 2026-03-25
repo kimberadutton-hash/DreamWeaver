@@ -20,8 +20,10 @@ const NAV_GROUPS = [
   {
     label: 'The Relationship',
     items: [
-      { to: '/focus', label: 'Analyst Focus',   icon: '◇' },
-      { to: '/ask',   label: 'Ask the Archive', icon: '◉' },
+      { to: '/focus',     label: 'Analyst Focus',   icon: '◇' },
+      { to: '/letter',    label: 'Session Letter',  icon: '◎' },
+      { to: '/ask',       label: 'Ask the Archive', icon: '◉' },
+      { to: '/reference', label: 'Reference',       icon: '◉' },
     ],
   },
 ];

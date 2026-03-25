@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { analyzeDream, buildDreamContext, generateDreamSummary, transcribeImage, hasApiKey, AiError } from '../lib/ai';
+import { incrementAbandonedCount, resetPauseCounts } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { MOODS, todayString } from '../lib/constants';
@@ -51,6 +52,11 @@ export default function NewDream() {
   const photoInputRef = useRef(null);
   const [transcribing, setTranscribing] = useState(false);
 
+  // Abandoned-session tracking (Pattern 2)
+  const mountTimeRef = useRef(Date.now());
+  const savedRef = useRef(false);
+  const bodyRef = useRef('');
+
   useEffect(() => {
     checkTodayDream();
     fetchActiveFocus();
@@ -78,7 +84,18 @@ export default function NewDream() {
 
   function setField(key, val) {
     setForm(f => ({ ...f, [key]: val }));
+    if (key === 'body') bodyRef.current = val;
   }
+
+  // Pattern 2: if user spent 30+ seconds on /new with content but didn't save, count it
+  useEffect(() => {
+    return () => {
+      const elapsed = Date.now() - mountTimeRef.current;
+      if (elapsed >= 30_000 && bodyRef.current.trim() && !savedRef.current) {
+        incrementAbandonedCount();
+      }
+    };
+  }, []);
 
   function toggleVoice() {
     if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
@@ -212,11 +229,14 @@ export default function NewDream() {
         reflection: analysisData.reflection || null,
         invitation: analysisData.invitation || null,
         structure: analysisData.structure || null,
+        embodiment_prompt: analysisData.embodimentPrompt || null,
         summary: summaryText || null,
         has_analysis: withAnalysis && !!analysisData.reflection,
       }).select().single();
 
       if (dbError) throw dbError;
+      savedRef.current = true;
+      resetPauseCounts();
       navigate(`/dream/${data.id}`);
     } catch (err) {
       setAiError(err);

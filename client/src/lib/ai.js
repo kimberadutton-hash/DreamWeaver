@@ -33,7 +33,7 @@ export class AiError extends Error {
   }
 }
 
-async function call({ messages, maxTokens = 1024, model = AI_MODELS.analysis, apiKey }) {
+async function call({ messages, maxTokens = 1024, model = AI_MODELS.analysis, apiKey, system }) {
   const key = apiKey || getStoredApiKey();
   if (!key) {
     throw new AiError(
@@ -50,7 +50,7 @@ async function call({ messages, maxTokens = 1024, model = AI_MODELS.analysis, ap
       'anthropic-dangerous-direct-browser-access': 'true',
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ model, max_tokens: maxTokens, messages }),
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages, ...(system && { system }) }),
   });
 
   if (!res.ok) {
@@ -173,6 +173,7 @@ Respond ONLY with valid JSON in this exact structure:
   "symbols": ["array of significant symbols in the dream — single words or short phrases only"],
   "tags": ["5-10 tags. Each must be ONE of: a pure emotion (grief, joy, rage, shame), an animal name (snake, wolf, owl), a Jungian term (shadow, anima, individuation), a place or setting (forest, school, basement), or a concrete symbol (fire, mirror, key). Single words or 2-word phrases MAX. Never a sentence, description, or clause."],
   "invitation": "A single sentence closing invitation for the dreamer to reflect further — a gentle question or contemplation",
+  "embodimentPrompt": "A single question addressed directly to the dreamer (use 'you') pointing toward concrete action or presence in the physical world this week. Not 'reflect on X' or 'notice X' or 'journal about X' — something that requires showing up differently in actual life. Warm, specific, rooted in a specific image from this dream. Maximum 2 sentences.",
   "structure": {
     "exposition": "The opening situation — setting, figures present, the established world of the dream. Quote or closely reference the dreamer's own words.",
     "development": "The rising action — what complications or tensions develop. Reference specific dream content.",
@@ -181,6 +182,8 @@ Respond ONLY with valid JSON in this exact structure:
     "catastrophe": null
   }
 }
+
+For the embodimentPrompt: ask a question that requires concrete action in waking life this week — not reflection, journaling, or noticing. Root it in a specific image from this dream. Maximum 2 sentences. Use second person ("you").
 
 For the structure field: identify these movements within the dream AS THE DREAMER WROTE IT — do not rewrite or summarize the dream narrative, identify structure within it. The peripeteia is the single pivotal moment — quote the exact image. The lysis is diagnostically most important. Only populate catastrophe if the dream ends in collapse or destruction — otherwise leave it null. If the dream is under 100 words, note which movements are absent rather than inventing content for them. These are identifications of structure, not summaries.`;
 
@@ -527,6 +530,69 @@ Write 4-6 chapters. Order: wounding → shadow/voice → numinous (weight ✦ [B
   const text = await call({
     messages: [{ role: 'user', content: userPrompt }],
     maxTokens: 8192,
+    model: AI_MODELS.narrative,
+  });
+
+  return parseNarrativeJSON(text);
+}
+
+// ── Generate a session letter for the dreamer's guide/analyst ────────────────
+// ⚠️ Uses Claude Opus — generates a full first-person letter from dream data.
+// Input: guideName, recentDreams (last 5-7), activeAnalystFocus, embodimentResponses
+
+export async function generateGuideLetter({
+  guideName,
+  recentDreams,
+  activeAnalystFocus,
+  embodimentResponses,
+}) {
+  const dreamList = recentDreams.map((d, i) => {
+    const bigFlag = d.is_big_dream ? ' ✦ [BIG DREAM]' : '';
+    const moodStr = Array.isArray(d.mood) ? d.mood.join(', ') : (d.mood || '');
+    const bodyExcerpt = (d.body || '').slice(0, 300) + (d.body?.length > 300 ? '…' : '');
+    const reflectionExcerpt = d.reflection
+      ? d.reflection.slice(0, 200) + (d.reflection.length > 200 ? '…' : '')
+      : null;
+    return [
+      `Dream ${i + 1} — ${d.date}${bigFlag}: "${d.title || 'Untitled'}"`,
+      moodStr ? `Mood: ${moodStr}` : null,
+      `Body: ${bodyExcerpt}`,
+      reflectionExcerpt ? `Reflection: ${reflectionExcerpt}` : null,
+      d.embodiment_prompt ? `Embodiment question: ${d.embodiment_prompt}` : null,
+      `Archetypes: ${(d.archetypes || []).join(', ') || '—'}`,
+      `Symbols: ${(d.symbols || []).join(', ') || '—'}`,
+    ].filter(Boolean).join('\n');
+  }).join('\n\n---\n\n');
+
+  const focusSection = activeAnalystFocus
+    ? `\nCurrent analytical focus held since last session: ${activeAnalystFocus}\n`
+    : '';
+
+  const embodimentSection = embodimentResponses?.length
+    ? `\nEmbodiment check-ins from this period:\n${embodimentResponses.map(r => `- "${r.dreamTitle}": ${r.response}`).join('\n')}\n`
+    : '';
+
+  const systemPrompt = `You are helping a person engaged in depth psychological work prepare for a session with their Jungian analyst or guide. Write in the first person as the dreamer — warm, honest, and specific to the actual dream material provided. This is not a clinical report. It is a letter from someone doing serious inner work to a trusted guide. Cite specific dreams and images by name. Surface what feels most alive and most unresolved. Do not use jargon without explanation.`;
+
+  const userPrompt = `Write a session letter from this dreamer to their guide, ${guideName}.${focusSection}${embodimentSection}
+RECENT DREAMS (most recent first):
+${dreamList}
+
+Respond ONLY with valid JSON in this exact structure — no text before or after:
+{
+  "greeting": "Dear ${guideName},",
+  "opening": "1-2 sentences — how the dream field has felt overall since we last met",
+  "significantDreams": "2-3 paragraphs on the most significant dreams. Cite by title. Be specific about images and what they seemed to carry. First person throughout. Use \\n\\n between paragraphs.",
+  "patterns": "1-2 paragraphs on what the psyche seems to be returning to — recurring figures, symbols, or themes across this period. First person. Use \\n\\n between paragraphs.",
+  "embodimentNotes": "ONLY include this field if embodiment check-in responses were provided above. If included: what has shifted in waking life based on those responses. If no check-ins exist, omit this field entirely — do not include it as null or empty.",
+  "questions": "2-3 genuine questions or things to bring to the session — framed as inquiry, not conclusions. First person.",
+  "closing": "A brief warm closing sentence"
+}`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: userPrompt }],
+    system: systemPrompt,
+    maxTokens: 2048,
     model: AI_MODELS.narrative,
   });
 

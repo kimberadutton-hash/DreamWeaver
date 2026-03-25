@@ -3,9 +3,11 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { analyzeDream, buildDreamContext, generateDreamSummary, suggestAdditionalTags } from '../lib/ai';
+import { incrementAnalysisCount } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { formatDateLong } from '../lib/constants';
+import { JUNGIAN_TERMS } from '../lib/jungianTerms';
 
 export default function DreamDetail() {
   const { id } = useParams();
@@ -61,6 +63,7 @@ export default function DreamDetail() {
   }
 
   async function handleAnalyzeNow() {
+    incrementAnalysisCount(id); // Pattern 1: track repeated analysis of same dream
     setAnalyzing(true);
     setAiError(null);
     try {
@@ -94,6 +97,7 @@ export default function DreamDetail() {
           tags: data.tags,
           invitation: data.invitation,
           structure: data.structure || null,
+          embodiment_prompt: data.embodimentPrompt || null,
           summary: summaryText || null,
           has_analysis: true,
         })
@@ -254,13 +258,30 @@ export default function DreamDetail() {
         </div>
       )}
 
-      {/* ── 6. This Week — embodiment prompt (future field) ── */}
+      {/* ── 6. This Week — embodiment prompt ── */}
       {dream.embodiment_prompt && (
-        <div className="mb-8 border-t border-gold/20 pt-6 text-center">
-          <p className="text-xs uppercase tracking-widest font-body text-gold/50 mb-3">This Week</p>
-          <p className="font-display italic text-xl text-ink/70 dark:text-white/60 leading-relaxed max-w-md mx-auto">
-            {dream.embodiment_prompt}
-          </p>
+        <div className="mb-10">
+          <div className="border-t border-gold/25 mt-2 mb-8" />
+          <div className="text-center px-4">
+            <p style={{ fontSize: 9, letterSpacing: '0.2em' }} className="uppercase font-body text-ink/30 dark:text-white/25 mb-5">
+              this week
+            </p>
+            <p className="font-display italic text-xl text-ink/70 dark:text-white/60 leading-relaxed max-w-[600px] mx-auto">
+              {dream.embodiment_prompt}
+            </p>
+          </div>
+          {dream.embodiment_response && (
+            <div className="mt-8 mx-auto max-w-[600px] px-4">
+              <div className="pl-4 border-l-2 border-gold/30 py-3">
+                <p style={{ fontSize: 9, letterSpacing: '0.2em' }} className="uppercase font-body text-ink/30 dark:text-white/25 mb-2">
+                  what shifted
+                </p>
+                <p className="text-sm font-body text-ink/55 dark:text-white/45 leading-relaxed">
+                  {dream.embodiment_response}
+                </p>
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -276,7 +297,7 @@ export default function DreamDetail() {
         >
           <div className="space-y-3 mt-2">
             <EditableTagRow label="Tags" tags={dream.tags || []} color="bg-plum/8 text-plum/70 dark:bg-white/10 dark:text-white/50" field="tags" dreamId={id} onUpdate={setDream} />
-            <EditableTagRow label="Archetypes" tags={dream.archetypes || []} color="bg-gold/10 text-gold-dark dark:bg-gold/15 dark:text-gold" field="archetypes" dreamId={id} onUpdate={setDream} />
+            <EditableTagRow label="Archetypes" tags={dream.archetypes || []} color="bg-gold/10 text-gold-dark dark:bg-gold/15 dark:text-gold" field="archetypes" dreamId={id} onUpdate={setDream} isArchetypes />
             <EditableTagRow label="Symbols" tags={dream.symbols || []} color="bg-ink/5 text-ink/60 dark:bg-white/5 dark:text-white/40" field="symbols" dreamId={id} onUpdate={setDream} />
             {!suggestions && (
               <div className="pt-1">
@@ -623,9 +644,10 @@ function DreamStructure({ structure }) {
 
 // ── Editable tag row ─────────────────────────────────────────────────────────
 
-function EditableTagRow({ label, tags, color, field, dreamId, onUpdate }) {
+function EditableTagRow({ label, tags, color, field, dreamId, onUpdate, isArchetypes }) {
   const [input, setInput] = useState('');
   const [saving, setSaving] = useState(false);
+  const navigate = useNavigate();
 
   async function handleRemove(tag) {
     const updated = tags.filter(t => t !== tag);
@@ -645,15 +667,32 @@ function EditableTagRow({ label, tags, color, field, dreamId, onUpdate }) {
     setSaving(false);
   }
 
+  function getArchetypeEntry(tag) {
+    if (!isArchetypes) return null;
+    return JUNGIAN_TERMS.find(t => t.term.toLowerCase() === tag.toLowerCase()) || null;
+  }
+
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-xs font-body text-ink/30 dark:text-white/20 w-20 shrink-0">{label}</span>
-      {tags.map(tag => (
-        <span key={tag} className={`flex items-center gap-1 pl-2.5 pr-1.5 py-0.5 rounded-full text-xs font-body ${color}`}>
-          {tag}
-          <button onClick={() => handleRemove(tag)} className="opacity-40 hover:opacity-90 transition-opacity leading-none ml-0.5" aria-label={`Remove ${tag}`}>✕</button>
-        </span>
-      ))}
+      {tags.map(tag => {
+        const entry = getArchetypeEntry(tag);
+        return (
+          <span
+            key={tag}
+            className={`flex items-center gap-1 pl-2.5 pr-1.5 py-0.5 rounded-full text-xs font-body ${color} ${entry ? 'cursor-pointer hover:opacity-80 transition-opacity' : ''}`}
+            title={entry?.oneLiner}
+            onClick={entry ? () => navigate(`/reference#${entry.id}`) : undefined}
+          >
+            {tag}
+            <button
+              onClick={e => { e.stopPropagation(); handleRemove(tag); }}
+              className="opacity-40 hover:opacity-90 transition-opacity leading-none ml-0.5"
+              aria-label={`Remove ${tag}`}
+            >✕</button>
+          </span>
+        );
+      })}
       <div className="flex items-center gap-1">
         <input type="text" value={input} onChange={e => setInput(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); handleAdd(); } }}
