@@ -182,6 +182,20 @@ This is a significant build. Do after:
 
 ---
 
+## On Build Order Going Forward
+
+Right now, finish and commit the cleanup. Then run the big redesign prompt we wrote — onboarding, dream structure, language pass, navigation restructure. Get that stable and committed.
+
+Then build the three-phase tagging system — it's a relatively contained change to the existing analysis flow and it's philosophically important enough to do before you open this to other users.
+
+Then the guide access and annotation system — this is the most technically complex remaining feature and deserves its own careful planning session.
+
+Then the Psyche Map — save it for when you have six months of your own use to draw on, because the map will be richer and the concept will be clearer once you've lived with the app longer.
+
+The map is worth waiting for. Some things need to be earned.
+
+---
+
 ## Notes on Priority
 
 Items marked with * are schema-level changes that 

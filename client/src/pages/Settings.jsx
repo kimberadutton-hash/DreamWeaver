@@ -4,6 +4,70 @@ import { useApiKey } from '../hooks/useApiKey';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import { supabase } from '../lib/supabase';
 
+function ChangePasswordSection() {
+  const [newPassword, setNewPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
+
+  async function handleSubmit(e) {
+    e.preventDefault();
+    setError('');
+    if (newPassword.length < 6) { setError('Password must be at least 6 characters.'); return; }
+    if (newPassword !== confirm) { setError('Passwords do not match.'); return; }
+    setSaving(true);
+    const { error: err } = await supabase.auth.updateUser({ password: newPassword });
+    setSaving(false);
+    if (err) { setError(err.message); return; }
+    setSaved(true);
+    setNewPassword('');
+    setConfirm('');
+    setTimeout(() => setSaved(false), 3000);
+  }
+
+  return (
+    <section>
+      <h2 className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-5">
+        Change Password
+      </h2>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div>
+          <label className="field-label">New Password</label>
+          <input
+            type="password"
+            value={newPassword}
+            onChange={e => setNewPassword(e.target.value)}
+            placeholder="At least 6 characters"
+            className="field-input"
+            autoComplete="new-password"
+          />
+        </div>
+        <div>
+          <label className="field-label">Confirm Password</label>
+          <input
+            type="password"
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            placeholder="Repeat new password"
+            className="field-input"
+            autoComplete="new-password"
+          />
+        </div>
+        {error && <p className="text-red-600 text-sm font-body">{error}</p>}
+        {saved && <p className="text-green-700 dark:text-green-400 text-sm font-body">Password updated.</p>}
+        <button
+          type="submit"
+          disabled={saving || !newPassword || !confirm}
+          className="w-full py-3 rounded-xl font-body text-sm font-medium text-white disabled:opacity-50 bg-plum"
+        >
+          {saving ? 'Updating…' : 'Update Password'}
+        </button>
+      </form>
+    </section>
+  );
+}
+
 export default function Settings() {
   const { user, profile, updateProfile } = useAuth();
   const { apiKey, saveApiKey, hasKey } = useApiKey();
@@ -269,6 +333,9 @@ export default function Settings() {
           <p className="text-xs font-body text-green-700 dark:text-green-400 mt-3">Privacy setting saved.</p>
         )}
       </section>
+
+      {/* ── Change Password ──────────────────────────────────── */}
+      <ChangePasswordSection />
 
       {/* ── Data & Maintenance ───────────────────────────────── */}
       <section>

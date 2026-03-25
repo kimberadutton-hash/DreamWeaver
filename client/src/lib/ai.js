@@ -1,7 +1,7 @@
 // All Anthropic API calls made directly from the browser using the user's own key.
 // The key is read from localStorage — it is never sent to our server.
 
-import { API_API_KEY_NAME } from './constants';
+import { API_KEY_NAME } from './constants';
 
 const API_URL = 'https://api.anthropic.com/v1/messages';
 
