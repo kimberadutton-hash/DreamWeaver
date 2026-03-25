@@ -118,7 +118,7 @@ export default function ImportCSV() {
       const title = row[1]?.trim() || '';
       const date  = normalizeDate(row[2]);
       const body  = buildBody(row);
-      const mood  = row[5]?.trim() || '';
+      const mood  = row[5] ? row[5].split(',').map(m => m.trim()).filter(Boolean) : [];
       const notes = row[8]?.trim() || '';
       const tags  = buildTags(row);
 
@@ -134,7 +134,7 @@ export default function ImportCSV() {
         dream_date: date,
         title: title || null,
         body: body || title, // fall back to title if body is somehow empty
-        mood: mood || null,
+        mood: mood.length ? mood : null,
         notes: notes || null,
         tags,
         symbols: row[6] ? row[6].split(',').map(s => s.trim()).filter(Boolean) : [],

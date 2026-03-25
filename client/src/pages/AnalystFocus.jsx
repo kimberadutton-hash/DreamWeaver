@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
+import { formatDate, todayString } from '../lib/constants';
 
 export default function AnalystFocus() {
   const { user } = useAuth();
@@ -10,7 +11,7 @@ export default function AnalystFocus() {
 
   // New focus form
   const [showForm, setShowForm] = useState(false);
-  const [newFocus, setNewFocus] = useState({ focus_text: '', given_date: today(), notes: '' });
+  const [newFocus, setNewFocus] = useState({ focus_text: '', given_date: todayString(), notes: '' });
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -36,7 +37,7 @@ export default function AnalystFocus() {
       .insert({
         user_id: user.id,
         focus_text: newFocus.focus_text.trim(),
-        given_date: newFocus.given_date || today(),
+        given_date: newFocus.given_date || todayString(),
         notes: newFocus.notes.trim() || null,
         is_active: true,
       })
@@ -45,7 +46,7 @@ export default function AnalystFocus() {
 
     if (!error && data) {
       setFocuses(prev => [data, ...prev]);
-      setNewFocus({ focus_text: '', given_date: today(), notes: '' });
+      setNewFocus({ focus_text: '', given_date: todayString(), notes: '' });
       setShowForm(false);
     }
     setSaving(false);
@@ -56,7 +57,7 @@ export default function AnalystFocus() {
     // the autosave blur and the "Mark complete" click can lose the final notes.
     const { data, error } = await supabase
       .from('analyst_focuses')
-      .update({ is_active: false, end_date: today(), notes: currentNotes ?? null })
+      .update({ is_active: false, end_date: todayString(), notes: currentNotes ?? null })
       .eq('id', id)
       .select()
       .single();
@@ -66,10 +67,11 @@ export default function AnalystFocus() {
   }
 
   async function handleUpdateNotes(id, notes) {
-    await supabase
+    const { error } = await supabase
       .from('analyst_focuses')
       .update({ notes })
       .eq('id', id);
+    if (error) { console.warn('Save failed:', error.message); return; }
     setFocuses(prev => prev.map(f => f.id === id ? { ...f, notes } : f));
   }
 
@@ -104,8 +106,7 @@ export default function AnalystFocus() {
         {!showForm && (
           <button
             onClick={() => setShowForm(true)}
-            className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-body font-medium text-white mt-1"
-            style={{ backgroundColor: '#3d2b4a' }}
+            className="shrink-0 px-4 py-2.5 rounded-xl text-sm font-body font-medium text-white mt-1 bg-plum"
           >
             + New Focus
           </button>
@@ -173,14 +174,13 @@ export default function AnalystFocus() {
               <button
                 type="submit"
                 disabled={saving || !newFocus.focus_text.trim()}
-                className="flex-1 py-3 rounded-xl font-body text-sm font-medium text-white disabled:opacity-50"
-                style={{ backgroundColor: '#3d2b4a' }}
+                className="flex-1 py-3 rounded-xl font-body text-sm font-medium text-white disabled:opacity-50 bg-plum"
               >
                 {saving ? 'Saving…' : 'Set as Active Focus'}
               </button>
               <button
                 type="button"
-                onClick={() => { setShowForm(false); setNewFocus({ focus_text: '', given_date: today(), notes: '' }); }}
+                onClick={() => { setShowForm(false); setNewFocus({ focus_text: '', given_date: todayString(), notes: '' }); }}
                 className="px-5 py-3 rounded-xl font-body text-sm border border-black/15 dark:border-white/15 text-ink/60 dark:text-white/50 hover:bg-black/5 transition-colors"
               >
                 Cancel
@@ -224,7 +224,7 @@ function ActiveFocusCard({ focus, onComplete, onUpdateNotes, onDelete }) {
     saveTimeout.current = setTimeout(() => setNoteSaved(false), 2000);
   }
 
-  const givenDate = focus.given_date ? format(parseISO(focus.given_date), 'MMMM d, yyyy') : '';
+  const givenDate = focus.given_date ? formatDate(focus.given_date) : '';
 
   return (
     <div className="mb-8 p-6 rounded-2xl border border-gold/30 bg-gold/5 dark:bg-gold/5">
@@ -317,8 +317,4 @@ function PastFocusCard({ focus, onDelete }) {
       )}
     </div>
   );
-}
-
-function today() {
-  return new Date().toISOString().slice(0, 10);
 }

@@ -10,6 +10,16 @@ git add .
 git commit -m "describe what is working"
 ```
 
+### Back up to GitHub (do this after committing)
+```
+git push
+```
+That's it. One command sends everything to GitHub.
+
+**A note on security:** GitHub private repositories are only visible to you (and anyone you explicitly invite). Your dream records and session notes in the code will not be visible to the public. That said, the repository contains code — not your actual dream data, which lives in Supabase. So even if someone somehow accessed the repo, they would see the app code, not your journal entries.
+
+---
+
 ### See all your saved snapshots
 ```
 git log --oneline

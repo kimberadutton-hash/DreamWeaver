@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-
-const MOODS = ['Peaceful', 'Anxious', 'Joyful', 'Melancholic', 'Fearful', 'Mysterious', 'Confused', 'Ecstatic', 'Unsettled', 'Hopeful'];
+import { MOODS } from '../lib/constants';
 
 export default function EditDream() {
   const { id } = useParams();
@@ -136,7 +135,7 @@ export default function EditDream() {
 
         <div className="flex gap-3">
           <button onClick={handleSave} disabled={saving}
-            className="flex-1 py-3 rounded-xl font-body text-sm font-medium text-white disabled:opacity-50" style={{ backgroundColor: '#3d2b4a' }}>
+            className="flex-1 py-3 rounded-xl font-body text-sm font-medium text-white disabled:opacity-50 bg-plum">
             {saving ? 'Saving…' : 'Save Changes'}
           </button>
           <Link to={`/dream/${id}`} className="px-6 py-3 rounded-xl font-body text-sm font-medium border border-black/15 dark:border-white/15 text-ink/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-center">

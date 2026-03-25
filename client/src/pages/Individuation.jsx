@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { generateIndividuationNarrative, updateIndividuationNarrative, hasApiKey } from '../lib/ai';
+import { generateIndividuationNarrative, updateIndividuationNarrative, hasApiKey, AiError } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
 import DreamPreviewDrawer from '../components/DreamPreviewDrawer';
 import { format, parseISO } from 'date-fns';
@@ -212,7 +212,7 @@ export default function Individuation() {
         .select('dream_date, title, summary, body, archetypes, symbols, mood, is_big_dream, id')
         .eq('user_id', user.id)
         .order('dream_date', { ascending: true });
-      if (dbErr || !dreams?.length) { setAiError({ message: 'Could not load your dreams. Please try again.' }); return; }
+      if (dbErr || !dreams?.length) { setAiError(new AiError('Could not load your dreams. Please try again.', 'api_error')); return; }
       const parsed = await generateIndividuationNarrative({ dreams });
       const lastDream = dreams[dreams.length - 1];
       await saveNarrative(parsed, dreams.length, lastDream.id);

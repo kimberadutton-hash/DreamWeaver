@@ -1,8 +1,9 @@
 // All Anthropic API calls made directly from the browser using the user's own key.
 // The key is read from localStorage — it is never sent to our server.
 
+import { API_API_KEY_NAME } from './constants';
+
 const API_URL = 'https://api.anthropic.com/v1/messages';
-const KEY_NAME = 'anthropic_api_key';
 
 // ── Model configuration ───────────────────────────────────────────────────────
 // To upgrade a model, change it here only.
@@ -17,7 +18,7 @@ const AI_MODELS = {
 };
 
 export function getStoredApiKey() {
-  return localStorage.getItem(KEY_NAME) || '';
+  return localStorage.getItem(API_KEY_NAME) || '';
 }
 
 export function hasApiKey() {
@@ -193,9 +194,7 @@ Respond ONLY with valid JSON in this exact structure:
     model: AI_MODELS.analysis,
   });
 
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new AiError('Unexpected response format from AI.', 'api_error');
-  return JSON.parse(match[0]);
+  return parseNarrativeJSON(text);
 }
 
 // ── Generate a title for an untitled dream ───────────────────────────────────
@@ -238,9 +237,7 @@ Respond ONLY with valid JSON — no other text:
     model: AI_MODELS.tagging,
   });
 
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new AiError('Unexpected response format.', 'api_error');
-  return JSON.parse(match[0]);
+  return parseNarrativeJSON(text);
 }
 
 // ── Ask the archive a natural-language question ──────────────────────────────
@@ -300,9 +297,7 @@ Respond ONLY with a valid JSON array. No preamble, no markdown.`;
     model: AI_MODELS.analysis,
   });
 
-  const match = text.match(/\[[\s\S]*\]/);
-  if (!match) throw new AiError('Unexpected response format from AI.', 'api_error');
-  return JSON.parse(match[0]);
+  return parseResponseArray(text);
 }
 
 // ── Generate a 2-3 sentence summary of a dream ──────────────────────────────
@@ -324,6 +319,27 @@ Dream: ${body.slice(0, 1200)}`;
   });
 
   return text.trim();
+}
+
+// ── Parse a JSON array from AI response ──────────────────────────────────────
+// Same approach as parseNarrativeJSON but scans for the outermost [ ... ] block.
+
+function parseResponseArray(text) {
+  const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+  const start = stripped.indexOf('[');
+  if (start === -1) throw new AiError('No JSON array found in AI response.', 'api_error');
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < stripped.length; i++) {
+    if (stripped[i] === '[') depth++;
+    else if (stripped[i] === ']') { depth--; if (depth === 0) { end = i; break; } }
+  }
+  if (end === -1) throw new AiError('Incomplete JSON array in AI response — try regenerating.', 'api_error');
+  try {
+    return JSON.parse(stripped.slice(start, end + 1));
+  } catch (e) {
+    throw new AiError(`Could not parse response array: ${e.message}`, 'api_error');
+  }
 }
 
 // ── Parse structured narrative JSON from AI response ─────────────────────────
@@ -440,18 +456,14 @@ Respond ONLY with valid JSON:
     model: AI_MODELS.suggestions,
   });
 
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new AiError('Unexpected response format.', 'api_error');
-  return JSON.parse(match[0]);
+  return parseNarrativeJSON(text);
 }
 
 // ── Update an existing individuation narrative with new dreams ────────────────
 // ⚠️ EXPENSIVE: Uses Claude Opus. Only sends dreams since last generation.
-// previousNarrative: string (the existing 4-6 paragraph narrative)
-// newDreams: array of dream objects since last_dream_id
-
 // previousNarrative: a plain-text summary derived from the stored narrative
 // (caller is responsible for converting v2 JSON to readable text before passing here)
+// newDreams: array of dream objects since last_dream_id
 export async function updateIndividuationNarrative({ previousNarrative, newDreams }) {
   const dreamList = newDreams.map((d, i) => {
     const moodStr = Array.isArray(d.mood) ? d.mood.join(', ') : (d.mood || '');

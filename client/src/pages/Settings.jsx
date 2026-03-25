@@ -185,10 +185,10 @@ export default function Settings() {
 
       {/* ── AI Privacy Controls ──────────────────────────────── */}
       {/* NOTE: AI-generated reflections stored in Supabase may have been informed
-          by notes or analyst_session content when sharing was enabled at analysis
-          time. The notes/analyst_session themselves are never stored in the
-          reflection field — only the AI's interpretation of them. Disabling
-          sharing stops future inclusion but does not alter past analyses. */}
+          by notes, analyst_session, or analyst_focus content when sharing was
+          enabled at analysis time. These fields are never stored in the reflection
+          field — only the AI's interpretation of them. Disabling sharing stops
+          future inclusion but does not alter past analyses. */}
       <section>
         <h2 className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-5">
           AI Privacy Controls

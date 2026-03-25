@@ -3,6 +3,7 @@
 // Privacy settings are stored in profiles.privacy_settings (jsonb):
 //   share_notes_with_ai: boolean (default false)
 //   share_analyst_session_with_ai: boolean (default false)
+//   share_analyst_focus_with_ai: boolean (default false)
 //
 // IMPORTANT: AI-generated reflections stored in Supabase may have been informed
 // by notes or analyst_session content when sharing was enabled at analysis time.

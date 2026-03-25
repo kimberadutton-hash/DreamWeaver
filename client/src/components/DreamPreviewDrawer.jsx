@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { format, parseISO } from 'date-fns';
+import { formatDate } from '../lib/constants';
 
 export default function DreamPreviewDrawer({ dreamTitle, isOpen, onClose }) {
   const { user } = useAuth();
@@ -76,7 +76,7 @@ export default function DreamPreviewDrawer({ dreamTitle, isOpen, onClose }) {
     : (dream?.mood ? [dream.mood] : []);
 
   const formattedDate = dream?.dream_date
-    ? (() => { try { return format(parseISO(dream.dream_date), 'MMMM d, yyyy'); } catch { return dream.dream_date; } })()
+    ? (() => { try { return formatDate(dream.dream_date); } catch { return dream.dream_date; } })()
     : '';
 
   return (
@@ -103,8 +103,7 @@ export default function DreamPreviewDrawer({ dreamTitle, isOpen, onClose }) {
       >
         {/* Header bar */}
         <div
-          className="flex items-start justify-between gap-4 px-6 py-5 shrink-0"
-          style={{ backgroundColor: '#3d2b4a' }}
+          className="flex items-start justify-between gap-4 px-6 py-5 shrink-0 bg-plum"
         >
           <div className="min-w-0">
             <p className="text-xs font-body text-white/50 uppercase tracking-widest mb-1">
@@ -232,8 +231,7 @@ export default function DreamPreviewDrawer({ dreamTitle, isOpen, onClose }) {
           >
             <button
               onClick={() => { onClose(); navigate(`/dream/${dream.id}`); }}
-              className="w-full py-3 rounded-xl font-body text-sm font-medium text-white"
-              style={{ backgroundColor: '#3d2b4a' }}
+              className="w-full py-3 rounded-xl font-body text-sm font-medium text-white bg-plum"
             >
               Open full dream →
             </button>

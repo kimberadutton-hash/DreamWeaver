@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { askArchive, hasApiKey } from '../lib/ai';
+import { askArchive, hasApiKey, AiError } from '../lib/ai';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { Link } from 'react-router-dom';
@@ -62,7 +62,7 @@ export default function AskArchive() {
       .limit(50);
 
     if (dbErr || !dreams?.length) {
-      setAiError({ message: 'No dreams found to query. Record some dreams first.' });
+      setAiError(new AiError('No dreams found to query. Record some dreams first.', 'api_error'));
       setLoading(false);
       return;
     }

@@ -2,12 +2,10 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { analyzeDream, buildDreamContext, generateDreamSummary, transcribeImage, hasApiKey } from '../lib/ai';
+import { analyzeDream, buildDreamContext, generateDreamSummary, transcribeImage, hasApiKey, AiError } from '../lib/ai';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
-import { format } from 'date-fns';
-
-const MOODS = ['Peaceful', 'Anxious', 'Joyful', 'Melancholic', 'Fearful', 'Mysterious', 'Confused', 'Ecstatic', 'Unsettled', 'Hopeful'];
+import { MOODS, todayString } from '../lib/constants';
 
 const DAILY_PROMPTS = [
   "What figure appeared that you didn't expect?",
@@ -30,7 +28,7 @@ export default function NewDream() {
   const { privacySettings } = usePrivacySettings();
 
   const [form, setForm] = useState({
-    dream_date: format(new Date(), 'yyyy-MM-dd'),
+    dream_date: todayString(),
     title: '',
     body: '',
     moods: [],
@@ -71,7 +69,7 @@ export default function NewDream() {
   }
 
   async function checkTodayDream() {
-    const today = format(new Date(), 'yyyy-MM-dd');
+    const today = todayString();
     const { data } = await supabase
       .from('dreams').select('id').eq('user_id', user.id).eq('dream_date', today).limit(1);
     setHasTodayDream(data?.length > 0);
@@ -154,8 +152,7 @@ export default function NewDream() {
   async function saveDream(withAnalysis) {
     if (!form.body.trim()) {
       setAiError(null);
-      // Use plain string for validation error, not AiError
-      return setAiError({ message: 'Please describe your dream before saving.' });
+      return setAiError(new AiError('Please describe your dream before saving.', 'api_error'));
     }
     setAiError(null);
     setLoading(true);
@@ -392,8 +389,7 @@ export default function NewDream() {
         {/* Actions */}
         <div className="flex gap-3 pt-2">
           <button type="button" disabled={loading} onClick={() => saveDream(true)}
-            className="flex-1 py-3 rounded-xl font-body text-sm font-medium text-white transition-opacity disabled:opacity-50"
-            style={{ backgroundColor: '#3d2b4a' }}>
+            className="flex-1 py-3 rounded-xl font-body text-sm font-medium text-white transition-opacity disabled:opacity-50 bg-plum">
             {loading ? 'Weaving the dream…' : 'Analyze & Save'}
           </button>
           <button type="button" disabled={loading} onClick={() => saveDream(false)}

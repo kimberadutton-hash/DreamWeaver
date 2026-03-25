@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateTitle } from '../lib/ai';
-import { format, parseISO } from 'date-fns';
+import { formatDate } from '../lib/constants';
 
 export default function Archive() {
   const { user } = useAuth();
@@ -160,7 +160,7 @@ export default function Archive() {
 }
 
 function DreamCard({ dream, onClick }) {
-  const date = dream.dream_date ? format(parseISO(dream.dream_date), 'MMMM d, yyyy') : '';
+  const date = dream.dream_date ? formatDate(dream.dream_date) : '';
   const excerpt = dream.body?.slice(0, 140) + (dream.body?.length > 140 ? '…' : '');
 
   return (
