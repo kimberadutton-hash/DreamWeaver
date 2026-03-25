@@ -31,6 +31,7 @@ export default function NewDream() {
     dream_date: todayString(),
     title: '',
     body: '',
+    dreamer_associations: '',
     moods: [],
     is_big_dream: false,
     incubation_intention: '',
@@ -199,6 +200,7 @@ export default function NewDream() {
         dream_date: form.dream_date,
         title: analysisData.title || form.title || null,
         body: form.body,
+        dreamer_associations: form.dreamer_associations.trim() || null,
         mood: form.moods.length > 0 ? form.moods : null,
         notes: form.notes || null,
         analyst_session: form.analyst_session || null,
@@ -314,6 +316,18 @@ export default function NewDream() {
           <textarea value={form.body} onChange={e => setField('body', e.target.value)} rows={10}
             placeholder="I found myself in a house I didn't recognize, though it felt somehow like home…"
             className="w-full px-4 py-4 rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 text-ink dark:text-white/90 font-dream resize-y focus:outline-none focus:ring-2 focus:ring-gold/40" />
+        </div>
+
+        {/* Dreamer associations */}
+        <div>
+          <label className="field-label">Before analysis — what words, images, or feelings stand out to you from this dream?</label>
+          <textarea
+            value={form.dreamer_associations}
+            onChange={e => setField('dreamer_associations', e.target.value)}
+            rows={3}
+            placeholder="Free associations, first impressions, anything that catches your attention…"
+            className="field-input resize-y"
+          />
         </div>
 
         {/* Mood */}

@@ -24,6 +24,7 @@ export default function EditDream() {
       dream_date: data.dream_date,
       title: data.title || '',
       body: data.body || '',
+      dreamer_associations: data.dreamer_associations || '',
       moods: data.mood || [],
       is_big_dream: data.is_big_dream || false,
       notes: data.notes || '',
@@ -79,6 +80,12 @@ export default function EditDream() {
         <div>
           <label className="field-label">The Dream</label>
           <textarea value={form.body} onChange={e => setField('body', e.target.value)} rows={10} className="w-full px-4 py-4 rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 text-ink dark:text-white/90 font-dream resize-y focus:outline-none focus:ring-2 focus:ring-gold/40" />
+        </div>
+
+        <div>
+          <label className="field-label">Before analysis — what words, images, or feelings stand out to you from this dream?</label>
+          <textarea value={form.dreamer_associations} onChange={e => setField('dreamer_associations', e.target.value)} rows={3} className="field-input resize-y"
+            placeholder="Free associations, first impressions, anything that catches your attention…" />
         </div>
 
         <div>

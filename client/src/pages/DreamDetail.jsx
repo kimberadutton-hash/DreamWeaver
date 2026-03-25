@@ -245,6 +245,15 @@ export default function DreamDetail() {
         <p className="dream-body whitespace-pre-wrap">{dream.body}</p>
       </Section>
 
+      {/* Dreamer associations */}
+      {dream.dreamer_associations && (
+        <Section title="My Associations">
+          <p className="text-sm font-body text-ink/70 dark:text-white/60 leading-relaxed whitespace-pre-wrap">
+            {dream.dreamer_associations}
+          </p>
+        </Section>
+      )}
+
       {/* Dream Structure arc */}
       <DreamStructure structure={dream.structure} />
 
