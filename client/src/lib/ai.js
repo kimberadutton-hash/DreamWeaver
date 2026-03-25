@@ -172,8 +172,17 @@ Respond ONLY with valid JSON in this exact structure:
   "archetypes": ["array of Jungian archetypes present — e.g. Shadow, Anima, Wise Old Man, Trickster, Hero"],
   "symbols": ["array of significant symbols in the dream — single words or short phrases only"],
   "tags": ["5-10 tags. Each must be ONE of: a pure emotion (grief, joy, rage, shame), an animal name (snake, wolf, owl), a Jungian term (shadow, anima, individuation), a place or setting (forest, school, basement), or a concrete symbol (fire, mirror, key). Single words or 2-word phrases MAX. Never a sentence, description, or clause."],
-  "invitation": "A single sentence closing invitation for the dreamer to reflect further — a gentle question or contemplation"
-}`;
+  "invitation": "A single sentence closing invitation for the dreamer to reflect further — a gentle question or contemplation",
+  "structure": {
+    "exposition": "The opening situation — setting, figures present, the established world of the dream. Quote or closely reference the dreamer's own words.",
+    "development": "The rising action — what complications or tensions develop. Reference specific dream content.",
+    "peripeteia": "The single most charged moment — the pivot, the image that cannot be undone. Be specific; quote the exact image from the dream.",
+    "lysis": "How the dream ends and what it leaves the dreamer with. This is diagnostically the most important part — give it the most analytical attention.",
+    "catastrophe": null
+  }
+}
+
+For the structure field: identify these movements within the dream AS THE DREAMER WROTE IT — do not rewrite or summarize the dream narrative, identify structure within it. The peripeteia is the single pivotal moment — quote the exact image. The lysis is diagnostically most important. Only populate catastrophe if the dream ends in collapse or destruction — otherwise leave it null. If the dream is under 100 words, note which movements are absent rather than inventing content for them. These are identifications of structure, not summaries.`;
 
   // Append optional private fields only when the dreamer has explicitly enabled sharing.
   // These are sent to Anthropic but never stored in the reflection field in the database.
@@ -190,7 +199,7 @@ Respond ONLY with valid JSON in this exact structure:
 
   const text = await call({
     messages: [{ role: 'user', content: fullPrompt }],
-    maxTokens: 1024,
+    maxTokens: 2048,
     model: AI_MODELS.analysis,
   });
 

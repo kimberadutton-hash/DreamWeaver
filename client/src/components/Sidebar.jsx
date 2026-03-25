@@ -1,15 +1,33 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
-const navItems = [
-  { to: '/archive', label: 'Archive', icon: '◎' },
-  { to: '/new', label: 'New Dream', icon: '✦' },
-  { to: '/symbols', label: 'Symbols & Archetypes', icon: '◈' },
-  { to: '/focus', label: 'Analyst Focus', icon: '◇' },
-  { to: '/timeline', label: 'Timeline', icon: '◌' },
-  { to: '/ask', label: 'Ask Your Archive', icon: '◉' },
-  { to: '/individuation', label: 'Individuation', icon: '⌾' },
-  { to: '/import', label: 'Import CSV', icon: '⊕' },
+const NAV_GROUPS = [
+  {
+    label: 'The Inner Work',
+    items: [
+      { to: '/new',     label: 'Record a Dream',     icon: '✦' },
+      { to: '/archive', label: 'Dream Archive',       icon: '◎' },
+    ],
+  },
+  {
+    label: 'The Journey',
+    items: [
+      { to: '/individuation', label: 'My Journey',           icon: '⌾' },
+      { to: '/symbols',       label: 'Symbols & Archetypes', icon: '◈' },
+      { to: '/timeline',      label: 'Timeline',             icon: '◌' },
+    ],
+  },
+  {
+    label: 'The Relationship',
+    items: [
+      { to: '/focus', label: 'Analyst Focus',   icon: '◇' },
+      { to: '/ask',   label: 'Ask the Archive', icon: '◉' },
+    ],
+  },
+];
+
+const BOTTOM_ITEMS = [
+  { to: '/import',   label: 'Import',   icon: '⊕' },
   { to: '/settings', label: 'Settings', icon: '◦' },
 ];
 
@@ -40,23 +58,60 @@ export default function Sidebar() {
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto scrollbar-thin">
-        {navItems.map(({ to, label, icon }) => (
-          <NavLink
-            key={to}
-            to={to}
-            className={({ isActive }) =>
-              `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body transition-all duration-150 ${
-                isActive
-                  ? 'bg-white/15 text-gold'
-                  : 'text-white/60 hover:text-white/90 hover:bg-white/8'
-              }`
-            }
-          >
-            <span className="text-base opacity-80">{icon}</span>
-            {label}
-          </NavLink>
+      <nav className="flex-1 px-4 py-4 overflow-y-auto scrollbar-thin">
+
+        {/* Grouped sections */}
+        {NAV_GROUPS.map(({ label, items }) => (
+          <div key={label} className="mb-1">
+            <p
+              className="px-4 font-body uppercase text-white/30"
+              style={{ fontSize: 9, letterSpacing: '0.18em', marginTop: 20, marginBottom: 6 }}
+            >
+              {label}
+            </p>
+            <div className="space-y-0.5">
+              {items.map(({ to, label: itemLabel, icon }) => (
+                <NavLink
+                  key={to}
+                  to={to}
+                  className={({ isActive }) =>
+                    `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body transition-all duration-150 ${
+                      isActive
+                        ? 'bg-white/15 text-gold'
+                        : 'text-white/60 hover:text-white/90 hover:bg-white/8'
+                    }`
+                  }
+                >
+                  <span className="text-base opacity-80">{icon}</span>
+                  {itemLabel}
+                </NavLink>
+              ))}
+            </div>
+          </div>
         ))}
+
+        {/* Divider */}
+        <div className="border-t border-white/10 my-4 mx-4" />
+
+        {/* Bottom items */}
+        <div className="space-y-0.5">
+          {BOTTOM_ITEMS.map(({ to, label, icon }) => (
+            <NavLink
+              key={to}
+              to={to}
+              className={({ isActive }) =>
+                `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body transition-all duration-150 ${
+                  isActive
+                    ? 'bg-white/15 text-gold'
+                    : 'text-white/60 hover:text-white/90 hover:bg-white/8'
+                }`
+              }
+            >
+              <span className="text-base opacity-80">{icon}</span>
+              {label}
+            </NavLink>
+          ))}
+        </div>
       </nav>
 
       {/* Footer */}

@@ -209,6 +209,7 @@ export default function NewDream() {
         symbols: analysisData.symbols || [],
         reflection: analysisData.reflection || null,
         invitation: analysisData.invitation || null,
+        structure: analysisData.structure || null,
         summary: summaryText || null,
         has_analysis: withAnalysis && !!analysisData.reflection,
       }).select().single();

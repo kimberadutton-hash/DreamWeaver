@@ -5,7 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { analyzeDream, buildDreamContext, generateDreamSummary, suggestAdditionalTags } from '../lib/ai';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
-import { format, parseISO } from 'date-fns';
+import { formatDateLong } from '../lib/constants';
 
 export default function DreamDetail() {
   const { id } = useParams();
@@ -89,6 +89,7 @@ export default function DreamDetail() {
           symbols: data.symbols,
           tags: data.tags,
           invitation: data.invitation,
+          structure: data.structure || null,
           summary: summaryText || null,
           has_analysis: true,
         })
@@ -158,7 +159,7 @@ export default function DreamDetail() {
 
   if (!dream) return null;
 
-  const date = dream.dream_date ? format(parseISO(dream.dream_date), 'EEEE, MMMM d, yyyy') : '';
+  const date = dream.dream_date ? formatDateLong(dream.dream_date) : '';
   const analystLabel = profile?.analyst_name || 'Analyst';
 
   const hasSuggestions = suggestions && (
@@ -243,6 +244,9 @@ export default function DreamDetail() {
       <Section title="The Dream">
         <p className="dream-body whitespace-pre-wrap">{dream.body}</p>
       </Section>
+
+      {/* Dream Structure arc */}
+      <DreamStructure structure={dream.structure} />
 
       {/* Tags / symbols — always visible so you can add even if empty */}
       <div className="mb-8 space-y-3">
@@ -536,6 +540,133 @@ function EditableTagRow({ label, tags, color, field, dreamId, onUpdate }) {
           </button>
         )}
       </div>
+    </div>
+  );
+}
+
+const STRUCTURE_META = {
+  exposition:   { label: 'Exposition',   desc: 'The opening situation' },
+  development:  { label: 'Development',  desc: 'Rising action and tension' },
+  peripeteia:   { label: 'Peripeteia',   desc: 'The pivotal moment' },
+  lysis:        { label: 'Lysis',        desc: 'How the dream resolves' },
+  catastrophe:  { label: 'Catastrophe',  desc: 'Collapse or destruction' },
+};
+
+function DreamStructure({ structure }) {
+  const [active, setActive] = useState(null);
+
+  if (!structure) return null;
+
+  const hasCatastrophe = !!structure.catastrophe;
+
+  // Arc point positions (SVG coords)
+  const points = [
+    { key: 'exposition',  x: 65,  y: 108, r: 5 },
+    { key: 'development', x: 215, y: 68,  r: 5 },
+    { key: 'peripeteia',  x: 375, y: 33,  r: 8 },  // apex — larger, filled
+    { key: 'lysis',       x: 525, y: 78,  r: 5 },
+  ];
+  if (hasCatastrophe) {
+    points.push({ key: 'catastrophe', x: 555, y: 125, r: 5 });
+  }
+
+  // Label y-offsets: above or below the point
+  const labelY = { exposition: 126, development: 52, peripeteia: 18, lysis: 96, catastrophe: 143 };
+  const viewH = hasCatastrophe ? 158 : 150;
+
+  function toggle(key) {
+    setActive(prev => prev === key ? null : key);
+  }
+
+  return (
+    <div className="mb-8">
+      <h2 className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-3">
+        Dream Structure
+      </h2>
+      <div className="overflow-x-auto">
+        <svg
+          viewBox={`0 0 595 ${viewH}`}
+          className="w-full"
+          style={{ maxHeight: `${viewH}px` }}
+        >
+          <defs>
+            <filter id="ds-wobble" x="-5%" y="-5%" width="110%" height="110%">
+              <feTurbulence type="fractalNoise" baseFrequency="0.025" numOctaves="3" seed="4" result="noise"/>
+              <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.2" xChannelSelector="R" yChannelSelector="G"/>
+            </filter>
+          </defs>
+
+          {/* Main arc */}
+          <path
+            d="M 65,108 C 135,102 175,75 215,68 C 280,60 325,38 375,33 C 422,28 482,52 525,78"
+            fill="none"
+            stroke="#b8924a"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+            opacity="0.55"
+            filter="url(#ds-wobble)"
+          />
+
+          {/* Catastrophe drop */}
+          {hasCatastrophe && (
+            <path
+              d="M 525,78 C 531,91 545,110 555,125"
+              fill="none"
+              stroke="#b8924a"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeDasharray="4 3"
+              opacity="0.45"
+              filter="url(#ds-wobble)"
+            />
+          )}
+
+          {/* Points + labels */}
+          {points.map(({ key, x, y, r }) => {
+            const isApex = key === 'peripeteia';
+            const isActive = active === key;
+            const meta = STRUCTURE_META[key];
+            return (
+              <g key={key} onClick={() => toggle(key)} style={{ cursor: 'pointer' }}>
+                {/* Invisible hit area */}
+                <circle cx={x} cy={y} r={r + 10} fill="transparent" />
+                {/* Visible dot */}
+                <circle
+                  cx={x} cy={y} r={r}
+                  fill={isApex || isActive ? '#b8924a' : 'none'}
+                  stroke="#b8924a"
+                  strokeWidth={isApex ? 0 : 1.5}
+                  opacity={isActive ? 1 : (isApex ? 0.75 : 0.55)}
+                />
+                {/* Label */}
+                <text
+                  x={x} y={labelY[key]}
+                  textAnchor="middle"
+                  fill="#b8924a"
+                  fontSize="9.5"
+                  fontFamily="DM Sans, sans-serif"
+                  opacity={isActive ? 1 : 0.45}
+                  style={{ userSelect: 'none' }}
+                >
+                  {meta.label}
+                </text>
+              </g>
+            );
+          })}
+        </svg>
+      </div>
+
+      {/* Active panel */}
+      {active && structure[active] && (
+        <div className="mt-1 px-5 py-4 rounded-xl bg-gold/5 border border-gold/20 transition-all">
+          <p className="text-xs uppercase tracking-widest font-body text-gold/50 mb-2">
+            {STRUCTURE_META[active].label} — {STRUCTURE_META[active].desc}
+          </p>
+          <p className="text-sm font-body text-ink/70 dark:text-white/60 leading-relaxed">
+            {structure[active]}
+          </p>
+        </div>
+      )}
     </div>
   );
 }
