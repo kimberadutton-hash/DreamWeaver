@@ -326,6 +326,35 @@ Dream: ${body.slice(0, 1200)}`;
   return text.trim();
 }
 
+// ── Parse structured narrative JSON from AI response ─────────────────────────
+// Handles: plain JSON, JSON inside ```json...``` code fences, leading/trailing prose.
+
+function parseNarrativeJSON(text) {
+  // Strip code fences if present
+  const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+
+  // Find outermost { ... } — scan for matching braces rather than greedy regex
+  const start = stripped.indexOf('{');
+  if (start === -1) throw new AiError('No JSON object found in AI response.', 'api_error');
+
+  let depth = 0;
+  let end = -1;
+  for (let i = start; i < stripped.length; i++) {
+    if (stripped[i] === '{') depth++;
+    else if (stripped[i] === '}') {
+      depth--;
+      if (depth === 0) { end = i; break; }
+    }
+  }
+  if (end === -1) throw new AiError('Incomplete JSON in AI response — try regenerating.', 'api_error');
+
+  try {
+    return JSON.parse(stripped.slice(start, end + 1));
+  } catch (e) {
+    throw new AiError(`Could not parse narrative JSON: ${e.message}`, 'api_error');
+  }
+}
+
 // ── Generate an individuation narrative from the full dream archive ──────────
 // ⚠️ EXPENSIVE: Uses Claude Opus on the full dream archive.
 // Recommended no more than once per month. Warn the user before calling.
@@ -344,20 +373,44 @@ Archetypes: ${(d.archetypes || []).join(', ') || '—'}
 Symbols: ${(d.symbols || []).join(', ') || '—'}`;
   }).join('\n\n---\n\n');
 
-  const userPrompt = `Given these dreams in chronological order, write a 4-6 paragraph narrative about this person's individuation journey. Cover: what complexes appear to be active, what the psyche seems to be moving toward, what shadow material is pressing up, and what the most recent dreams suggest about where the work is right now. Write with warmth and depth. This is not a summary — it is an analyst's perspective on a life of inner work. Dreams marked ✦ [BIG DREAM] are numinous or archetypal dreams of unusual significance — weight them accordingly.
+  const userPrompt = `You are a Jungian analyst writing a structured analytical report on a dreamer's individuation journey. Based on the dream record below, produce a richly written, chapter-based narrative.
 
-Write in flowing prose paragraphs separated by blank lines. Do not use any markdown formatting — no headers, no pound signs (#), no bold (**text**), no horizontal rules (---), no asterisks for emphasis. Plain prose only.
+Respond ONLY with valid JSON matching this exact structure — no prose before or after the JSON:
+{
+  "title": "An evocative, poetic title that is specific to this dreamer's journey — not generic",
+  "thesis": "2-3 sentences that name the essential truth of this person's individuation at this moment. This is the first thing the reader encounters. Make it resonate and feel personally addressed.",
+  "chapters": [
+    {
+      "id": "unique-kebab-case-slug",
+      "title": "Evocative chapter title — specific to this dreamer, not a label like 'The Shadow'",
+      "theme": "exactly one of: wounding | voice | shadow | numinous | integration | emergence",
+      "summary": "One sentence describing what this chapter is about",
+      "body": "Full prose for this chapter. 2-4 rich paragraphs. Plain prose only — no markdown, no headers, no asterisks. Warm, specific, analytically deep. Reference specific dreams by name.",
+      "dreamRefs": [
+        {
+          "title": "Exact dream title as it appears in the archive",
+          "date": "YYYY-MM-DD",
+          "quote": "The specific image or detail from this dream cited in the body text"
+        }
+      ],
+      "coreQuestion": "The essential question this chapter circles around — one sentence, second person, e.g. 'What happens when the thing you built to survive becomes the thing that imprisons you?'"
+    }
+  ],
+  "closingInvitation": "A single sentence addressed directly to the dreamer — warm, contemplative, forward-looking. No label, just the sentence."
+}
 
-When you reference a specific dream, embed an inline marker so the reader can identify it on hover. Format: [[your prose text|Exact Dream Title|YYYY-MM-DD]]. Example: "In [[the dream of the flooded basement|The Flooded Basement|2024-03-15]], a new threshold appeared..." — only wrap specific dream references, not general statements about the dreamer.
+Write 4-6 chapters. Chapter ordering: begin with wounding material, move through shadow and voice, give extra weight to numinous dreams (marked ✦ [BIG DREAM]), close with integration or emergence. Every chapter title must be specific to this dreamer's imagery — not generic Jungian labels. The dreamRefs array must list every dream specifically referenced in that chapter's body. The body must be plain prose.
 
 DREAM RECORD (chronological):
 ${dreamList}`;
 
-  return call({
+  const text = await call({
     messages: [{ role: 'user', content: userPrompt }],
-    maxTokens: 4096,
+    maxTokens: 8192,
     model: AI_MODELS.narrative,
   });
+
+  return parseNarrativeJSON(text);
 }
 
 // ── Suggest additional tags for an already-analyzed dream ────────────────────
@@ -397,6 +450,8 @@ Respond ONLY with valid JSON:
 // previousNarrative: string (the existing 4-6 paragraph narrative)
 // newDreams: array of dream objects since last_dream_id
 
+// previousNarrative: a plain-text summary derived from the stored narrative
+// (caller is responsible for converting v2 JSON to readable text before passing here)
 export async function updateIndividuationNarrative({ previousNarrative, newDreams }) {
   const dreamList = newDreams.map((d, i) => {
     const moodStr = Array.isArray(d.mood) ? d.mood.join(', ') : (d.mood || '');
@@ -409,28 +464,52 @@ Archetypes: ${(d.archetypes || []).join(', ') || '—'}
 Symbols: ${(d.symbols || []).join(', ') || '—'}`;
   }).join('\n\n---\n\n');
 
-  const userPrompt = `You previously wrote this individuation narrative for a dreamer:
+  const userPrompt = `You are a Jungian analyst. You previously wrote this individuation narrative for a dreamer:
 
 ---
 ${previousNarrative}
 ---
 
-Since that narrative was written, the dreamer has recorded these new dreams:
+Since then, the dreamer has recorded these new dreams:
 
 NEW DREAMS (chronological):
 ${dreamList}
 
-Update the narrative to incorporate these new dreams. Maintain continuity with the existing analysis while integrating what the new material reveals. Write 4-6 paragraphs of continuous prose — an analyst's perspective on the ongoing individuation journey. Dreams marked ✦ [BIG DREAM] are numinous or archetypal dreams of unusual significance — weight them accordingly. Do not explicitly say "since the last narrative" or reference the update process itself — just write the living, current narrative.
+Produce an updated narrative that incorporates the new material. Maintain continuity with the existing analysis — evolve it, do not restart. Do not reference the update process itself. Write the living, current narrative.
 
-Write in flowing prose paragraphs separated by blank lines. Do not use any markdown formatting — no headers, no pound signs (#), no bold (**text**), no horizontal rules (---), no asterisks for emphasis. Plain prose only.
+Respond ONLY with valid JSON matching this exact structure — no prose before or after the JSON:
+{
+  "title": "An evocative, poetic title specific to this dreamer's journey — evolve the previous title if needed",
+  "thesis": "2-3 sentences — the essential truth of this person's individuation now, incorporating what the new dreams reveal.",
+  "chapters": [
+    {
+      "id": "unique-kebab-case-slug",
+      "title": "Evocative chapter title specific to this dreamer, not a generic label",
+      "theme": "exactly one of: wounding | voice | shadow | numinous | integration | emergence",
+      "summary": "One sentence describing what this chapter is about",
+      "body": "Full prose for this chapter. 2-4 rich paragraphs. Plain prose only — no markdown, no headers, no asterisks.",
+      "dreamRefs": [
+        {
+          "title": "Exact dream title as it appears in the archive",
+          "date": "YYYY-MM-DD",
+          "quote": "The specific image or detail from this dream cited in the body text"
+        }
+      ],
+      "coreQuestion": "The essential question this chapter circles around — one sentence, second person"
+    }
+  ],
+  "closingInvitation": "A single sentence addressed directly to the dreamer — warm, contemplative, forward-looking."
+}
 
-When you reference a specific dream, embed an inline marker so the reader can identify it on hover. Format: [[your prose text|Exact Dream Title|YYYY-MM-DD]]. Example: "In [[the dream of the flooded basement|The Flooded Basement|2024-03-15]], a new threshold appeared..." — only wrap specific dream references, not general statements about the dreamer.`;
+Write 4-6 chapters. Order: wounding → shadow/voice → numinous (weight ✦ [BIG DREAM] heavily) → integration/emergence. Chapter titles must be specific to this dreamer's imagery. dreamRefs must list every dream referenced in that chapter's body. Body must be plain prose.`;
 
-  return call({
+  const text = await call({
     messages: [{ role: 'user', content: userPrompt }],
-    maxTokens: 4096,
+    maxTokens: 8192,
     model: AI_MODELS.narrative,
   });
+
+  return parseNarrativeJSON(text);
 }
 
 // ── Transcribe handwritten text from an image ────────────────────────────────
