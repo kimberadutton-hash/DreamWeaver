@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { prepareImagination, reflectOnSession, AiError } from '../lib/ai';
+import { prepareImagination, reflectOnSession, imaginationEmbodimentPrompt, AiError } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { formatDate, todayString } from '../lib/constants';
 
@@ -93,7 +93,10 @@ function SetupFlow({ initialDreamId, onSessionReady, onCancel, userId }) {
   const [preparation, setPreparation] = useState(null);
   const [createdSession, setCreatedSession] = useState(null);
   const [error, setError] = useState('');
+  const [formExpanded, setFormExpanded] = useState(true);
+  const [prepVisible, setPrepVisible] = useState(false);
   const dropdownRef = useRef(null);
+  const prepRef = useRef(null);
 
   useEffect(() => {
     async function load() {
@@ -136,6 +139,9 @@ function SetupFlow({ initialDreamId, onSessionReady, onCancel, userId }) {
     if (!figureName.trim()) { setError('Name this figure to begin.'); return; }
     setError('');
     setStep('loading');
+    setPrepVisible(false);
+    // Immediate scroll so user sees activity
+    window.scrollBy({ top: 320, behavior: 'smooth' });
     try {
       // Find recent dreams where figure appears
       const nameLower = figureName.toLowerCase();
@@ -184,7 +190,13 @@ function SetupFlow({ initialDreamId, onSessionReady, onCancel, userId }) {
 
       setPreparation(result);
       setCreatedSession({ ...session, linked_dream_title: session.linked_dream?.title || null });
+      setFormExpanded(false);
       setStep('preparation');
+      // Scroll to panel then fade in
+      setTimeout(() => {
+        prepRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        setTimeout(() => setPrepVisible(true), 100);
+      }, 80);
     } catch (e) {
       setError(e instanceof AiError ? e.message : (e.message || 'Something went wrong.'));
       setStep('form');
@@ -199,96 +211,116 @@ function SetupFlow({ initialDreamId, onSessionReady, onCancel, userId }) {
           <button onClick={onCancel} className="text-ink/30 hover:text-ink/60 dark:text-white/30 dark:hover:text-white/60 transition-colors text-2xl leading-none">×</button>
         </div>
 
-        {/* Figure name */}
-        <div className="mb-4">
-          <label className="block font-body uppercase text-ink/40 dark:text-white/30 tracking-widest mb-1.5" style={{ fontSize: 9, letterSpacing: '0.15em' }}>
-            Who do you want to address?
-          </label>
-          <input
-            type="text"
-            value={figureName}
-            onChange={e => setFigureName(e.target.value)}
-            placeholder="The shadow figure / The woman at the crossroads / The gatekeeper"
-            className="w-full px-4 py-2.5 rounded-xl border border-black/10 bg-white/60 text-sm font-body text-ink placeholder-ink/25 focus:outline-none focus:ring-2 focus:ring-gold/40"
-          />
-          {/* Archetype chips from selected dream — informational */}
-          {refChips.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {refChips.map(chip => (
-                <button
-                  key={chip}
-                  onClick={() => setFigureName(chip)}
-                  className="px-2.5 py-0.5 rounded-full text-xs font-body transition-colors"
-                  style={{
-                    backgroundColor: 'rgba(61,43,74,0.07)',
-                    color: 'rgba(61,43,74,0.6)',
-                    border: '1px solid rgba(61,43,74,0.12)',
-                  }}
-                  title="Click to use as figure name"
-                >
-                  {chip}
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Link to dream */}
-        <div ref={dropdownRef} className="relative mb-4">
-          <label className="block font-body uppercase text-ink/40 dark:text-white/30 tracking-widest mb-1.5" style={{ fontSize: 9, letterSpacing: '0.15em' }}>
-            Link to a dream (optional)
-          </label>
-          <input
-            type="text"
-            value={selectedDream ? (selectedDream.title || 'Untitled') : dreamQuery}
-            onChange={e => {
-              if (selectedDream) setSelectedDream(null);
-              setDreamQuery(e.target.value);
-              setDreamDropdownOpen(true);
-            }}
-            onFocus={() => setDreamDropdownOpen(true)}
-            placeholder="Search your dreams…"
-            className="w-full px-4 py-2.5 rounded-xl border border-black/10 bg-white/60 text-sm font-body text-ink placeholder-ink/25 focus:outline-none focus:ring-2 focus:ring-gold/40"
-          />
-          {selectedDream && (
+        {/* Collapsed summary bar */}
+        {step === 'preparation' && !formExpanded ? (
+          <div className="flex items-center justify-between py-1 mb-4">
+            <p className="text-sm font-body text-ink/50 dark:text-white/40">
+              <span className="font-display italic">{figureName}</span>
+              {selectedDream && (
+                <span className="text-ink/30 dark:text-white/25"> · {selectedDream.title || 'Untitled'}</span>
+              )}
+            </p>
             <button
-              onClick={() => { setSelectedDream(null); setDreamQuery(''); }}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/25 hover:text-ink/60 text-lg leading-none"
-              style={{ marginTop: 11 }}
-            >×</button>
-          )}
-          {dreamDropdownOpen && !selectedDream && (
-            <div className="absolute z-10 top-full mt-1 w-full bg-white dark:bg-gray-900 rounded-xl border border-black/10 shadow-lg max-h-48 overflow-y-auto">
-              {filteredDreams.length === 0
-                ? <p className="px-4 py-3 text-sm font-body text-ink/35">No dreams found</p>
-                : filteredDreams.map(d => (
-                  <button
-                    key={d.id}
-                    onMouseDown={() => { setSelectedDream(d); setDreamDropdownOpen(false); setDreamQuery(''); }}
-                    className="w-full text-left px-4 py-2.5 hover:bg-black/5 text-sm font-body text-ink/80 flex items-center justify-between"
-                  >
-                    <span>{d.title || 'Untitled'}</span>
-                    <span className="text-xs text-ink/30">{d.dream_date}</span>
-                  </button>
-                ))
-              }
+              onClick={() => setFormExpanded(true)}
+              className="text-xs font-body text-gold hover:text-gold/70 transition-colors ml-4 shrink-0"
+            >
+              Edit
+            </button>
+          </div>
+        ) : (
+          <>
+            {/* Figure name */}
+            <div className="mb-4">
+              <label className="block font-body uppercase text-ink/40 dark:text-white/30 tracking-widest mb-1.5" style={{ fontSize: 9, letterSpacing: '0.15em' }}>
+                Who do you want to address?
+              </label>
+              <input
+                type="text"
+                value={figureName}
+                onChange={e => setFigureName(e.target.value)}
+                placeholder="The shadow figure / The woman at the crossroads / The gatekeeper"
+                className="w-full px-4 py-2.5 rounded-xl border border-black/10 bg-white/60 text-sm font-body text-ink placeholder-ink/25 focus:outline-none focus:ring-2 focus:ring-gold/40"
+              />
+              {/* Archetype chips from selected dream — informational */}
+              {refChips.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {refChips.map(chip => (
+                    <button
+                      key={chip}
+                      onClick={() => setFigureName(chip)}
+                      className="px-2.5 py-0.5 rounded-full text-xs font-body transition-colors"
+                      style={{
+                        backgroundColor: 'rgba(61,43,74,0.07)',
+                        color: 'rgba(61,43,74,0.6)',
+                        border: '1px solid rgba(61,43,74,0.12)',
+                      }}
+                      title="Click to use as figure name"
+                    >
+                      {chip}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
-          )}
-        </div>
 
-        {/* Figure description */}
-        <div className="mb-5">
-          <label className="block font-body uppercase text-ink/40 dark:text-white/30 tracking-widest mb-1.5" style={{ fontSize: 9, letterSpacing: '0.15em' }}>
-            What do you know about this figure so far? (optional)
-          </label>
-          <textarea
-            value={figureDescription}
-            onChange={e => setFigureDescription(e.target.value)}
-            rows={3}
-            placeholder="How have they appeared? What feeling do they carry? What do they seem to want?"
-            className="w-full px-4 py-2.5 rounded-xl border border-black/10 bg-white/60 text-sm font-body text-ink placeholder-ink/25 focus:outline-none focus:ring-2 focus:ring-gold/40 resize-none"
-          />
-        </div>
+            {/* Link to dream */}
+            <div ref={dropdownRef} className="relative mb-4">
+              <label className="block font-body uppercase text-ink/40 dark:text-white/30 tracking-widest mb-1.5" style={{ fontSize: 9, letterSpacing: '0.15em' }}>
+                Link to a dream (optional)
+              </label>
+              <input
+                type="text"
+                value={selectedDream ? (selectedDream.title || 'Untitled') : dreamQuery}
+                onChange={e => {
+                  if (selectedDream) setSelectedDream(null);
+                  setDreamQuery(e.target.value);
+                  setDreamDropdownOpen(true);
+                }}
+                onFocus={() => setDreamDropdownOpen(true)}
+                placeholder="Search your dreams…"
+                className="w-full px-4 py-2.5 rounded-xl border border-black/10 bg-white/60 text-sm font-body text-ink placeholder-ink/25 focus:outline-none focus:ring-2 focus:ring-gold/40"
+              />
+              {selectedDream && (
+                <button
+                  onClick={() => { setSelectedDream(null); setDreamQuery(''); }}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-ink/25 hover:text-ink/60 text-lg leading-none"
+                  style={{ marginTop: 11 }}
+                >×</button>
+              )}
+              {dreamDropdownOpen && !selectedDream && (
+                <div className="absolute z-10 top-full mt-1 w-full bg-white dark:bg-gray-900 rounded-xl border border-black/10 shadow-lg max-h-48 overflow-y-auto">
+                  {filteredDreams.length === 0
+                    ? <p className="px-4 py-3 text-sm font-body text-ink/35">No dreams found</p>
+                    : filteredDreams.map(d => (
+                      <button
+                        key={d.id}
+                        onMouseDown={() => { setSelectedDream(d); setDreamDropdownOpen(false); setDreamQuery(''); }}
+                        className="w-full text-left px-4 py-2.5 hover:bg-black/5 text-sm font-body text-ink/80 flex items-center justify-between"
+                      >
+                        <span>{d.title || 'Untitled'}</span>
+                        <span className="text-xs text-ink/30">{d.dream_date}</span>
+                      </button>
+                    ))
+                  }
+                </div>
+              )}
+            </div>
+
+            {/* Figure description */}
+            <div className="mb-5">
+              <label className="block font-body uppercase text-ink/40 dark:text-white/30 tracking-widest mb-1.5" style={{ fontSize: 9, letterSpacing: '0.15em' }}>
+                What do you know about this figure so far? (optional)
+              </label>
+              <textarea
+                value={figureDescription}
+                onChange={e => setFigureDescription(e.target.value)}
+                rows={3}
+                placeholder="How have they appeared? What feeling do they carry? What do they seem to want?"
+                className="w-full px-4 py-2.5 rounded-xl border border-black/10 bg-white/60 text-sm font-body text-ink placeholder-ink/25 focus:outline-none focus:ring-2 focus:ring-gold/40 resize-none"
+              />
+            </div>
+          </>
+        )}
 
         {error && <p className="text-sm font-body text-red-400 mb-4">{error}</p>}
 
@@ -298,13 +330,20 @@ function SetupFlow({ initialDreamId, onSessionReady, onCancel, userId }) {
           className="px-6 py-3 rounded-xl text-sm font-body transition-all duration-150"
           style={{ backgroundColor: '#3d2b4a', color: 'white', opacity: step === 'loading' ? 0.6 : 1 }}
         >
-          {step === 'loading' ? 'Preparing…' : 'Prepare for this session →'}
+          {step === 'loading' ? 'Preparing…' : step === 'preparation' ? 'Re-prepare →' : 'Prepare for this session →'}
         </button>
       </div>
 
       {/* Preparation panel */}
       {step === 'preparation' && preparation && (
-        <div>
+        <div
+          ref={prepRef}
+          style={{
+            scrollMarginTop: 24,
+            opacity: prepVisible ? 1 : 0,
+            transition: 'opacity 400ms ease',
+          }}
+        >
           <PreparationPanel preparation={preparation} figureName={figureName} />
           <div className="mt-5">
             <button
@@ -382,9 +421,11 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
   const [isSessionClosed, setIsSessionClosed] = useState(!!initialSession.closed_at);
   const [closedAt, setClosedAt] = useState(initialSession.closed_at);
   const [analystReflection, setAnalystReflection] = useState(initialSession.analyst_reflection || null);
+  const [embodimentPrompt, setEmbodimentPrompt] = useState(initialSession.embodiment_prompt || null);
   const [reflectingOnSession, setReflectingOnSession] = useState(false);
   const [aiError, setAiError] = useState(null);
   const [linkedDream, setLinkedDream] = useState(null);
+  const [hoveredMsgIndex, setHoveredMsgIndex] = useState(null);
   const messagesEndRef = useRef(null);
   const textareaRef = useRef(null);
 
@@ -413,6 +454,7 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
     const nextMessages = [...messages, msg];
     setMessages(nextMessages);
     setInputText('');
+    setInputVoice(v => v === 'ego' ? 'figure' : 'ego');
     setSaving(true);
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
@@ -437,26 +479,39 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
     setAiError(null);
 
     try {
-      let reflection = null;
+      const wantsReflection = requestReflection && messages.length >= 3;
+      setReflectingOnSession(wantsReflection);
 
-      if (requestReflection && messages.length >= 3) {
-        setReflectingOnSession(true);
-        try {
-          reflection = await reflectOnSession({
+      const reflectionTask = wantsReflection
+        ? reflectOnSession({
             figureName: session.figure_name,
             sessionMessages: messages,
             closingReflection: closingReflection.trim() || null,
             linkedDream,
-          });
-        } catch (e) {
-          setAiError(e);
-          setReflectingOnSession(false);
-          setClosing(false);
-          return;
-        }
+          })
+        : Promise.resolve(null);
+
+      // Embodiment prompt always runs in parallel — non-fatal if it fails
+      const embodimentTask = imaginationEmbodimentPrompt({
+        figureName: session.figure_name,
+        sessionMessages: messages,
+        closingReflection: closingReflection.trim() || null,
+      }).catch(() => null);
+
+      let reflection, embodiment;
+      try {
+        [reflection, embodiment] = await Promise.all([reflectionTask, embodimentTask]);
+      } catch (e) {
+        setAiError(e);
         setReflectingOnSession(false);
-        setAnalystReflection(reflection);
+        setClosing(false);
+        return;
       }
+      setReflectingOnSession(false);
+
+      if (reflection) setAnalystReflection(reflection);
+      const embodimentText = embodiment?.trim() || null;
+      if (embodimentText) setEmbodimentPrompt(embodimentText);
 
       const { data: updated } = await supabase
         .from('imagination_sessions')
@@ -464,6 +519,7 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
           closed_at: new Date().toISOString(),
           closing_reflection: closingReflection.trim() || null,
           analyst_reflection: reflection,
+          embodiment_prompt: embodimentText,
         })
         .eq('id', session.id)
         .select()
@@ -480,6 +536,16 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
     } finally {
       setClosing(false);
     }
+  }
+
+  async function switchMessageSpeaker(index) {
+    const updated = messages.map((msg, i) =>
+      i === index ? { ...msg, role: msg.role === 'ego' ? 'figure' : 'ego' } : msg
+    );
+    setMessages(updated);
+    try {
+      await supabase.from('imagination_sessions').update({ messages: updated }).eq('id', session.id);
+    } catch {}
   }
 
   const figureSelected = inputVoice === 'figure';
@@ -558,12 +624,27 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
         <div className="max-w-2xl mx-auto space-y-7">
 
           {messages.map((msg, i) => (
-            <div key={i} className={`flex ${msg.role === 'ego' ? 'justify-end' : 'justify-start'}`}>
+            <div
+              key={i}
+              className={`flex ${msg.role === 'ego' ? 'justify-end' : 'justify-start'}`}
+              onMouseEnter={() => setHoveredMsgIndex(i)}
+              onMouseLeave={() => setHoveredMsgIndex(null)}
+            >
               {msg.role === 'figure' ? (
                 <div className="max-w-[85%]">
-                  <p className="mb-2 font-body uppercase text-plum/50" style={{ fontSize: 9, letterSpacing: '0.18em' }}>
-                    {session.figure_name}
-                  </p>
+                  <div className="flex items-center gap-2 mb-2">
+                    <p className="font-body uppercase text-plum/50" style={{ fontSize: 9, letterSpacing: '0.18em' }}>
+                      {session.figure_name}
+                    </p>
+                    {hoveredMsgIndex === i && (
+                      <button
+                        onClick={() => switchMessageSpeaker(i)}
+                        title="Switch speaker"
+                        className="font-body text-ink/40 hover:text-ink/70 transition-colors"
+                        style={{ fontSize: 11 }}
+                      >↻</button>
+                    )}
+                  </div>
                   <div
                     className="px-5 py-4 rounded-2xl rounded-tl-sm"
                     style={{ backgroundColor: 'rgba(61,43,74,0.07)', borderLeft: '3px solid rgba(61,43,74,0.2)' }}
@@ -575,9 +656,19 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
                 </div>
               ) : (
                 <div className="max-w-[85%]">
-                  <p className="mb-2 font-body uppercase text-ink/30 text-right" style={{ fontSize: 9, letterSpacing: '0.18em' }}>
-                    You
-                  </p>
+                  <div className="flex items-center justify-end gap-2 mb-2">
+                    {hoveredMsgIndex === i && (
+                      <button
+                        onClick={() => switchMessageSpeaker(i)}
+                        title="Switch speaker"
+                        className="font-body text-ink/40 hover:text-ink/70 transition-colors"
+                        style={{ fontSize: 11 }}
+                      >↻</button>
+                    )}
+                    <p className="font-body uppercase text-ink/30" style={{ fontSize: 9, letterSpacing: '0.18em' }}>
+                      You
+                    </p>
+                  </div>
                   <div className="px-5 py-4 rounded-2xl rounded-tr-sm bg-white/70 border border-black/8">
                     <p className="font-body text-[15px] text-ink/85 leading-[1.7]">
                       {msg.content}
@@ -606,8 +697,11 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
           {isSessionClosed && analystReflection && (
             <div>
               <div className="pl-4 border-l-2 border-gold/40 bg-white/50 rounded-r-xl px-5 py-5">
-                <p className="font-body uppercase text-ink/25 tracking-widest mb-3" style={{ fontSize: 9, letterSpacing: '0.18em' }}>
+                <p className="font-body uppercase text-ink/25 tracking-widest mb-1" style={{ fontSize: 9, letterSpacing: '0.18em' }}>
                   Analyst's reflection
+                </p>
+                <p className="font-body italic text-ink/30 text-xs mb-4">
+                  A reflection on your writing — not an interpretation of your psyche.
                 </p>
                 {analystReflection.split(/\n\n+/).map((para, i) => (
                   <p key={i} className="font-display italic text-[16px] text-ink/75 leading-[1.85] mb-4 last:mb-0">
@@ -615,6 +709,19 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
                   </p>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Embodiment prompt (closed view) */}
+          {isSessionClosed && embodimentPrompt && (
+            <div className="py-4">
+              <hr style={{ borderColor: 'rgba(184,146,74,0.25)', marginBottom: 20 }} />
+              <p className="font-body uppercase text-ink/25 tracking-widest mb-5 text-center" style={{ fontSize: 9, letterSpacing: '0.18em' }}>
+                this week
+              </p>
+              <p className="font-display italic text-[18px] text-ink/70 leading-[1.85] text-center mx-auto" style={{ maxWidth: 600 }}>
+                {embodimentPrompt}
+              </p>
             </div>
           )}
 

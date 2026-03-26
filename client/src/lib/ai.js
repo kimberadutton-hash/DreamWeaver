@@ -17,6 +17,7 @@ const AI_MODELS = {
   summary:     'claude-haiku-4-5-20251001',
   suggestions: 'claude-haiku-4-5-20251001',
   preparation: 'claude-haiku-4-5-20251001',
+  embodiment:  'claude-haiku-4-5-20251001',
 };
 
 export function getStoredApiKey() {
@@ -710,6 +711,44 @@ Please reflect on this session.`;
     system: systemPrompt,
     maxTokens: 1024,
     model: AI_MODELS.reflection,
+  });
+}
+
+// ── Generate an embodiment question from a completed active imagination session ─
+// Haiku — fast, runs in parallel with reflectOnSession(). Returns plain text.
+
+export async function imaginationEmbodimentPrompt({ figureName, sessionMessages, closingReflection }) {
+  const dialogueText = (sessionMessages || [])
+    .map(msg => {
+      const label = msg.role === 'ego' ? 'DREAMER' : figureName.toUpperCase();
+      return `${label}: ${msg.content}`;
+    })
+    .join('\n\n');
+
+  const systemPrompt = `You are reading a record of active imagination work — a Jungian dialogue a person has written with a figure from their unconscious.
+
+Generate a single embodiment question for this person to carry into their waking life this week. The question should be:
+- Rooted in what actually happened in the dialogue — specific, not generic
+- Pointing toward concrete action or presence in the physical world
+- Not asking them to reflect more or journal more — asking them to DO or BE something differently
+- Warm, direct, specific
+- Maximum 2 sentences
+
+Never use action notations in asterisks.
+Never be performative.
+Return only the question — no preamble, no explanation.`;
+
+  const userPrompt = `Figure: ${figureName}
+
+THE DIALOGUE (written by the person — both sides):
+${dialogueText}
+${closingReflection ? `\nTHEIR CLOSING REFLECTION:\n${closingReflection}` : ''}`;
+
+  return call({
+    messages: [{ role: 'user', content: userPrompt }],
+    system: systemPrompt,
+    maxTokens: 150,
+    model: AI_MODELS.embodiment,
   });
 }
 
