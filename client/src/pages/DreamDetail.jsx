@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { analyzeDream, buildDreamContext, generateDreamSummary, suggestAdditionalTags, identifyShadowMaterial } from '../lib/ai';
@@ -12,6 +12,7 @@ import { JUNGIAN_TERMS } from '../lib/jungianTerms';
 export default function DreamDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, profile } = useAuth();
   const { privacySettings } = usePrivacySettings();
 
@@ -27,6 +28,7 @@ export default function DreamDetail() {
   const [shadowAnalysis, setShadowAnalysis] = useState(null); // loaded from dream.shadow_analysis
   const [shadowLoading, setShadowLoading] = useState(false);
   const [shadowError, setShadowError] = useState(null);
+  const [existingEncounter, setExistingEncounter] = useState(null); // encounter already recorded for this dream
 
   // A. Scroll to reflection ref after analysis completes
   const reflectionRef = useRef(null);
@@ -52,6 +54,12 @@ export default function DreamDetail() {
 
   useEffect(() => { fetchDream(); }, [id]);
 
+  // Re-check for existing encounter whenever navigating back to this page (e.g. after recording on /shadow)
+  useEffect(() => {
+    if (!dream) return;
+    checkExistingEncounter();
+  }, [location.key]);
+
   async function fetchDream() {
     const { data, error } = await supabase
       .from('dreams').select('*').eq('id', id).eq('user_id', user.id).single();
@@ -70,6 +78,17 @@ export default function DreamDetail() {
       }
     }
     setLoading(false);
+    checkExistingEncounter();
+  }
+
+  async function checkExistingEncounter() {
+    const { data: existing } = await supabase
+      .from('shadow_encounters')
+      .select('id, title')
+      .eq('linked_dream_id', id)
+      .eq('user_id', user.id)
+      .maybeSingle();
+    setExistingEncounter(existing || null);
   }
 
   async function handleDelete() {
@@ -187,6 +206,7 @@ export default function DreamDetail() {
         if (saveError) {
           console.warn('Could not cache shadow analysis:', saveError.message);
         }
+        checkExistingEncounter();
       }
     } catch (err) {
       setShadowError(err);
@@ -393,25 +413,31 @@ export default function DreamDetail() {
                 </p>
               )}
 
-              <button
-                onClick={() => {
-                  sessionStorage.setItem('shadow-encounter-prefill', JSON.stringify({
-                    dreamId: dream.id,
-                    dreamTitle: dream.title,
-                    dreamDate: dream.dream_date,
-                    shadowFigures: shadowAnalysis.shadowFigures,
-                    projectedQualities: shadowAnalysis.projectedQualities,
-                    reflectionPrompt: shadowAnalysis.reflectionPrompt,
-                  }));
-                  navigate('/shadow?fromDream=true');
-                }}
-                className="text-xs font-body transition-colors"
-                style={{ color: 'rgba(61,43,74,0.4)' }}
-                onMouseEnter={e => e.currentTarget.style.color = '#3d2b4a'}
-                onMouseLeave={e => e.currentTarget.style.color = 'rgba(61,43,74,0.4)'}
-              >
-                Record as shadow encounter →
-              </button>
+              {existingEncounter ? (
+                <p className="text-xs font-body text-ink/30 dark:text-white/25 italic">
+                  Encounter recorded: <span className="not-italic text-ink/50 dark:text-white/40">{existingEncounter.title}</span>
+                </p>
+              ) : (
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('shadow-encounter-prefill', JSON.stringify({
+                      dreamId: dream.id,
+                      dreamTitle: dream.title,
+                      dreamDate: dream.dream_date,
+                      shadowFigures: shadowAnalysis.shadowFigures,
+                      projectedQualities: shadowAnalysis.projectedQualities,
+                      reflectionPrompt: shadowAnalysis.reflectionPrompt,
+                    }));
+                    navigate('/shadow?fromDream=true');
+                  }}
+                  className="text-xs font-body transition-colors"
+                  style={{ color: 'rgba(61,43,74,0.4)' }}
+                  onMouseEnter={e => e.currentTarget.style.color = '#3d2b4a'}
+                  onMouseLeave={e => e.currentTarget.style.color = 'rgba(61,43,74,0.4)'}
+                >
+                  Record as shadow encounter →
+                </button>
+              )}
             </div>
           )}
         </div>

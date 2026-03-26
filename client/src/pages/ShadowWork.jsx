@@ -215,10 +215,22 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
             {encounter.title}
           </h2>
 
-          {encounter.projected_quality && (
-            <p className="text-sm font-body text-ink/50 mb-4">
-              Projected quality: <span className="text-ink/70 italic">{encounter.projected_quality}</span>
-            </p>
+          {/* Projected qualities — new array column, fall back to old scalar */}
+          {((Array.isArray(encounter.projected_qualities) && encounter.projected_qualities.length > 0) || encounter.projected_quality) && (
+            <div className="flex flex-wrap gap-1.5 mb-4">
+              {(Array.isArray(encounter.projected_qualities) && encounter.projected_qualities.length > 0
+                ? encounter.projected_qualities
+                : [encounter.projected_quality]
+              ).map((q, i) => (
+                <span
+                  key={i}
+                  className="px-2.5 py-0.5 rounded-full text-xs font-body"
+                  style={{ backgroundColor: '#9a4a6a18', color: '#9a4a6a', border: '1px solid #9a4a6a30' }}
+                >
+                  {q}
+                </span>
+              ))}
+            </div>
           )}
 
           {/* Integration status selector */}
@@ -280,22 +292,50 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
             </div>
           )}
 
-          {encounter.ai_reflection && (
-            <div className="mb-5">
-              <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-3">
-                Shadow Reflection
-              </p>
-              <div className="pl-4 border-l-2 border-gold/40">
-                {encounter.ai_reflection.split(/\n\n+/).map((block, i) => (
-                  <p key={i} className="text-sm font-body text-ink/70 leading-relaxed mb-2 last:mb-0 whitespace-pre-line">
-                    {block}
-                  </p>
-                ))}
+          {encounter.ai_reflection && (() => {
+            const { figures, qualities, reflection } = parseAiReflection(encounter.ai_reflection);
+            return (
+              <div className="mb-5">
+                <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-3">
+                  Shadow Reflection
+                </p>
+                <div className="pl-4 border-l-2 border-gold/40 space-y-3">
+                  {figures.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 mb-1.5">Shadow figures</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {figures.map((f, i) => (
+                          <span key={i} className="px-2.5 py-0.5 rounded-full text-xs font-body" style={{ backgroundColor: '#3d2b4a1a', color: '#3d2b4a', fontFamily: 'monospace' }}>
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {qualities.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 mb-1.5">Projected qualities</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {qualities.map((q, i) => (
+                          <span key={i} className="px-2.5 py-0.5 rounded-full text-xs font-body" style={{ backgroundColor: '#9a4a6a18', color: '#9a4a6a', border: '1px solid #9a4a6a30' }}>
+                            {q}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {reflection && (
+                    <p className="font-display italic text-base text-ink/65 leading-relaxed">
+                      {reflection}
+                    </p>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
 
-          {encounter.linked_dream_id && (
+          {/* Linked dream — use join data (encounter.dreams) or fallback for fresh saves */}
+          {encounter.linked_dream_id && (encounter.dreams || encounter.linked_dream_title) && (
             <div
               className="rounded-xl border border-black/8 bg-white/50 px-4 py-3 mb-5 cursor-pointer hover:border-black/15 transition-colors"
               onClick={() => navigate(`/dream/${encounter.linked_dream_id}`)}
@@ -304,10 +344,12 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
                 Linked Dream
               </p>
               <p className="font-display italic text-base text-ink leading-snug">
-                {encounter.linked_dream_title || 'View dream'}
+                {encounter.dreams?.title || encounter.linked_dream_title}
               </p>
-              {encounter.linked_dream_date && (
-                <p className="text-xs font-body text-ink/40 mt-0.5">{formatDate(encounter.linked_dream_date)}</p>
+              {(encounter.dreams?.dream_date || encounter.linked_dream_date) && (
+                <p className="text-xs font-body text-ink/40 mt-0.5">
+                  {formatDate(encounter.dreams?.dream_date || encounter.linked_dream_date)}
+                </p>
               )}
             </div>
           )}
@@ -332,6 +374,23 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
       </div>
     </>
   );
+}
+
+// ── Parse saved ai_reflection text back into sections for rich rendering ─────
+
+function parseAiReflection(text) {
+  if (!text) return { figures: [], qualities: [], reflection: null };
+  const figuresMatch = text.match(/^Shadow figures:\s*(.+)/m);
+  const figures = figuresMatch
+    ? figuresMatch[1].split(',').map(s => s.trim()).filter(Boolean)
+    : [];
+  const qualitiesMatch = text.match(/Projected qualities:\n([\s\S]*?)(?:\n\nReflection:|$)/);
+  const qualities = qualitiesMatch
+    ? qualitiesMatch[1].split('\n').map(s => s.replace(/^-\s*/, '').trim()).filter(Boolean)
+    : [];
+  const reflectionMatch = text.match(/Reflection:\n([\s\S]+)$/);
+  const reflection = reflectionMatch ? reflectionMatch[1].trim() : null;
+  return { figures, qualities, reflection };
 }
 
 // ── Format shadow analysis object → readable text for ai_reflection ──────────
@@ -361,16 +420,22 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
   // PATH 1: Format AI content from DreamDetail prefill → goes to ai_reflection, never description
   const prefillAiReflection = shadowPrefill ? formatShadowAnalysis(shadowPrefill) : '';
 
-  const firstQuality = shadowPrefill?.projectedQualities?.[0] || '';
-  const prefillQualityTruncated = firstQuality.length > 40
-    ? firstQuality.slice(0, 40) + '…'
-    : firstQuality;
+  // Build initial projected qualities array from prefill or existing encounter
+  const prefillQualities = shadowPrefill?.projectedQualities?.length
+    ? shadowPrefill.projectedQualities
+    : (prefillQuality ? [prefillQuality] : []);
 
   const [encounterType, setEncounterType] = useState(initialEncounter?.encounter_type || 'dream');
   const [encounterDate, setEncounterDate] = useState(initialEncounter?.encounter_date || shadowPrefill?.dreamDate || todayString());
   const [title, setTitle] = useState(initialEncounter?.title || '');
   const [description, setDescription] = useState(initialEncounter?.description || '');
-  const [projectedQuality, setProjectedQuality] = useState(initialEncounter?.projected_quality || prefillQualityTruncated || prefillQuality || '');
+  // Multi-value projected qualities (new column); falls back to old scalar for edit
+  const [projectedQualities, setProjectedQualities] = useState(
+    initialEncounter?.projected_qualities?.length
+      ? initialEncounter.projected_qualities
+      : (initialEncounter?.projected_quality ? [initialEncounter.projected_quality] : prefillQualities)
+  );
+  const [qualityInput, setQualityInput] = useState('');
   const [integrationStatus, setIntegrationStatus] = useState(initialEncounter?.integration_status || 'active');
   const [linkedDream, setLinkedDream] = useState(null);
   const [dreamQuery, setDreamQuery] = useState('');
@@ -456,9 +521,9 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
       setAiResult(result);
       // PATH 2: store formatted analysis for ai_reflection column — never written into description
       setPendingAiReflection(formatShadowAnalysis(result));
-      // Auto-fill projected quality field if empty
-      if (!projectedQuality && result.projectedQualities?.length) {
-        setProjectedQuality(result.projectedQualities[0]);
+      // Auto-fill projected qualities if none yet entered
+      if (!projectedQualities.length && result.projectedQualities?.length) {
+        setProjectedQualities(result.projectedQualities);
       }
     } catch (err) {
       setAiError(err);
@@ -477,7 +542,8 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
         encounter_date: encounterDate,
         title: title.trim(),
         description: description.trim() || null,        // user-written only
-        projected_quality: projectedQuality.trim() || null,
+        projected_quality: projectedQualities[0] || null,   // keep old column populated for compat
+        projected_qualities: projectedQualities,             // new array column
         integration_status: integrationStatus,
         linked_dream_id: linkedDream?.id || null,
         ai_reflection: pendingAiReflection.trim() || null,  // AI-generated only
@@ -587,19 +653,49 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Name this encounter…"
+              placeholder="Name what you met — the quality or figure encountered… e.g. 'The capacity to be ruthless' or 'Permission I never gave myself'"
               className="w-full px-4 py-2.5 rounded-xl border border-black/10 bg-white/60 text-sm font-body text-ink placeholder-ink/25 focus:outline-none focus:ring-2 focus:ring-gold/40"
             />
           </div>
 
-          {/* Projected quality */}
+          {/* Projected qualities — tag input */}
           <div>
-            <label className="block font-body text-ink/40 uppercase tracking-widest mb-1.5" style={{ fontSize: 9 }}>Projected Quality (optional)</label>
+            <label className="block font-body text-ink/40 uppercase tracking-widest mb-1.5" style={{ fontSize: 9 }}>Projected Qualities (optional)</label>
+            {projectedQualities.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-2">
+                {projectedQualities.map((q, i) => (
+                  <span
+                    key={i}
+                    className="flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-body"
+                    style={{ backgroundColor: '#9a4a6a18', color: '#9a4a6a', border: '1px solid #9a4a6a30' }}
+                  >
+                    {q}
+                    <button
+                      type="button"
+                      onClick={() => setProjectedQualities(prev => prev.filter((_, j) => j !== i))}
+                      className="ml-0.5 opacity-50 hover:opacity-90 leading-none"
+                    >
+                      ×
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
             <input
               type="text"
-              value={projectedQuality}
-              onChange={e => setProjectedQuality(e.target.value)}
-              placeholder="e.g. aggression, neediness, brilliance…"
+              value={qualityInput}
+              onChange={e => setQualityInput(e.target.value)}
+              onKeyDown={e => {
+                if (e.key === 'Enter' || e.key === ',') {
+                  e.preventDefault();
+                  const val = qualityInput.trim().replace(/,$/, '');
+                  if (val && !projectedQualities.includes(val)) {
+                    setProjectedQualities(prev => [...prev, val]);
+                  }
+                  setQualityInput('');
+                }
+              }}
+              placeholder="Type a quality, press Enter to add…"
               className="w-full px-4 py-2.5 rounded-xl border border-black/10 bg-white/60 text-sm font-body text-ink placeholder-ink/25 focus:outline-none focus:ring-2 focus:ring-gold/40"
             />
           </div>
@@ -713,16 +809,43 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
               )}
             </div>
 
-            {/* PATH 1: prefill from DreamDetail — show read-only text, no aiResult chips */}
-            {pendingAiReflection && !aiResult && !aiLoading && (
-              <div className="pl-3 border-l-2 border-gold/40">
-                {pendingAiReflection.split(/\n\n+/).map((block, i) => (
-                  <p key={i} className="text-sm font-body text-ink/65 leading-relaxed mb-2 last:mb-0 whitespace-pre-line">
-                    {block}
-                  </p>
-                ))}
-              </div>
-            )}
+            {/* PATH 1: prefill from DreamDetail — rich rendering matching DreamDetail shadow panel */}
+            {pendingAiReflection && !aiResult && !aiLoading && (() => {
+              const { figures, qualities, reflection } = parseAiReflection(pendingAiReflection);
+              return (
+                <div className="space-y-3">
+                  {figures.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 mb-1.5">Shadow figures</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {figures.map((f, i) => (
+                          <span key={i} className="px-2.5 py-0.5 rounded-full text-xs font-body" style={{ backgroundColor: '#3d2b4a1a', color: '#3d2b4a', fontFamily: 'monospace' }}>
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {qualities.length > 0 && (
+                    <div>
+                      <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 mb-1.5">Projected qualities</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {qualities.map((q, i) => (
+                          <span key={i} className="px-2.5 py-0.5 rounded-full text-xs font-body" style={{ backgroundColor: '#9a4a6a18', color: '#9a4a6a', border: '1px solid #9a4a6a30' }}>
+                            {q}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {reflection && (
+                    <p className="font-display italic text-sm text-ink/65 leading-relaxed">
+                      {reflection}
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {!pendingAiReflection && !aiResult && !aiLoading && (
               <>
@@ -778,21 +901,27 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
                   <div>
                     <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 mb-1.5">Projected qualities</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {aiResult.projectedQualities.map(q => (
-                        <button
-                          key={q}
-                          onClick={() => setProjectedQuality(q)}
-                          className="px-2.5 py-0.5 rounded-full text-xs font-body transition-all duration-100"
-                          style={{
-                            backgroundColor: projectedQuality === q ? '#9a4a6a26' : 'rgba(0,0,0,0.05)',
-                            color: projectedQuality === q ? '#9a4a6a' : 'rgba(42,36,32,0.55)',
-                            border: projectedQuality === q ? '1px solid #9a4a6a40' : '1px solid transparent',
-                          }}
-                          title="Click to use this quality"
-                        >
-                          {q}
-                        </button>
-                      ))}
+                      {aiResult.projectedQualities.map(q => {
+                        const already = projectedQualities.includes(q);
+                        return (
+                          <button
+                            key={q}
+                            onClick={() => {
+                              if (!already) setProjectedQualities(prev => [...prev, q]);
+                            }}
+                            className="px-2.5 py-0.5 rounded-full text-xs font-body transition-all duration-100"
+                            style={{
+                              backgroundColor: already ? '#9a4a6a26' : 'rgba(0,0,0,0.05)',
+                              color: already ? '#9a4a6a' : 'rgba(42,36,32,0.55)',
+                              border: already ? '1px solid #9a4a6a40' : '1px solid transparent',
+                              cursor: already ? 'default' : 'pointer',
+                            }}
+                            title={already ? 'Already added' : 'Click to add'}
+                          >
+                            {q}
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -914,7 +1043,10 @@ export default function ShadowWork() {
   async function fetchEncounters() {
     const { data } = await supabase
       .from('shadow_encounters')
-      .select('*')
+      .select(`
+        *,
+        dreams ( id, title, dream_date )
+      `)
       .eq('user_id', user.id)
       .order('encounter_date', { ascending: false });
     setEncounters(data || []);

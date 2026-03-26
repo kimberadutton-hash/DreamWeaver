@@ -800,6 +800,8 @@ Shadow material appears as:
 
 Be specific to what is actually in this dream. Do not impose shadow interpretation where it is not clearly present. If shadow material is minimal or absent, say so honestly.
 
+projectedQualities must be 1-4 word phrases naming the disowned quality. Examples: "reckless boldness", "shameless desire", "cold indifference", "ruthless ambition". Never full sentences. Maximum 4 words each.
+
 Never use action notations in asterisks.
 Return JSON only.`;
 
@@ -814,7 +816,7 @@ Respond ONLY with valid JSON:
   "shadowFigures": [
     { "figure": "description", "quality": "the quality this figure may carry", "dreamEvidence": "specific quote or reference from the dream" }
   ],
-  "projectedQualities": ["quality that may belong to dreamer"],
+  "projectedQualities": ["1-4 word phrase, e.g. 'reckless boldness'"],
   "reflectionPrompt": "A single honest question to sit with — specific to this dream's shadow content. If shadowPresent is false, return null."
 }`;
 
@@ -826,6 +828,33 @@ Respond ONLY with valid JSON:
   });
 
   return parseNarrativeJSON(text);
+}
+
+// ── Generate a suggested title for a shadow encounter ─────────────────────────
+// Haiku — fast. Called when form opens from DreamDetail prefill.
+
+export async function generateEncounterTitle({ figureName, projectedQualities, dreamTitle }) {
+  const systemPrompt = `You are naming a shadow encounter — a moment of meeting with a disowned part of the psyche.
+Return a 3-5 word evocative title. Examples:
+- "The permission-seeking shadow"
+- "Recklessness in the cathedral"
+- "Charles and the unlived boldness"
+- "The figure at the threshold"
+Name it as you would name a dream — specific, imaginal, not generic.
+Return only the title, no punctuation, no quotes, no explanation.`;
+
+  const userPrompt = [
+    figureName ? `Shadow figure: ${figureName}` : null,
+    projectedQualities?.length ? `Qualities: ${projectedQualities.join(', ')}` : null,
+    dreamTitle ? `From the dream: "${dreamTitle}"` : null,
+  ].filter(Boolean).join('\n');
+
+  return call({
+    messages: [{ role: 'user', content: userPrompt }],
+    system: systemPrompt,
+    maxTokens: 24,
+    model: AI_MODELS.title,
+  });
 }
 
 // ── Suggest active complexes from the full dream archive ─────────────────────
