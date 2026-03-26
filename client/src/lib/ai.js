@@ -18,6 +18,8 @@ const AI_MODELS = {
   suggestions: 'claude-haiku-4-5-20251001',
   preparation: 'claude-haiku-4-5-20251001',
   embodiment:  'claude-haiku-4-5-20251001',
+  shadow:      'claude-haiku-4-5-20251001',
+  complexes:   'claude-opus-4-5',
 };
 
 export function getStoredApiKey() {
@@ -776,4 +778,108 @@ export async function transcribeImage(base64Image) {
     maxTokens: 2048,
     model: AI_MODELS.transcription,
   });
+}
+
+// ── Identify shadow material in a dream ──────────────────────────────────────
+// Haiku — fast. Returns JSON with shadow figures and a reflection prompt.
+// Result is saved to dreams.shadow_analysis to avoid re-running.
+
+export async function identifyShadowMaterial({ dreamBody, dreamArchetypes, dreamSymbols, existingShadowEncounters }) {
+  const encountersCtx = existingShadowEncounters?.length
+    ? `\nRecent shadow encounters for context:\n${existingShadowEncounters.map(e => `- "${e.title}"${e.projected_quality ? ` (quality: ${e.projected_quality})` : ''}`).join('\n')}`
+    : '';
+
+  const systemPrompt = `You are a Jungian analyst reading a dream for shadow material — qualities, figures, or situations that may represent disowned aspects of the dreamer's psyche.
+
+Shadow material appears as:
+- Threatening or repulsive figures of the same gender as the dreamer
+- Qualities the dreamer judges harshly in others within the dream
+- Figures the dreamer tries to escape, hide from, or destroy
+- Situations of profound shame or exposure
+
+Be specific to what is actually in this dream. Do not impose shadow interpretation where it is not clearly present. If shadow material is minimal or absent, say so honestly.
+
+Never use action notations in asterisks.
+Return JSON only.`;
+
+  const userPrompt = `Dream: ${dreamBody}
+${dreamArchetypes?.length ? `\nArchetypes identified: ${dreamArchetypes.join(', ')}` : ''}
+${dreamSymbols?.length ? `Symbols identified: ${dreamSymbols.join(', ')}` : ''}
+${encountersCtx}
+
+Respond ONLY with valid JSON:
+{
+  "shadowPresent": true,
+  "shadowFigures": [
+    { "figure": "description", "quality": "the quality this figure may carry", "dreamEvidence": "specific quote or reference from the dream" }
+  ],
+  "projectedQualities": ["quality that may belong to dreamer"],
+  "reflectionPrompt": "A single honest question to sit with — specific to this dream's shadow content. If shadowPresent is false, return null."
+}`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: userPrompt }],
+    system: systemPrompt,
+    maxTokens: 768,
+    model: AI_MODELS.shadow,
+  });
+
+  return parseNarrativeJSON(text);
+}
+
+// ── Suggest active complexes from the full dream archive ─────────────────────
+// Opus — uses full archive pattern data to identify autonomous complexes.
+// Returns JSON with complexes array.
+
+export async function suggestComplexes({ allArchetypes, allSymbols, allMoods, dreamTitles, existingComplexes }) {
+  const systemPrompt = `You are a Jungian analyst reading the pattern of someone's dream archive to identify active psychological complexes — autonomous clusters of emotion, memory, and behavior running beneath awareness.
+
+A complex shows up in dreams through:
+- Recurring figures carrying the same emotional charge
+- Recurring situations and settings
+- Recurring moods attached to specific themes
+- Recurring symbols pointing to the same psychological territory
+
+Suggest only complexes that are clearly evidenced in the material provided. Do not suggest generic textbook complexes — suggest complexes specific to THIS person's pattern. Name each complex as this person would recognize it, not as a clinical label.
+
+Be honest if the material suggests fewer than 5 complexes — do not pad the list.
+
+Never use action notations in asterisks.
+Return JSON only.`;
+
+  const archetypeLines = (allArchetypes || []).slice(0, 20).map(([name, count]) => `${name} (${count}x)`).join(', ');
+  const symbolLines = (allSymbols || []).slice(0, 30).map(([name, count]) => `${name} (${count}x)`).join(', ');
+  const moodLines = (allMoods || []).slice(0, 15).map(([name, count]) => `${name} (${count}x)`).join(', ');
+  const existingNote = existingComplexes?.length
+    ? `\nAlready identified: ${existingComplexes.join(', ')} — do not re-suggest these.`
+    : '';
+
+  const userPrompt = `DREAM ARCHIVE PATTERNS:
+Most frequent archetypes: ${archetypeLines || 'none'}
+Most frequent symbols: ${symbolLines || 'none'}
+Most frequent moods: ${moodLines || 'none'}
+Dream titles (sample): ${(dreamTitles || []).slice(0, 20).join(', ')}
+${existingNote}
+
+Respond ONLY with valid JSON:
+{
+  "complexes": [
+    {
+      "name": "evocative name specific to this person",
+      "description": "1-2 sentences on what this complex seems to be",
+      "dreamEvidence": "specific patterns that suggest this complex",
+      "relatedArchetypes": ["archetype names"],
+      "integrationStatus": "active"
+    }
+  ]
+}`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: userPrompt }],
+    system: systemPrompt,
+    maxTokens: 1536,
+    model: AI_MODELS.complexes,
+  });
+
+  return parseNarrativeJSON(text);
 }

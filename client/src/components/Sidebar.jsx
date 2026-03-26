@@ -8,6 +8,7 @@ const NAV_GROUPS = [
       { to: '/new',          label: 'Record a Dream',     icon: '✦' },
       { to: '/archive',      label: 'Dream Archive',       icon: '◎' },
       { to: '/imagination',  label: 'Active Imagination',  icon: '◎' },
+      { to: '/shadow',       label: 'Shadow Work',         icon: '◈' },
     ],
   },
   {
@@ -15,7 +16,9 @@ const NAV_GROUPS = [
     items: [
       { to: '/individuation', label: 'My Journey',           icon: '⌾' },
       { to: '/symbols',       label: 'Symbols & Archetypes', icon: '◈' },
+      { to: '/complexes',     label: 'Complexes',            icon: '◉' },
       { to: '/timeline',      label: 'Timeline',             icon: '◌' },
+      { to: '/series',        label: 'Dream Series',         icon: '◌' },
     ],
   },
   {
