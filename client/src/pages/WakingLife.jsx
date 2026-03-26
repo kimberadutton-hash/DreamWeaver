@@ -140,7 +140,7 @@ async function getSignedUrl(path) {
 async function hydrateSignedUrls(entries) {
   return Promise.all(
     entries.map(async entry => {
-      if (!entry.media_url || entry.media_type !== 'image') return entry;
+      if (!entry.media_url) return entry;
       const signedUrl = await getSignedUrl(entry.media_url);
       return { ...entry, media_url_signed: signedUrl };
     })
