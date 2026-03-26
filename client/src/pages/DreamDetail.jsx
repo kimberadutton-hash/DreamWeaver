@@ -405,6 +405,9 @@ export default function DreamDetail() {
               <Link to="/letter" className="text-xs font-body text-ink/30 dark:text-white/25 hover:text-plum dark:hover:text-gold transition-colors">
                 ◎ Prepare session letter →
               </Link>
+              <Link to={`/imagination?dreamId=${dream.id}`} className="text-xs font-body text-ink/30 dark:text-white/25 hover:text-plum dark:hover:text-gold transition-colors">
+                ◎ Begin active imagination with a figure from this dream →
+              </Link>
             </div>
           </div>
         </CollapsibleSection>

@@ -194,6 +194,79 @@ create policy "Users can delete own narratives" on individuation_narratives
 
 create index if not exists individuation_narratives_user_id on individuation_narratives(user_id, generated_at desc);
 
+-- Active imagination sessions
+create table if not exists imagination_sessions (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  figure_name text not null,
+  figure_description text,
+  linked_dream_id uuid references dreams(id) on delete set null,
+  messages jsonb not null default '[]',
+  session_date date default current_date,
+  closed_at timestamptz,
+  closing_reflection text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table imagination_sessions enable row level security;
+
+create policy "Users can view own sessions" on imagination_sessions
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own sessions" on imagination_sessions
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own sessions" on imagination_sessions
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own sessions" on imagination_sessions
+  for delete using (auth.uid() = user_id);
+
+create index if not exists imagination_sessions_user_id on imagination_sessions(user_id, created_at desc);
+
+create trigger imagination_sessions_updated_at
+  before update on imagination_sessions
+  for each row execute procedure update_updated_at();
+
+-- Waking life entries
+create table if not exists waking_life_entries (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users on delete cascade not null,
+  entry_date date not null default current_date,
+  entry_type text not null,
+  title text not null,
+  description text,
+  media_url text,
+  media_type text,
+  media_filename text,
+  linked_dream_id uuid references dreams(id) on delete set null,
+  linked_focus_id uuid references analyst_focuses(id) on delete set null,
+  tags text[] default '{}',
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table waking_life_entries enable row level security;
+
+create policy "Users can view own entries" on waking_life_entries
+  for select using (auth.uid() = user_id);
+
+create policy "Users can insert own entries" on waking_life_entries
+  for insert with check (auth.uid() = user_id);
+
+create policy "Users can update own entries" on waking_life_entries
+  for update using (auth.uid() = user_id);
+
+create policy "Users can delete own entries" on waking_life_entries
+  for delete using (auth.uid() = user_id);
+
+create index if not exists waking_life_entries_user_id on waking_life_entries(user_id, entry_date desc);
+
+create trigger waking_life_entries_updated_at
+  before update on waking_life_entries
+  for each row execute procedure update_updated_at();
+
 -- Indexes for performance
 create index if not exists dreams_user_id_created_at on dreams(user_id, created_at desc);
 create index if not exists dreams_user_id_dream_date on dreams(user_id, dream_date desc);

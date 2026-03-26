@@ -17,6 +17,7 @@ import Settings from './pages/Settings';
 import GuideLetter from './pages/GuideLetter';
 import Reference from './pages/Reference';
 import WakingLife from './pages/WakingLife';
+import ActiveImagination from './pages/ActiveImagination';
 
 function LoadingScreen() {
   return (
@@ -72,6 +73,7 @@ export default function App() {
                     <Route path="/reference" element={<Reference />} />
                     <Route path="/individuation" element={<Individuation />} />
                     <Route path="/waking-life" element={<WakingLife />} />
+                    <Route path="/imagination" element={<ActiveImagination />} />
                     <Route path="/import" element={<ImportCSV />} />
                     <Route path="/settings" element={<Settings />} />
                   </Routes>

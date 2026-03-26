@@ -8,13 +8,15 @@ const API_URL = 'https://api.anthropic.com/v1/messages';
 // ── Model configuration ───────────────────────────────────────────────────────
 // To upgrade a model, change it here only.
 const AI_MODELS = {
-  analysis:     'claude-opus-4-5',
-  narrative:    'claude-opus-4-5',
+  analysis:    'claude-opus-4-5',
+  narrative:   'claude-opus-4-5',
   transcription:'claude-opus-4-5',
-  tagging:      'claude-haiku-4-5-20251001',
-  title:        'claude-haiku-4-5-20251001',
-  summary:      'claude-haiku-4-5-20251001',
-  suggestions:  'claude-haiku-4-5-20251001',
+  reflection:  'claude-opus-4-5',
+  tagging:     'claude-haiku-4-5-20251001',
+  title:       'claude-haiku-4-5-20251001',
+  summary:     'claude-haiku-4-5-20251001',
+  suggestions: 'claude-haiku-4-5-20251001',
+  preparation: 'claude-haiku-4-5-20251001',
 };
 
 export function getStoredApiKey() {
@@ -602,6 +604,113 @@ Respond ONLY with valid JSON in this exact structure — no text before or after
   });
 
   return parseNarrativeJSON(text);
+}
+
+// ── Prepare for an active imagination session ────────────────────────────────
+// Helps the person arrive at the session with clarity — never voices the figure.
+// Returns JSON: { figureProfile, suggestedOpening, questionsToHold, caution }
+
+export async function prepareImagination({
+  figureName,
+  figureDescription,
+  linkedDream,
+  recentDreamAppearances,
+}) {
+  let dreamContext = '';
+
+  if (linkedDream) {
+    dreamContext += `\nLinked dream: "${linkedDream.title || 'Untitled'}"`;
+    if (linkedDream.dream_date) dreamContext += ` (${linkedDream.dream_date})`;
+    dreamContext += `\nDream text: ${(linkedDream.body || '').slice(0, 600)}`;
+    if (linkedDream.archetypes?.length) dreamContext += `\nArchetypes: ${linkedDream.archetypes.join(', ')}`;
+    if (linkedDream.symbols?.length) dreamContext += `\nSymbols: ${linkedDream.symbols.join(', ')}`;
+  }
+
+  if (recentDreamAppearances?.length) {
+    dreamContext += `\n\nOther dreams where this figure or related archetypes have appeared:\n`;
+    recentDreamAppearances.forEach(d => {
+      dreamContext += `\n— "${d.title || 'Untitled'}" (${d.date || ''}): ${(d.body_excerpt || '').slice(0, 200)}`;
+      if (d.archetypes?.length) dreamContext += `\n  Archetypes: ${d.archetypes.join(', ')}`;
+      if (d.symbols?.length) dreamContext += `\n  Symbols: ${d.symbols.join(', ')}`;
+    });
+  }
+
+  const systemPrompt = `You are helping someone prepare for a session of active imagination — a Jungian practice of consciously engaging with figures from the unconscious by writing a dialogue with them in one's own words.
+
+Your role is to help the person arrive at the session with clarity and intention. You are not the figure. You will never speak as the figure. You are helping the person prepare to find the figure themselves — in their own words, from their own depths.
+
+Never use action or emotion notations in asterisks. Never perform. Be brief, warm, and specific to the actual dream material provided. Do not invent details not present in the material.`;
+
+  const userPrompt = `Figure name: ${figureName}
+${figureDescription ? `What the person knows about this figure: ${figureDescription}` : ''}
+${dreamContext || '\nNo specific dream appearances found in the archive.'}
+
+Prepare them for this active imagination session. Respond ONLY with valid JSON — no prose before or after:
+{
+  "figureProfile": "2-3 sentences on how this figure has appeared across the dreams — what they carry, what feeling they bring, what they seem to want from the dreamer. Specific to actual dream content only. No invented details.",
+  "suggestedOpening": "A single honest sentence the person might use to open the dialogue. Ground it in the actual dream material.",
+  "questionsToHold": ["question 1", "question 2"],
+  "caution": "One honest caution if genuinely relevant to the material — e.g. if the figure carries trauma. Return null if not clearly applicable."
+}`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: userPrompt }],
+    system: systemPrompt,
+    maxTokens: 1024,
+    model: AI_MODELS.preparation,
+  });
+
+  return parseNarrativeJSON(text);
+}
+
+// ── Reflect on a completed active imagination session ─────────────────────────
+// Reads the finished dialogue (written by the person) and offers an analyst's
+// perspective. Never voices the figure. Returns plain prose.
+
+export async function reflectOnSession({
+  figureName,
+  sessionMessages,
+  closingReflection,
+  linkedDream,
+}) {
+  const dialogueText = (sessionMessages || [])
+    .map(msg => {
+      const label = msg.role === 'ego' ? 'DREAMER' : figureName.toUpperCase();
+      return `${label}: ${msg.content}`;
+    })
+    .join('\n\n');
+
+  let dreamContext = '';
+  if (linkedDream) {
+    dreamContext = `\nThis session arose from the dream "${linkedDream.title || 'Untitled'}"`;
+    if (linkedDream.dream_date) dreamContext += ` (${linkedDream.dream_date})`;
+    dreamContext += '.';
+    if (linkedDream.archetypes?.length) dreamContext += ` Archetypes in that dream: ${linkedDream.archetypes.join(', ')}.`;
+  }
+
+  const systemPrompt = `You are a Jungian analyst reading a record of active imagination work that someone has just completed. They wrote both sides of the dialogue themselves — the ego voice and the figure's voice, in their own words.
+
+Your role is to reflect on what emerged in their own writing — not to interpret it definitively, but to notice what seems significant, what surprised, what the figure seemed to carry, and what the exchange might be pointing toward.
+
+You are reading their work, not doing it for them. Be specific to what they actually wrote. Do not invent or assume anything beyond what is on the page. Be brief — 2-3 paragraphs. Leave room for their own knowing.
+
+Never use action or emotion notations in asterisks. Never perform. Write as an analyst reads — with attention, care, and restraint.`;
+
+  const userPrompt = `Figure: ${figureName}
+${dreamContext}
+
+THE DIALOGUE (written by the person — both sides):
+${dialogueText}
+${closingReflection ? `\nTHEIR OWN CLOSING REFLECTION:\n${closingReflection}` : ''}
+
+Please reflect on this session.`;
+
+  return call({
+    messages: [{ role: 'user', content: userPrompt }],
+    system: systemPrompt,
+    maxTokens: 1024,
+    model: AI_MODELS.reflection,
+  });
 }
 
 // ── Transcribe handwritten text from an image ────────────────────────────────

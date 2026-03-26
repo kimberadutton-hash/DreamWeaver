@@ -5,8 +5,9 @@ const NAV_GROUPS = [
   {
     label: 'The Inner Work',
     items: [
-      { to: '/new',     label: 'Record a Dream',     icon: '✦' },
-      { to: '/archive', label: 'Dream Archive',       icon: '◎' },
+      { to: '/new',          label: 'Record a Dream',     icon: '✦' },
+      { to: '/archive',      label: 'Dream Archive',       icon: '◎' },
+      { to: '/imagination',  label: 'Active Imagination',  icon: '◎' },
     ],
   },
   {
