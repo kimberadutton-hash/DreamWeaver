@@ -18,6 +18,12 @@ const NAV_GROUPS = [
     ],
   },
   {
+    label: 'The Embodiment',
+    items: [
+      { to: '/waking-life', label: 'Waking Life', icon: '◉' },
+    ],
+  },
+  {
     label: 'The Relationship',
     items: [
       { to: '/focus',     label: 'Analyst Focus',   icon: '◇' },

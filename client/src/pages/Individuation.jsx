@@ -137,7 +137,10 @@ export default function Individuation() {
   // Living questions — unanswered embodiment prompts
   const [livingQuestions, setLivingQuestions] = useState([]);
 
-  useEffect(() => { loadData(); loadLivingQuestions(); }, []);
+  // Recent waking life entries for strip
+  const [recentWakingLife, setRecentWakingLife] = useState([]);
+
+  useEffect(() => { loadData(); loadLivingQuestions(); loadRecentWakingLife(); }, []);
 
   async function loadData() {
     const [{ count }, { data: narratives }] = await Promise.all([
@@ -163,6 +166,16 @@ export default function Individuation() {
       .order('created_at', { ascending: false })
       .limit(5);
     setLivingQuestions(data || []);
+  }
+
+  async function loadRecentWakingLife() {
+    const { data } = await supabase
+      .from('waking_life_entries')
+      .select('id, entry_type, entry_date, title, media_url, media_type')
+      .eq('user_id', user.id)
+      .order('entry_date', { ascending: false })
+      .limit(3);
+    setRecentWakingLife(data || []);
   }
 
   async function handleSatWith(dreamId) {
@@ -355,6 +368,62 @@ export default function Individuation() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── Recent Waking Life strip ── */}
+        {recentWakingLife.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-3">
+              <p style={{ fontSize: 9, letterSpacing: '0.18em' }} className="uppercase font-body text-ink/35 dark:text-white/25">
+                Waking Life
+              </p>
+              <Link to="/waking-life" className="text-xs font-body text-gold/60 hover:text-gold transition-colors">
+                View all →
+              </Link>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {recentWakingLife.map(entry => {
+                const WAKING_COLORS = {
+                  art: '#3d2b4a', music: '#4a7c74', writing: '#7c6b5a',
+                  milestone: '#b8924a', body: '#9a4a6a', synchronicity: '#3a5a7a',
+                };
+                const color = WAKING_COLORS[entry.entry_type] || '#7c6b5a';
+                return (
+                  <Link
+                    key={entry.id}
+                    to="/waking-life"
+                    className="shrink-0 w-44 rounded-xl border border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/3 overflow-hidden hover:border-black/15 dark:hover:border-white/15 transition-all duration-150"
+                  >
+                    {entry.media_url && entry.media_type === 'image' && (
+                      <div className="w-full h-24 overflow-hidden">
+                        <img src={entry.media_url} alt={entry.title} className="w-full h-full object-cover" />
+                      </div>
+                    )}
+                    <div className="px-3 py-2.5">
+                      <span
+                        style={{
+                          fontSize: 8,
+                          letterSpacing: '0.15em',
+                          color,
+                          backgroundColor: color + '22',
+                          padding: '1px 6px',
+                          borderRadius: 99,
+                          textTransform: 'uppercase',
+                          fontFamily: 'monospace',
+                          display: 'inline-block',
+                          marginBottom: 4,
+                        }}
+                      >
+                        {entry.entry_type}
+                      </span>
+                      <p className="text-xs font-body text-ink/75 dark:text-white/60 leading-snug line-clamp-2">{entry.title}</p>
+                      <p className="text-xs font-body text-ink/30 dark:text-white/20 mt-0.5">{formatDate(entry.entry_date)}</p>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         )}
 
