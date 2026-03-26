@@ -140,7 +140,7 @@ function EncounterCard({ encounter, onClick }) {
           {encounter.description}
         </p>
       )}
-      {encounter.shadow_figures?.length > 0 && (
+      {Array.isArray(encounter.shadow_figures) && encounter.shadow_figures.length > 0 && (
         <div className="flex flex-wrap gap-1 mt-3">
           {encounter.shadow_figures.map(fig => (
             <span
@@ -250,6 +250,9 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
 
           {encounter.description && (
             <div className="space-y-3 mb-6">
+              <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-2">
+                Notes
+              </p>
               {encounter.description.split(/\n\n+/).map((p, i) => (
                 <p key={i} className="text-[15px] font-body text-ink/80 leading-relaxed">
                   {p.trim()}
@@ -258,7 +261,7 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
             </div>
           )}
 
-          {encounter.shadow_figures?.length > 0 && (
+          {Array.isArray(encounter.shadow_figures) && encounter.shadow_figures.length > 0 && (
             <div className="mb-5">
               <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-2">
                 Shadow Figures
@@ -277,14 +280,18 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
             </div>
           )}
 
-          {encounter.reflection_prompt && (
-            <div className="rounded-xl border border-black/8 bg-white/50 px-4 py-4 mb-5">
-              <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-2">
-                Reflection
+          {encounter.ai_reflection && (
+            <div className="mb-5">
+              <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-3">
+                Shadow Reflection
               </p>
-              <p className="font-display italic text-base text-ink/70 leading-relaxed">
-                {encounter.reflection_prompt}
-              </p>
+              <div className="pl-4 border-l-2 border-gold/40">
+                {encounter.ai_reflection.split(/\n\n+/).map((block, i) => (
+                  <p key={i} className="text-sm font-body text-ink/70 leading-relaxed mb-2 last:mb-0 whitespace-pre-line">
+                    {block}
+                  </p>
+                ))}
+              </div>
             </div>
           )}
 
@@ -327,16 +334,43 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
   );
 }
 
+// ── Format shadow analysis object → readable text for ai_reflection ──────────
+
+function formatShadowAnalysis(analysis) {
+  const parts = [];
+  if (Array.isArray(analysis.shadowFigures) && analysis.shadowFigures.length) {
+    const names = analysis.shadowFigures
+      .map(f => typeof f === 'string' ? f : (f?.figure || ''))
+      .filter(Boolean);
+    if (names.length) parts.push(`Shadow figures: ${names.join(', ')}`);
+  }
+  if (Array.isArray(analysis.projectedQualities) && analysis.projectedQualities.length) {
+    parts.push(`Projected qualities:\n${analysis.projectedQualities.map(q => `- ${q}`).join('\n')}`);
+  }
+  if (analysis.reflectionPrompt) {
+    parts.push(`Reflection:\n${analysis.reflectionPrompt}`);
+  }
+  return parts.join('\n\n');
+}
+
 // ── Encounter Form Panel ────────────────────────────────────────────────────
 
-function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, onClose, onSaved, userId }) {
+function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, shadowPrefill, onClose, onSaved, userId }) {
   const isEdit = !!initialEncounter?.id;
 
+  // PATH 1: Format AI content from DreamDetail prefill → goes to ai_reflection, never description
+  const prefillAiReflection = shadowPrefill ? formatShadowAnalysis(shadowPrefill) : '';
+
+  const firstQuality = shadowPrefill?.projectedQualities?.[0] || '';
+  const prefillQualityTruncated = firstQuality.length > 40
+    ? firstQuality.slice(0, 40) + '…'
+    : firstQuality;
+
   const [encounterType, setEncounterType] = useState(initialEncounter?.encounter_type || 'dream');
-  const [encounterDate, setEncounterDate] = useState(initialEncounter?.encounter_date || todayString());
+  const [encounterDate, setEncounterDate] = useState(initialEncounter?.encounter_date || shadowPrefill?.dreamDate || todayString());
   const [title, setTitle] = useState(initialEncounter?.title || '');
   const [description, setDescription] = useState(initialEncounter?.description || '');
-  const [projectedQuality, setProjectedQuality] = useState(initialEncounter?.projected_quality || prefillQuality || '');
+  const [projectedQuality, setProjectedQuality] = useState(initialEncounter?.projected_quality || prefillQualityTruncated || prefillQuality || '');
   const [integrationStatus, setIntegrationStatus] = useState(initialEncounter?.integration_status || 'active');
   const [linkedDream, setLinkedDream] = useState(null);
   const [dreamQuery, setDreamQuery] = useState('');
@@ -349,6 +383,10 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
   const [aiError, setAiError] = useState(null);
+  // PATH 1: pre-filled from DreamDetail; PATH 2: set after handleRunAI; saved to ai_reflection column
+  const [pendingAiReflection, setPendingAiReflection] = useState(
+    prefillAiReflection || initialEncounter?.ai_reflection || ''
+  );
 
   const dreamDropdownRef = useRef(null);
 
@@ -360,10 +398,15 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
         .order('dream_date', { ascending: false });
       setAllDreams(dreams || []);
 
-      // Pre-fill linked dream from URL param
-      if (prefillDreamId && dreams?.length) {
-        const match = dreams.find(d => d.id === prefillDreamId);
+      // Pre-fill linked dream from sessionStorage prefill or URL param
+      const targetId = shadowPrefill?.dreamId || prefillDreamId;
+      if (targetId && dreams?.length) {
+        const match = dreams.find(d => d.id === targetId);
         if (match) setLinkedDream(match);
+        else if (shadowPrefill?.dreamId) {
+          // Dream exists but may not be in fetched list — set minimal object
+          setLinkedDream({ id: shadowPrefill.dreamId, title: shadowPrefill.dreamTitle, dream_date: shadowPrefill.dreamDate });
+        }
       }
     }
     load();
@@ -411,7 +454,9 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
         existingShadowEncounters: recentEncounters || [],
       });
       setAiResult(result);
-      // Auto-fill fields from AI result if empty
+      // PATH 2: store formatted analysis for ai_reflection column — never written into description
+      setPendingAiReflection(formatShadowAnalysis(result));
+      // Auto-fill projected quality field if empty
       if (!projectedQuality && result.projectedQualities?.length) {
         setProjectedQuality(result.projectedQualities[0]);
       }
@@ -431,12 +476,11 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
         encounter_type: encounterType,
         encounter_date: encounterDate,
         title: title.trim(),
-        description: description.trim() || null,
+        description: description.trim() || null,        // user-written only
         projected_quality: projectedQuality.trim() || null,
         integration_status: integrationStatus,
         linked_dream_id: linkedDream?.id || null,
-        shadow_figures: aiResult?.shadowFigures?.length ? aiResult.shadowFigures : null,
-        reflection_prompt: aiResult?.reflectionPrompt || null,
+        ai_reflection: pendingAiReflection.trim() || null,  // AI-generated only
       };
 
       let result;
@@ -651,46 +695,86 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
           </div>
 
           {/* AI shadow material */}
-          <div className="rounded-xl border border-black/8 bg-white/30 px-4 py-4">
+          <div className="rounded-xl border bg-white/30 px-4 py-4"
+            style={{ borderColor: (aiResult || pendingAiReflection) ? 'rgba(0,0,0,0.08)' : '#3d2b4a30' }}
+          >
             <div className="flex items-center justify-between mb-2">
               <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30">
-                Shadow Material Analysis
+                Shadow Reflection
               </p>
-              <button
-                onClick={handleRunAI}
-                disabled={aiLoading}
-                className="text-xs font-body text-gold/70 hover:text-gold disabled:opacity-40 transition-colors"
-              >
-                {aiLoading ? 'Listening…' : aiResult ? '↻ Re-run' : '✦ Identify shadow material'}
-              </button>
+              {(aiResult || pendingAiReflection) && (
+                <button
+                  onClick={handleRunAI}
+                  disabled={aiLoading}
+                  className="text-xs font-body text-ink/25 hover:text-ink/50 disabled:opacity-40 transition-colors"
+                >
+                  {aiLoading ? 'Listening…' : '↺ Re-run analysis'}
+                </button>
+              )}
             </div>
-            <p className="text-xs font-body text-ink/35 italic mb-3">
-              Uses your linked dream or notes to surface shadow figures and a reflection question.
-            </p>
 
-            {aiError && (
-              <div className="mb-3"><AiErrorMessage error={aiError} /></div>
+            {/* PATH 1: prefill from DreamDetail — show read-only text, no aiResult chips */}
+            {pendingAiReflection && !aiResult && !aiLoading && (
+              <div className="pl-3 border-l-2 border-gold/40">
+                {pendingAiReflection.split(/\n\n+/).map((block, i) => (
+                  <p key={i} className="text-sm font-body text-ink/65 leading-relaxed mb-2 last:mb-0 whitespace-pre-line">
+                    {block}
+                  </p>
+                ))}
+              </div>
+            )}
+
+            {!pendingAiReflection && !aiResult && !aiLoading && (
+              <>
+                <p className="text-xs font-body text-ink/40 italic mb-3 leading-relaxed">
+                  Before recording, let the analyst listen to what this encounter may be carrying.
+                </p>
+                <button
+                  onClick={handleRunAI}
+                  className="w-full py-2.5 rounded-lg text-sm font-body transition-all duration-150 border"
+                  style={{
+                    borderColor: '#3d2b4a40',
+                    backgroundColor: '#3d2b4a08',
+                    color: '#3d2b4a',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#3d2b4a14'; }}
+                  onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#3d2b4a08'; }}
+                >
+                  ◈ Identify shadow material
+                </button>
+              </>
+            )}
+
+            {aiLoading && (
+              <p className="text-sm font-body text-ink/40 italic text-center py-2">Listening…</p>
+            )}
+
+            {aiError && !aiLoading && (
+              <div className="mt-3"><AiErrorMessage error={aiError} /></div>
             )}
 
             {aiResult && (
               <div className="space-y-3">
-                {aiResult.shadowFigures?.length > 0 && (
+                {Array.isArray(aiResult.shadowFigures) && aiResult.shadowFigures.length > 0 && (
                   <div>
                     <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 mb-1.5">Shadow figures</p>
                     <div className="flex flex-wrap gap-1.5">
-                      {aiResult.shadowFigures.map(fig => (
+                      {aiResult.shadowFigures.map((fig, i) => {
+                        const label = typeof fig === 'string' ? fig : (fig?.figure || fig?.quality || '');
+                        return label ? (
                         <span
-                          key={fig}
+                          key={label + i}
                           className="px-2.5 py-0.5 rounded-full text-xs font-body"
                           style={{ backgroundColor: '#3d2b4a1a', color: '#3d2b4a', fontFamily: 'monospace' }}
                         >
-                          {fig}
+                          {label}
                         </span>
-                      ))}
+                        ) : null;
+                      })}
                     </div>
                   </div>
                 )}
-                {aiResult.projectedQualities?.length > 0 && (
+                {Array.isArray(aiResult.projectedQualities) && aiResult.projectedQualities.length > 0 && (
                   <div>
                     <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 mb-1.5">Projected qualities</p>
                     <div className="flex flex-wrap gap-1.5">
@@ -799,15 +883,31 @@ function IntegrationStatusTab({ encounters, onEncounterClick }) {
 export default function ShadowWork() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const prefillDreamId = searchParams.get('dreamId');
-  const prefillQuality = searchParams.get('quality') || '';
+
+  const [shadowPrefill, setShadowPrefill] = useState(null);
+  const prefillDreamId = shadowPrefill?.dreamId || searchParams.get('dreamId');
+  const prefillQuality = shadowPrefill?.projectedQualities?.[0] || searchParams.get('quality') || '';
 
   const [encounters, setEncounters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState('encounters');
-  const [showForm, setShowForm] = useState(!!prefillDreamId);
+  const [showForm, setShowForm] = useState(!!searchParams.get('dreamId'));
   const [editingEncounter, setEditingEncounter] = useState(null);
   const [selectedEncounter, setSelectedEncounter] = useState(null);
+
+  // Read sessionStorage whenever fromDream=true appears in the URL
+  // (works whether component was just mounted or was already mounted)
+  useEffect(() => {
+    if (searchParams.get('fromDream') !== 'true') return;
+    try {
+      const raw = sessionStorage.getItem('shadow-encounter-prefill');
+      if (raw) {
+        sessionStorage.removeItem('shadow-encounter-prefill');
+        setShadowPrefill(JSON.parse(raw));
+        setShowForm(true);
+      }
+    } catch {}
+  }, [searchParams.get('fromDream')]);
 
   useEffect(() => { fetchEncounters(); }, []);
 
@@ -934,6 +1034,7 @@ export default function ShadowWork() {
           initialEncounter={editingEncounter}
           prefillDreamId={prefillDreamId}
           prefillQuality={prefillQuality}
+          shadowPrefill={editingEncounter ? null : shadowPrefill}
           onClose={() => { setShowForm(false); setEditingEncounter(null); }}
           onSaved={handleSaved}
           userId={user.id}

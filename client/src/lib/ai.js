@@ -128,6 +128,7 @@ export async function analyzeDream({
   privacySettings, notes, analyst_session,
   analystFocus,
   dreamContext,   // optional — pass result of buildDreamContext()
+  dreamDate,      // optional — the date of the dream being analyzed
 }) {
   const moodStr = Array.isArray(mood) ? mood.join(', ') : (mood || '');
 
@@ -150,7 +151,7 @@ export async function analyzeDream({
       : 'none identified yet';
 
     contextSection = `RECENT DREAM HISTORY (for context):
-This dreamer has been working with these themes recently.
+${dreamDate ? `The dream you are analyzing occurred on ${dreamDate}. The context dreams below all occurred before this date. Read this dream as belonging to its own moment in the dreamer's journey — not through the lens of later development.\n` : ''}This dreamer has been working with these themes recently.
 
 Active archetypes across recent dreams: ${complexStr}
 

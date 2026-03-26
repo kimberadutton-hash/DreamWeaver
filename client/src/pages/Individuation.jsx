@@ -137,10 +137,13 @@ export default function Individuation() {
   // Living questions — unanswered embodiment prompts
   const [livingQuestions, setLivingQuestions] = useState([]);
 
+  // Active complexes strip
+  const [activeComplexes, setActiveComplexes] = useState([]);
+
   // Recent waking life entries for strip
   const [recentWakingLife, setRecentWakingLife] = useState([]);
 
-  useEffect(() => { loadData(); loadLivingQuestions(); loadRecentWakingLife(); }, []);
+  useEffect(() => { loadData(); loadLivingQuestions(); loadActiveComplexes(); loadRecentWakingLife(); }, []);
 
   async function loadData() {
     const [{ count }, { data: narratives }] = await Promise.all([
@@ -166,6 +169,17 @@ export default function Individuation() {
       .order('created_at', { ascending: false })
       .limit(5);
     setLivingQuestions(data || []);
+  }
+
+  async function loadActiveComplexes() {
+    const { data } = await supabase
+      .from('complexes')
+      .select('id, name, integration_status')
+      .eq('user_id', user.id)
+      .in('integration_status', ['active', 'becoming-conscious'])
+      .order('created_at', { ascending: true })
+      .limit(6);
+    setActiveComplexes(data || []);
   }
 
   async function loadRecentWakingLife() {
@@ -368,6 +382,39 @@ export default function Individuation() {
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── Active Complexes strip ── */}
+        {activeComplexes.length > 0 && (
+          <div className="mb-10">
+            <div className="flex items-center justify-between mb-3">
+              <p style={{ fontSize: 9, letterSpacing: '0.18em' }} className="uppercase font-body text-ink/35 dark:text-white/25">
+                Active Complexes
+              </p>
+              <Link to="/complexes" className="text-xs font-body text-gold/60 hover:text-gold transition-colors">
+                View all →
+              </Link>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              {activeComplexes.map(c => {
+                const isActive = c.integration_status === 'active';
+                return (
+                  <Link
+                    key={c.id}
+                    to="/complexes"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-body transition-colors hover:opacity-80"
+                    style={isActive
+                      ? { color: '#8b4a4a', backgroundColor: 'rgba(139,74,74,0.07)', borderColor: 'rgba(139,74,74,0.18)' }
+                      : { color: '#b8924a', backgroundColor: 'rgba(184,146,74,0.07)', borderColor: 'rgba(184,146,74,0.2)' }
+                    }
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: isActive ? '#8b4a4a' : '#b8924a' }} />
+                    {c.name}
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         )}
 

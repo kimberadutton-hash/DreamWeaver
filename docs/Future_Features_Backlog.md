@@ -172,6 +172,20 @@ This is a significant build. Do after:
 
 ---
 
+## Shadow Work — Recurring Projected Qualities
+
+Scan all `shadow_encounters` for `projected_quality` values that share
+significant words or themes. Group encounters under recurring quality
+themes. Display as a "Recurring Qualities" section on the Shadow Work
+page — below the encounters list.
+
+Shows: quality theme, count, list of encounters that reflect it.
+Simple text matching, no AI needed.
+
+Build after several months of encounter data exists.
+
+---
+
 ## Technical & UX
 
 - **Duplicate tag cleanup tool** — Already partially 
@@ -179,6 +193,311 @@ This is a significant build. Do after:
   catch true semantic duplicates across the archive 
   (e.g. "locked door" and "locked doors" as separate 
   tags). Suggest merges, user confirms.
+
+---
+
+## Code & Repository Health
+
+### Pre-presentation repo cleanup
+Before sharing codebase with others:
+- Remove all temporary debug code
+  and console.logs added during development
+- Review component file sizes —
+  any file over 600 lines should be
+  considered for splitting
+- Ensure all environment variables
+  are documented in a .env.example file
+- Review package.json for unused dependencies
+- Ensure README.md accurately describes
+  the project, setup steps, and architecture
+- Run a final audit for hardcoded values
+  that should be in constants.js
+
+Priority: Do before sharing with anyone
+outside personal use.
+
+---
+
+## Analytical Ethics & AI Integrity
+
+### Ethical review of AI analysis quality
+A formal review of whether AI-generated
+analyses stay true to Jungian depth
+psychology or impose interpretations
+without checking for resonance with
+the dreamer.
+
+Questions to investigate:
+- Does the analysis reflect back what
+  is in the dream, or does it project
+  meaning onto it?
+- Does it amplify (circle the symbol
+  from many directions) or does it
+  interpret prematurely?
+- Does it honor the dreamer as the
+  ultimate authority on their own material?
+- Is it doing Jungian amplification
+  or is it doing something closer to
+  Freudian reductionism?
+
+Possible implementation:
+After any AI analysis is generated,
+add a simple resonance check —
+a single question to the dreamer:
+"How much does this analysis resonate
+with you?" with a 1-5 scale and
+optional free text.
+Track resonance scores over time.
+If average resonance is low, surface
+a note that the analysis may need
+to be taken lightly.
+
+Consider adding a "Check for resonance"
+prompt directly in the Jungian
+Reflection section — before the
+dreamer reads the analysis, not after.
+
+Deeper consideration: should the
+analysis be more dialogical —
+asking the dreamer questions rather
+than delivering conclusions?
+Jung never analyzed a dream without
+the patient's associations.
+The app currently skips the
+association step entirely.
+
+Priority: Important before opening
+to other users. Discuss with Doug first.
+
+---
+
+## Timeline & Life Context
+
+### Life events and psychic material timeline
+A unified timeline that shows both
+dreams AND significant life events
+side by side — so the dreamer can
+see what their psyche was processing
+during major life periods.
+
+Integration with existing Timeline page:
+- Extend /timeline to show two tracks:
+  Track 1: Dreams (already exists)
+  Track 2: Life events (new)
+- Life events entered manually:
+  Date, title, category, description
+  Categories: relationship, work,
+  health, loss, transition, creative,
+  spiritual, body, other
+- When viewing a life period, see
+  both what was happening externally
+  and what the dreams were saying
+
+This creates the psychobiographical
+view — the full picture of a life
+and its inner commentary running
+alongside it.
+
+Database: New table life_events
+  (id, user_id, event_date, title,
+  category, description, created_at)
+
+The individuation narrative could
+optionally draw from life events
+when generating — gated behind
+privacy toggle.
+
+---
+
+## Active Imagination Deepening
+
+### Pre-session grounding practices
+Add a preparation ritual before
+entering the Active Imagination
+dialogue space.
+
+Jung's own approach involved:
+- Relaxing the conscious mind without
+  falling asleep (the hypnagogic state)
+- Fixing attention on a dream image
+  or mood
+- Allowing the image to move and
+  develop without directing it
+- Staying present as a witness
+
+Possible implementation:
+A brief optional step before the
+dialogue space opens — a guided
+text-based grounding prompt:
+
+"Before you begin, take a moment.
+Set aside what you know. Set aside
+what you expect [figure name] to say.
+You are not writing a story.
+You are listening for something
+that already exists.
+
+When you feel present — enter."
+
+With a simple "I am present" button
+that opens the dialogue.
+
+### Distinguishing conscious from unconscious voice
+Add guidance on how to know whether
+the figure's voice is genuine or
+whether the ego is doing the writing.
+
+Signs it is genuine:
+- It surprises you
+- It says something you didn't want
+  to hear
+- It refuses to cooperate
+- It has a different emotional quality
+  than your usual inner voice
+
+Signs the ego may be running things:
+- Every response confirms what you
+  already believe
+- The figure is always wise and helpful
+- Nothing disturbs you
+- You feel in control of the dialogue
+
+This could appear as a brief
+educational note in the preparation
+panel — collapsed by default,
+expandable for those who want it.
+
+---
+
+## Mythological Frameworks
+
+### Hero's Journey and Heroine's Journey
+Allow dreamers to optionally map
+their individuation journey against
+mythological frameworks.
+
+Hero's Journey (Joseph Campbell):
+The Ordinary World → Call to Adventure →
+Refusal → Meeting the Mentor →
+Crossing the Threshold → Tests/Allies/Enemies →
+Ordeal → Reward → The Road Back →
+Resurrection → Return with Elixir
+
+Heroine's Journey (Maureen Murdock,
+developed as a feminine alternative
+to Campbell):
+Separation from the Feminine →
+Identification with the Masculine →
+Road of Trials → Finding the Boon →
+Awakening to Feelings of Spiritual Aridity →
+Initiation and Descent →
+Urgent Yearning to Reconnect with the Feminine →
+Healing the Mother/Daughter Split →
+Healing the Wounded Masculine →
+Integration of Masculine and Feminine
+
+Implementation:
+Add to the Reference Library as
+a new category: "Mythological Maps"
+Allow the dreamer to choose which
+framework resonates with them
+(or both, or neither).
+On the My Journey page, optionally
+show where they appear to be in
+their chosen framework —
+informed by the individuation narrative.
+
+Note: These are maps, not prescriptions.
+The app should present them as
+invitations to recognition, not
+diagnostic categories.
+Discuss framing with Doug.
+
+---
+
+## Expanded Inner Work Types
+
+### Multiple entry types beyond dreams
+Psychic material surfaces in many
+contexts beyond nighttime dreams.
+Allow the dreamer to record and
+analyze material from:
+
+- Plant medicine journeys /
+  ceremonial experiences
+- Hypnosis sessions
+- Breathwork experiences
+- Waking visions or spontaneous imagery
+- Deep meditation experiences
+- Somatic experiences with
+  significant psychic content
+
+Implementation:
+Add an "Entry type" field to the
+dream recording form (or create
+a separate but parallel entry flow).
+The analysis prompt adapts based
+on entry type — a plant medicine
+journey is analyzed differently
+than a nighttime dream
+(different symbolic weight,
+different relationship to the ego).
+
+This is a significant expansion —
+design carefully. The core dream
+journal should remain primary.
+Consider whether these belong in
+Dream Weaver (the dream section)
+or in Waking Life (the embodiment section).
+May need its own section entirely.
+Discuss with Doug — he will have
+views on whether plant medicine
+and dream material should be
+treated the same way analytically.
+
+---
+
+## Accessibility & Education
+
+### Onboarding for Jungian newcomers
+Ensure the app is fully usable by
+people with no prior knowledge of
+Jung, dreamwork, or shadow work.
+
+Every section needs:
+- A brief "What is this?" explanation
+  accessible from the section header
+- A "Why does this matter?" note
+  that connects the practice to
+  real life and embodiment
+- Plain language throughout —
+  no jargon without explanation
+- The Reference Library should be
+  linked from everywhere a Jungian
+  term appears
+
+The embodiment principle must be
+visible everywhere:
+Every section should make clear
+that the goal is not understanding
+but integration — not to know more
+about yourself but to live differently.
+
+Consider a "New to this?" mode that
+shows educational overlays for
+first-time visitors to each section.
+Could be toggled off once the
+user feels oriented.
+
+Add to each section's empty state
+a brief orientation:
+Not just "Nothing here yet" but
+"Here is what this practice is for
+and how to begin."
+
+Priority: Important before opening
+to other users who don't have
+the context you have.
 
 ---
 

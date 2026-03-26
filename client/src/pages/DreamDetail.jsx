@@ -58,7 +58,16 @@ export default function DreamDetail() {
     if (error || !data) navigate('/archive');
     else {
       setDream(data);
-      if (data.shadow_analysis) setShadowAnalysis(data.shadow_analysis);
+      const sa = data.shadow_analysis;
+      if (
+        sa &&
+        typeof sa === 'object' &&
+        typeof sa.shadowPresent === 'boolean' &&
+        Array.isArray(sa.shadowFigures) &&
+        Array.isArray(sa.projectedQualities)
+      ) {
+        setShadowAnalysis(sa);
+      }
     }
     setLoading(false);
   }
@@ -81,6 +90,7 @@ export default function DreamDetail() {
           .from('dreams')
           .select('dream_date, title, summary, archetypes, symbols, mood, is_big_dream, body')
           .eq('user_id', user.id).neq('id', id)
+          .lt('dream_date', dream.dream_date)
           .order('dream_date', { ascending: false }).limit(15);
         if (recentDreams?.length) dreamContext = buildDreamContext(recentDreams);
       } catch (ctxErr) {
@@ -90,7 +100,8 @@ export default function DreamDetail() {
       const [data, summaryText] = await Promise.all([
         analyzeDream({
           title: dream.title, body: dream.body, mood: dream.mood,
-          privacySettings, notes: dream.notes, analyst_session: dream.analyst_session, dreamContext,
+          privacySettings, notes: dream.notes, analyst_session: dream.analyst_session,
+          dreamContext, dreamDate: dream.dream_date,
         }),
         generateDreamSummary({ title: dream.title, body: dream.body, mood: dream.mood }),
       ]);
@@ -163,13 +174,20 @@ export default function DreamDetail() {
         existingShadowEncounters: recentEncounters || [],
       });
 
-      setShadowAnalysis(result);
-
-      // Cache result on the dream record
-      await supabase
-        .from('dreams')
-        .update({ shadow_analysis: result })
-        .eq('id', id);
+      if (
+        result &&
+        typeof result === 'object' &&
+        typeof result.shadowPresent === 'boolean'
+      ) {
+        setShadowAnalysis(result);
+        const { error: saveError } = await supabase
+          .from('dreams')
+          .update({ shadow_analysis: result })
+          .eq('id', dream.id);
+        if (saveError) {
+          console.warn('Could not cache shadow analysis:', saveError.message);
+        }
+      }
     } catch (err) {
       setShadowError(err);
     } finally {
@@ -332,24 +350,27 @@ export default function DreamDetail() {
                 </button>
               </div>
 
-              {shadowAnalysis.shadowFigures?.length > 0 && (
+              {Array.isArray(shadowAnalysis.shadowFigures) && shadowAnalysis.shadowFigures.length > 0 && (
                 <div className="mb-3">
                   <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 dark:text-white/20 mb-1.5">Shadow figures</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {shadowAnalysis.shadowFigures.map(fig => (
-                      <span
-                        key={fig}
-                        className="px-2.5 py-0.5 rounded-full text-xs font-body"
-                        style={{ backgroundColor: '#3d2b4a1a', color: '#3d2b4a', fontFamily: 'monospace' }}
-                      >
-                        {fig}
-                      </span>
-                    ))}
+                    {shadowAnalysis.shadowFigures.map((fig, i) => {
+                      const label = typeof fig === 'string' ? fig : (fig?.figure || fig?.quality || '');
+                      return label ? (
+                        <span
+                          key={label + i}
+                          className="px-2.5 py-0.5 rounded-full text-xs font-body"
+                          style={{ backgroundColor: '#3d2b4a1a', color: '#3d2b4a', fontFamily: 'monospace' }}
+                        >
+                          {label}
+                        </span>
+                      ) : null;
+                    })}
                   </div>
                 </div>
               )}
 
-              {shadowAnalysis.projectedQualities?.length > 0 && (
+              {Array.isArray(shadowAnalysis.projectedQualities) && shadowAnalysis.projectedQualities.length > 0 && (
                 <div className="mb-3">
                   <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 dark:text-white/20 mb-1.5">Projected qualities</p>
                   <div className="flex flex-wrap gap-1.5">
@@ -372,15 +393,25 @@ export default function DreamDetail() {
                 </p>
               )}
 
-              <Link
-                to={`/shadow?dreamId=${id}${shadowAnalysis.projectedQualities?.[0] ? `&quality=${encodeURIComponent(shadowAnalysis.projectedQualities[0])}` : ''}`}
+              <button
+                onClick={() => {
+                  sessionStorage.setItem('shadow-encounter-prefill', JSON.stringify({
+                    dreamId: dream.id,
+                    dreamTitle: dream.title,
+                    dreamDate: dream.dream_date,
+                    shadowFigures: shadowAnalysis.shadowFigures,
+                    projectedQualities: shadowAnalysis.projectedQualities,
+                    reflectionPrompt: shadowAnalysis.reflectionPrompt,
+                  }));
+                  navigate('/shadow?fromDream=true');
+                }}
                 className="text-xs font-body transition-colors"
                 style={{ color: 'rgba(61,43,74,0.4)' }}
                 onMouseEnter={e => e.currentTarget.style.color = '#3d2b4a'}
                 onMouseLeave={e => e.currentTarget.style.color = 'rgba(61,43,74,0.4)'}
               >
                 Record as shadow encounter →
-              </Link>
+              </button>
             </div>
           )}
         </div>
