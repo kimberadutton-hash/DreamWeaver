@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { analyzeDream, buildDreamContext, generateDreamSummary, suggestAdditionalTags } from '../lib/ai';
+import { analyzeDream, buildDreamContext, generateDreamSummary, suggestAdditionalTags, identifyShadowMaterial } from '../lib/ai';
 import { incrementAnalysisCount } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
@@ -22,6 +22,11 @@ export default function DreamDetail() {
   const [aiError, setAiError] = useState(null);
   const [suggestions, setSuggestions] = useState(null);
   const [suggesting, setSuggesting] = useState(false);
+
+  // Shadow material panel state
+  const [shadowAnalysis, setShadowAnalysis] = useState(null); // loaded from dream.shadow_analysis
+  const [shadowLoading, setShadowLoading] = useState(false);
+  const [shadowError, setShadowError] = useState(null);
 
   // A. Scroll to reflection ref after analysis completes
   const reflectionRef = useRef(null);
@@ -51,7 +56,10 @@ export default function DreamDetail() {
     const { data, error } = await supabase
       .from('dreams').select('*').eq('id', id).eq('user_id', user.id).single();
     if (error || !data) navigate('/archive');
-    else setDream(data);
+    else {
+      setDream(data);
+      if (data.shadow_analysis) setShadowAnalysis(data.shadow_analysis);
+    }
     setLoading(false);
   }
 
@@ -134,6 +142,38 @@ export default function DreamDetail() {
       setAiError(err);
     } finally {
       setSuggesting(false);
+    }
+  }
+
+  async function handleRunShadowAnalysis() {
+    setShadowLoading(true);
+    setShadowError(null);
+    try {
+      const { data: recentEncounters } = await supabase
+        .from('shadow_encounters')
+        .select('title, projected_quality')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: false })
+        .limit(5);
+
+      const result = await identifyShadowMaterial({
+        dreamBody: dream.body,
+        dreamArchetypes: dream.archetypes || [],
+        dreamSymbols: dream.symbols || [],
+        existingShadowEncounters: recentEncounters || [],
+      });
+
+      setShadowAnalysis(result);
+
+      // Cache result on the dream record
+      await supabase
+        .from('dreams')
+        .update({ shadow_analysis: result })
+        .eq('id', id);
+    } catch (err) {
+      setShadowError(err);
+    } finally {
+      setShadowLoading(false);
     }
   }
 
@@ -254,6 +294,94 @@ export default function DreamDetail() {
           <p className="font-dream whitespace-pre-wrap text-ink dark:text-white/90">{dream.reflection}</p>
           {dream.invitation && (
             <p className="mt-4 font-dream italic text-[15px] text-ink/60 dark:text-white/50 leading-relaxed">{dream.invitation}</p>
+          )}
+        </div>
+      )}
+
+      {/* ── F. Shadow Material ── */}
+      {dream.has_analysis && (
+        <div className="mb-8">
+          {!shadowAnalysis && !shadowLoading && (
+            <button
+              onClick={handleRunShadowAnalysis}
+              className="flex items-center gap-2 text-sm font-body transition-colors"
+              style={{ color: 'rgba(61,43,74,0.5)' }}
+              onMouseEnter={e => e.currentTarget.style.color = '#3d2b4a'}
+              onMouseLeave={e => e.currentTarget.style.color = 'rgba(61,43,74,0.5)'}
+            >
+              <span>◈</span>
+              <span>Explore shadow material →</span>
+            </button>
+          )}
+          {shadowLoading && (
+            <p className="text-sm font-body text-ink/30 dark:text-white/25 italic">Listening for shadow…</p>
+          )}
+          {shadowError && (
+            <div className="mt-2"><AiErrorMessage error={shadowError} /></div>
+          )}
+          {shadowAnalysis && (
+            <div className="rounded-xl border border-black/8 dark:border-white/8 bg-white/30 dark:bg-white/3 px-5 py-4">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-xs uppercase tracking-widest font-body text-ink/35 dark:text-white/30">Shadow Material</h3>
+                <button
+                  onClick={handleRunShadowAnalysis}
+                  disabled={shadowLoading}
+                  className="text-xs font-body text-ink/25 hover:text-ink/50 dark:text-white/20 dark:hover:text-white/40 transition-colors disabled:opacity-30"
+                >
+                  ↻ refresh
+                </button>
+              </div>
+
+              {shadowAnalysis.shadowFigures?.length > 0 && (
+                <div className="mb-3">
+                  <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 dark:text-white/20 mb-1.5">Shadow figures</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {shadowAnalysis.shadowFigures.map(fig => (
+                      <span
+                        key={fig}
+                        className="px-2.5 py-0.5 rounded-full text-xs font-body"
+                        style={{ backgroundColor: '#3d2b4a1a', color: '#3d2b4a', fontFamily: 'monospace' }}
+                      >
+                        {fig}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {shadowAnalysis.projectedQualities?.length > 0 && (
+                <div className="mb-3">
+                  <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 dark:text-white/20 mb-1.5">Projected qualities</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {shadowAnalysis.projectedQualities.map(q => (
+                      <span
+                        key={q}
+                        className="px-2.5 py-0.5 rounded-full text-xs font-body"
+                        style={{ backgroundColor: '#9a4a6a1a', color: '#9a4a6a', fontFamily: 'monospace' }}
+                      >
+                        {q}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {shadowAnalysis.reflectionPrompt && (
+                <p className="font-display italic text-base text-ink/65 dark:text-white/55 leading-relaxed mb-3">
+                  {shadowAnalysis.reflectionPrompt}
+                </p>
+              )}
+
+              <Link
+                to={`/shadow?dreamId=${id}${shadowAnalysis.projectedQualities?.[0] ? `&quality=${encodeURIComponent(shadowAnalysis.projectedQualities[0])}` : ''}`}
+                className="text-xs font-body transition-colors"
+                style={{ color: 'rgba(61,43,74,0.4)' }}
+                onMouseEnter={e => e.currentTarget.style.color = '#3d2b4a'}
+                onMouseLeave={e => e.currentTarget.style.color = 'rgba(61,43,74,0.4)'}
+              >
+                Record as shadow encounter →
+              </Link>
+            </div>
           )}
         </div>
       )}
