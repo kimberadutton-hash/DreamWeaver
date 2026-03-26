@@ -22,6 +22,16 @@ function LetterSection({ text }) {
 export default function GuideLetter() {
   const { user, profile } = useAuth();
 
+  // Step 1: selection state
+  const [step, setStep] = useState('select'); // 'select' | 'letter'
+  const [availableDreams, setAvailableDreams] = useState([]);
+  const [selectedDreamIds, setSelectedDreamIds] = useState(new Set());
+  const [includeFocus, setIncludeFocus] = useState(true);
+  const [userNote, setUserNote] = useState('');
+  const [analystFocus, setAnalystFocus] = useState(null);
+  const [loadingDreams, setLoadingDreams] = useState(true);
+
+  // Step 2: generation state
   const [generating, setGenerating] = useState(false);
   const [letterJson, setLetterJson] = useState(null);
   const [letterPlainText, setLetterPlainText] = useState('');
@@ -37,9 +47,36 @@ export default function GuideLetter() {
   const guideName = profile?.analyst_name || 'Guide';
 
   useEffect(() => {
-    fetchPreviousLetters();
     setKeyPresent(hasApiKey());
+    fetchSelectionData();
+    fetchPreviousLetters();
   }, []);
+
+  async function fetchSelectionData() {
+    const [{ data: dreamsData }, { data: focusData }] = await Promise.all([
+      supabase
+        .from('dreams')
+        .select('id, dream_date, title, body, reflection, embodiment_prompt, archetypes, symbols, is_big_dream, mood')
+        .eq('user_id', user.id)
+        .eq('has_analysis', true)
+        .order('dream_date', { ascending: false })
+        .limit(14),
+      supabase
+        .from('analyst_focuses')
+        .select('focus_text')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .limit(1)
+        .single(),
+    ]);
+
+    const dreams = dreamsData || [];
+    setAvailableDreams(dreams);
+    // Pre-select big dreams
+    setSelectedDreamIds(new Set(dreams.filter(d => d.is_big_dream).map(d => d.id)));
+    setAnalystFocus(focusData?.focus_text || null);
+    setLoadingDreams(false);
+  }
 
   async function fetchPreviousLetters() {
     const { data } = await supabase
@@ -50,6 +87,15 @@ export default function GuideLetter() {
     if (data) setPreviousLetters(data);
   }
 
+  function toggleDream(id) {
+    setSelectedDreamIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
   async function handleGenerate() {
     setGenerating(true);
     setAiError(null);
@@ -57,25 +103,15 @@ export default function GuideLetter() {
     setSaved(false);
 
     try {
-      // Last 7 analyzed dreams
-      const { data: dreamsData } = await supabase
-        .from('dreams')
-        .select('dream_date, title, body, reflection, embodiment_prompt, archetypes, symbols, is_big_dream, mood')
-        .eq('user_id', user.id)
-        .eq('has_analysis', true)
-        .order('dream_date', { ascending: false })
-        .limit(7);
+      const selectedDreams = availableDreams.filter(d => selectedDreamIds.has(d.id));
 
-      // Active analyst focus
-      const { data: focusData } = await supabase
-        .from('analyst_focuses')
-        .select('focus_text')
-        .eq('user_id', user.id)
-        .eq('is_active', true)
-        .limit(1)
-        .single();
+      // Date range for saving
+      const dates = selectedDreams.map(d => d.dream_date).filter(Boolean).sort();
+      if (dates.length) {
+        setDreamRange({ start: dates[0], end: dates[dates.length - 1] });
+      }
 
-      // Embodiment responses from past 30 days
+      // Embodiment responses from past 30 days (for selected dreams)
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
       const { data: embodimentData } = await supabase
         .from('dreams')
@@ -84,25 +120,20 @@ export default function GuideLetter() {
         .not('embodiment_response', 'is', null)
         .gte('embodiment_checked_at', thirtyDaysAgo);
 
-      if (dreamsData?.length) {
-        setDreamRange({
-          start: dreamsData[dreamsData.length - 1]?.dream_date,
-          end: dreamsData[0]?.dream_date,
-        });
-      }
-
       const json = await generateGuideLetter({
         guideName,
-        recentDreams: dreamsData || [],
-        activeAnalystFocus: focusData?.focus_text || null,
+        recentDreams: selectedDreams.map(d => ({ ...d, date: d.dream_date })),
+        activeAnalystFocus: (includeFocus && analystFocus) ? analystFocus : null,
         embodimentResponses: (embodimentData || []).map(d => ({
           dreamTitle: d.title || 'Untitled',
           response: d.embodiment_response,
         })),
+        userNote: userNote.trim() || null,
       });
 
       setLetterJson(json);
       setLetterPlainText(jsonToPlainText(json));
+      setStep('letter');
     } catch (err) {
       setAiError(err);
     } finally {
@@ -154,6 +185,13 @@ export default function GuideLetter() {
     fetchPreviousLetters();
   }
 
+  function handleBack() {
+    setStep('select');
+    setLetterJson(null);
+    setSaved(false);
+    setAiError(null);
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-8 py-10">
 
@@ -180,28 +218,138 @@ export default function GuideLetter() {
         </div>
       )}
 
-      {/* ── Generate button ── */}
-      {!letterJson && (
-        <div className="mb-8">
-          <button
-            onClick={handleGenerate}
-            disabled={generating}
-            className="px-6 py-3 rounded-xl font-body text-sm font-medium text-white bg-plum disabled:opacity-50 transition-opacity"
-          >
-            {generating ? 'Reading your recent dreams…' : 'Generate letter'}
-          </button>
-          {generating && (
-            <p className="mt-3 text-xs font-body text-ink/40 dark:text-white/30 italic">
-              This takes a moment — your dreams are being read carefully.
+      {/* ── Step 1: Selection UI ── */}
+      {step === 'select' && (
+        <div>
+          {loadingDreams ? (
+            <p className="text-sm font-body text-ink/40 dark:text-white/30 italic">Loading dreams…</p>
+          ) : availableDreams.length === 0 ? (
+            <p className="text-sm font-body text-ink/40 dark:text-white/30 italic">
+              No analyzed dreams yet. Record and analyze a dream to get started.
             </p>
+          ) : (
+            <>
+              {/* Dream selection */}
+              <div className="mb-8">
+                <p className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-3">
+                  Select dreams to include
+                  {selectedDreamIds.size > 0 && (
+                    <span className="ml-2 normal-case text-gold/70">
+                      {selectedDreamIds.size} selected
+                    </span>
+                  )}
+                </p>
+                <div className="space-y-2">
+                  {availableDreams.map(dream => {
+                    const isSelected = selectedDreamIds.has(dream.id);
+                    return (
+                      <button
+                        key={dream.id}
+                        onClick={() => toggleDream(dream.id)}
+                        className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-150 ${
+                          isSelected
+                            ? 'border-gold/40 bg-white/70 dark:bg-white/8'
+                            : 'border-black/8 dark:border-white/8 bg-white/30 dark:bg-white/3 opacity-50 hover:opacity-75'
+                        }`}
+                        style={isSelected ? { borderLeft: '3px solid #b8924a' } : {}}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <div className="min-w-0">
+                            <p className="text-sm font-body font-medium text-ink dark:text-white truncate">
+                              {dream.title || 'Untitled'}
+                              {dream.is_big_dream && <span className="ml-1.5 text-gold/70 text-xs">✦</span>}
+                            </p>
+                            <p className="text-xs font-body text-ink/40 dark:text-white/30 mt-0.5">
+                              {formatDate(dream.dream_date)}
+                            </p>
+                          </div>
+                          <div
+                            className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                              isSelected
+                                ? 'border-gold bg-gold/20'
+                                : 'border-black/20 dark:border-white/20'
+                            }`}
+                          >
+                            {isSelected && <span className="text-gold text-xs leading-none">✓</span>}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Analyst focus toggle */}
+              {analystFocus && (
+                <div className="mb-6">
+                  <button
+                    onClick={() => setIncludeFocus(v => !v)}
+                    className={`w-full text-left px-4 py-3 rounded-xl border transition-all duration-150 ${
+                      includeFocus
+                        ? 'border-gold/40 bg-white/70 dark:bg-white/8'
+                        : 'border-black/8 dark:border-white/8 bg-white/30 dark:bg-white/3 opacity-50 hover:opacity-75'
+                    }`}
+                    style={includeFocus ? { borderLeft: '3px solid #b8924a' } : {}}
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-1">
+                          Analyst Focus
+                        </p>
+                        <p className="text-sm font-body text-ink/70 dark:text-white/60 truncate">
+                          {analystFocus}
+                        </p>
+                      </div>
+                      <div
+                        className={`shrink-0 w-4 h-4 rounded border flex items-center justify-center transition-colors ${
+                          includeFocus
+                            ? 'border-gold bg-gold/20'
+                            : 'border-black/20 dark:border-white/20'
+                        }`}
+                      >
+                        {includeFocus && <span className="text-gold text-xs leading-none">✓</span>}
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              )}
+
+              {/* What I want to bring */}
+              <div className="mb-8">
+                <p className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-2">
+                  What I want to bring
+                </p>
+                <textarea
+                  value={userNote}
+                  onChange={e => setUserNote(e.target.value)}
+                  rows={3}
+                  placeholder="Anything else you want the letter to address or emphasize…"
+                  className="w-full px-4 py-3 rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 text-sm font-body text-ink dark:text-white/80 placeholder-ink/25 dark:placeholder-white/20 resize-none focus:outline-none focus:ring-2 focus:ring-gold/30"
+                />
+              </div>
+
+              {aiError && <div className="mb-6"><AiErrorMessage error={aiError} /></div>}
+
+              {/* Generate button */}
+              <button
+                onClick={handleGenerate}
+                disabled={generating || selectedDreamIds.size === 0}
+                className="px-6 py-3 rounded-xl font-body text-sm font-medium text-white bg-plum disabled:opacity-50 transition-opacity"
+              >
+                {generating ? 'Writing letter…' : 'Generate letter'}
+              </button>
+              {generating && (
+                <p className="mt-3 text-xs font-body text-ink/40 dark:text-white/30 italic">
+                  This takes a moment — your dreams are being read carefully.
+                </p>
+              )}
+            </>
           )}
         </div>
       )}
 
-      {aiError && <div className="mb-6"><AiErrorMessage error={aiError} /></div>}
-
-      {/* ── Letter display ── */}
-      {letterJson && (
+      {/* ── Step 2: Letter display ── */}
+      {step === 'letter' && letterJson && (
         <div className="mb-10">
           <div className="max-w-[680px] mx-auto">
             <div className="font-display text-[18px] leading-[1.9] text-ink dark:text-white/90 space-y-6">
@@ -243,10 +391,10 @@ export default function GuideLetter() {
               Print
             </button>
             <button
-              onClick={() => { setLetterJson(null); setSaved(false); setAiError(null); }}
+              onClick={handleBack}
               className="px-5 py-2.5 rounded-xl font-body text-sm text-ink/35 dark:text-white/25 hover:text-ink/55 dark:hover:text-white/45 transition-colors"
             >
-              ← Generate new
+              ← Back
             </button>
           </div>
         </div>

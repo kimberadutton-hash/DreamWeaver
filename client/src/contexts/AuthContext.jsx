@@ -25,14 +25,19 @@ export function AuthProvider({ children }) {
   }, []);
 
   async function fetchProfile(userId) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
-    setProfile(data);
-    if (data?.dark_mode) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
+    try {
+      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      setProfile(data);
+      if (data?.dark_mode) {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
+    } catch {
+      // profile fetch failed — proceed without profile so loading never hangs
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function updateProfile(updates) {

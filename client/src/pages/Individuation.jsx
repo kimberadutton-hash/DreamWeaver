@@ -6,6 +6,7 @@ import { generateIndividuationNarrative, updateIndividuationNarrative, hasApiKey
 import AiErrorMessage from '../components/AiErrorMessage';
 import DreamPreviewDrawer from '../components/DreamPreviewDrawer';
 import { format, parseISO } from 'date-fns';
+import { formatDate } from '../lib/constants';
 
 const MIN_DREAMS = 10;
 
@@ -133,7 +134,10 @@ export default function Individuation() {
   const chapterRefs = useRef({});
   const [activeChapterId, setActiveChapterId] = useState(null);
 
-  useEffect(() => { loadData(); }, []);
+  // Living questions — unanswered embodiment prompts
+  const [livingQuestions, setLivingQuestions] = useState([]);
+
+  useEffect(() => { loadData(); loadLivingQuestions(); }, []);
 
   async function loadData() {
     const [{ count }, { data: narratives }] = await Promise.all([
@@ -147,6 +151,25 @@ export default function Individuation() {
       setCurrentRecord(current);
     }
     setLoading(false);
+  }
+
+  async function loadLivingQuestions() {
+    const { data } = await supabase
+      .from('dreams')
+      .select('id, title, dream_date, embodiment_prompt')
+      .eq('user_id', user.id)
+      .not('embodiment_prompt', 'is', null)
+      .is('embodiment_checked_at', null)
+      .order('created_at', { ascending: false })
+      .limit(5);
+    setLivingQuestions(data || []);
+  }
+
+  async function handleSatWith(dreamId) {
+    setLivingQuestions(prev => prev.filter(q => q.id !== dreamId));
+    await supabase.from('dreams').update({
+      embodiment_checked_at: new Date().toISOString(),
+    }).eq('id', dreamId);
   }
 
   async function saveNarrative(parsed, dreamCountNow, lastDreamId) {
@@ -303,6 +326,38 @@ export default function Individuation() {
       )}
 
       <div className="max-w-3xl mx-auto px-6 sm:px-8 py-10 pb-24">
+
+        {/* ── Living Questions ── */}
+        {livingQuestions.length > 0 && (
+          <div className="mb-10">
+            <p style={{ fontSize: 9, letterSpacing: '0.18em' }} className="uppercase font-body text-ink/35 dark:text-white/25 mb-5">
+              Living Questions
+            </p>
+            {livingQuestions.map((q, i) => (
+              <div key={q.id}>
+                {i > 0 && <div className="border-t border-gold/20 my-5" />}
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex-1 min-w-0">
+                    <p className="font-display italic leading-relaxed text-ink dark:text-white/85 mb-2" style={{ fontSize: 17 }}>
+                      {q.embodiment_prompt}
+                    </p>
+                    <p className="text-xs font-body text-ink/35 dark:text-white/25">
+                      {q.title || 'Untitled'} · {formatDate(q.dream_date)}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => handleSatWith(q.id)}
+                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body text-ink/40 dark:text-white/30 hover:text-ink/70 dark:hover:text-white/55 border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 transition-colors whitespace-nowrap"
+                  >
+                    <span className="text-sm leading-none">◎</span>
+                    I sat with this
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* ── Static page chrome (shown when no narrative yet) ── */}
         {!current && (
           <div className="mb-10">

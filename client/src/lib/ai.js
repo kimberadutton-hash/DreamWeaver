@@ -545,6 +545,7 @@ export async function generateGuideLetter({
   recentDreams,
   activeAnalystFocus,
   embodimentResponses,
+  userNote,
 }) {
   const dreamList = recentDreams.map((d, i) => {
     const bigFlag = d.is_big_dream ? ' ✦ [BIG DREAM]' : '';
@@ -565,27 +566,31 @@ export async function generateGuideLetter({
   }).join('\n\n---\n\n');
 
   const focusSection = activeAnalystFocus
-    ? `\nCurrent analytical focus held since last session: ${activeAnalystFocus}\n`
+    ? `\nActive analytical focus: ${activeAnalystFocus}\n`
     : '';
 
   const embodimentSection = embodimentResponses?.length
     ? `\nEmbodiment check-ins from this period:\n${embodimentResponses.map(r => `- "${r.dreamTitle}": ${r.response}`).join('\n')}\n`
     : '';
 
-  const systemPrompt = `You are helping a person engaged in depth psychological work prepare for a session with their Jungian analyst or guide. Write in the first person as the dreamer — warm, honest, and specific to the actual dream material provided. This is not a clinical report. It is a letter from someone doing serious inner work to a trusted guide. Cite specific dreams and images by name. Surface what feels most alive and most unresolved. Do not use jargon without explanation.`;
+  const userNoteSection = userNote?.trim()
+    ? `\nWhat the dreamer wants to bring to this session: ${userNote.trim()}\n`
+    : '';
 
-  const userPrompt = `Write a session letter from this dreamer to their guide, ${guideName}.${focusSection}${embodimentSection}
-RECENT DREAMS (most recent first):
+  const systemPrompt = `You are helping a person prepare a session letter for their Jungian analyst or guide. Your role is strictly curatorial: write only about what has been explicitly provided. Do not extrapolate, invent themes, or fill in gaps. If the selected material is sparse, the letter should be shorter — that is correct. Write in the first person as the dreamer, warm and honest. Cite specific dreams by title. Do not use Jungian jargon without explanation. If fewer than 3 dreams are provided, write a shorter, more focused letter about what is actually there.`;
+
+  const userPrompt = `Write a session letter from this dreamer to their guide, ${guideName}. Write only about the material explicitly provided below — nothing else.${focusSection}${embodimentSection}${userNoteSection}
+SELECTED DREAMS (most recent first):
 ${dreamList}
 
 Respond ONLY with valid JSON in this exact structure — no text before or after:
 {
   "greeting": "Dear ${guideName},",
-  "opening": "1-2 sentences — how the dream field has felt overall since we last met",
-  "significantDreams": "2-3 paragraphs on the most significant dreams. Cite by title. Be specific about images and what they seemed to carry. First person throughout. Use \\n\\n between paragraphs.",
-  "patterns": "1-2 paragraphs on what the psyche seems to be returning to — recurring figures, symbols, or themes across this period. First person. Use \\n\\n between paragraphs.",
-  "embodimentNotes": "ONLY include this field if embodiment check-in responses were provided above. If included: what has shifted in waking life based on those responses. If no check-ins exist, omit this field entirely — do not include it as null or empty.",
-  "questions": "2-3 genuine questions or things to bring to the session — framed as inquiry, not conclusions. First person.",
+  "opening": "1-2 sentences — how the dream field has felt overall since we last met, based only on the provided material",
+  "significantDreams": "Paragraphs on the selected dreams only. Cite each by title. Be specific about images. First person. Use \\n\\n between paragraphs. Do not mention dreams not in the list.",
+  "patterns": "1 paragraph on what the psyche seems to be returning to across the selected dreams. First person. Only patterns visible in the provided material.",
+  "embodimentNotes": "ONLY include this field if embodiment check-in responses were provided above. If included: what has shifted in waking life. If no check-ins exist, omit this field entirely.",
+  "questions": "2-3 genuine questions to bring to the session, drawn from the provided material. First person.",
   "closing": "A brief warm closing sentence"
 }`;
 

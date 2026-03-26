@@ -253,7 +253,7 @@ export default function DreamDetail() {
           </h2>
           <p className="font-dream whitespace-pre-wrap text-ink dark:text-white/90">{dream.reflection}</p>
           {dream.invitation && (
-            <p className="mt-4 font-display italic text-lg text-gold-dark dark:text-gold">{dream.invitation}</p>
+            <p className="mt-4 font-dream italic text-[15px] text-ink/60 dark:text-white/50 leading-relaxed">{dream.invitation}</p>
           )}
         </div>
       )}
