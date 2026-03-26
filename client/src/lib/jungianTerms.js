@@ -78,7 +78,9 @@ The persona is what you show. The soul is what you are. Individuation asks, agai
 
 In men, the anima is associated with feeling, relatedness, receptivity, and connection to the unconscious. In women, the animus is associated with logos, direction, initiative, and the capacity for decisive thought and action. Neither belongs exclusively to one gender in lived experience — these are descriptions of psychological dynamics, not prescriptions.
 
-Both the anima and animus function as psychopomps: guides into the deeper interior. They appear in dreams as figures of the opposite gender who carry particular charge — attraction, fascination, wisdom, or fear. When projected outward, they generate the experience of falling in love, of feeling mysteriously and overwhelmingly drawn to another person. The work is to gradually withdraw the projection and claim the quality for oneself.`,
+Both the anima and animus function as psychopomps: guides into the deeper interior. They appear in dreams as figures of the opposite gender who carry particular charge — attraction, fascination, wisdom, or fear. When projected outward, they generate the experience of falling in love, of feeling mysteriously and overwhelmingly drawn to another person. The work is to gradually withdraw the projection and claim the quality for oneself.
+
+At her most developed, the anima moves beyond the personal into something transpersonal — a figure of divine wisdom rather than personal soul. This is what the Gnostic and Christian traditions called Sophia: the feminine face of the deepest knowing, no longer a bridge to the unconscious but the ground of it.`,
     inYourDreams: 'Figures of the opposite gender who carry unusual emotional weight — attraction or terror, fascination or revulsion. Often the most emotionally alive figure in the dream. May appear as a guide, a beloved, a stranger who gives you something important.',
     relatedTerms: ['projection', 'self', 'great-mother', 'wise-guide'],
   },
@@ -108,7 +110,7 @@ The mother complex — the particular constellation of the personal mother in an
 
 They offer orientation, not solutions. They point toward something the dreamer must discover and live for themselves. The wisdom they carry cannot be given; it can only be received when the ego is humble enough to listen.
 
-The Wise Old Woman as Sophia — divine wisdom, the feminine face of meaning — appears in dreams of particular depth and numinosity, dreams that leave the dreamer changed. These figures do not explain themselves. A word, a gesture, an object given at the right moment — that is enough.`,
+These figures do not explain themselves. A word, a gesture, an object given at the right moment — that is enough. At the deepest level, the Wise Old Woman shades into what the tradition calls Sophia — not a personal figure but an archetypal presence of divine wisdom, the feminine face of the Self itself. These are the dreams that leave the dreamer permanently changed.`,
     inYourDreams: 'Elderly figures of warmth and authority, teachers, healers, figures who give something crucial — a key, a map, a single sentence that changes everything. A doctor, a priest, a grandmother, a stranger on the road who seems to know where you are going.',
     relatedTerms: ['self', 'anima-animus', 'numinous'],
   },
@@ -319,19 +321,6 @@ You cannot have the resurrection without the descent. The psyche periodically re
 Recognizing that a difficult period is a katabasis rather than a failure changes the relationship to it. It does not make the descent less dark. But it can provide the orientation that makes it possible to endure without prematurely climbing out.`,
     inYourDreams: 'Descending into basements, mines, caves, or underground places. The dream world that is dark, damp, primal. Going down stairs, ladders, tunnels. Encounters with the dead or with underworld figures. The mood of weight, slowness, submersion.',
     relatedTerms: ['individuation', 'shadow', 'numinous', 'enantiodromia'],
-  },
-  {
-    id: 'sophia',
-    term: 'Sophia',
-    category: 'analytical',
-    oneLiner: 'Divine wisdom — the feminine face of the deepest knowing.',
-    body: `Sophia is not one of Jung's named archetypes but a profound symbol — specifically the feminine face of the Self, drawing from Gnostic Christianity and Jewish Wisdom literature. Jung wrote about her extensively in Answer to Job. She represents the highest development of the Anima into something transpersonal: not the personal soul-image, but the divine wisdom that underlies it.
-
-In Gnostic tradition she was the divine being through whose yearning the world came into existence. In Christian mysticism she is identified with the Holy Spirit and the eternal feminine of the Godhead. Jung saw in these traditions a psychological truth: the Self has a feminine face, and that face is wise in a way that precedes and exceeds rational knowing.
-
-When she appears in a dream, the dreamer is rarely prepared. She does not explain herself. She radiates. The encounter tends to be brief and the impression permanent — the sense of having been addressed by something that knows you more completely than you know yourself.`,
-    inYourDreams: 'A woman of extraordinary presence who does not speak much but whose gaze contains something. Light that comes from no apparent source. The ocean suddenly appearing as a presence, not just a place. The sense in the dream that she was there before you arrived.',
-    relatedTerms: ['self', 'anima-animus', 'numinous', 'wise-guide'],
   },
   {
     id: 'nigredo',

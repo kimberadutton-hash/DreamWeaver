@@ -669,7 +669,26 @@ function EditableTagRow({ label, tags, color, field, dreamId, onUpdate, isArchet
 
   function getArchetypeEntry(tag) {
     if (!isArchetypes) return null;
-    return JUNGIAN_TERMS.find(t => t.term.toLowerCase() === tag.toLowerCase()) || null;
+    const tagLower = tag.toLowerCase();
+    // 1. Exact match
+    let entry = JUNGIAN_TERMS.find(t => t.term.toLowerCase() === tagLower);
+    if (entry) return entry;
+    // 2. Strip leading "The " and try substring match (handles "Shadow" → "The Shadow",
+    //    "Anima" → "The Anima / Animus", "Child" → "The Child Archetype")
+    entry = JUNGIAN_TERMS.find(t => {
+      const core = t.term.toLowerCase().replace(/^the\s+/, '');
+      return core === tagLower || core.includes(tagLower) || tagLower.includes(core);
+    });
+    if (entry) return entry;
+    // 3. Significant-word overlap (handles "Wise Old Man" → "The Wise Guide",
+    //    "Wise Woman" → "The Wise Guide", "Inner Child" → "The Child Archetype")
+    const stop = new Set(['the', 'a', 'an', 'of', 'and', 'or', 'in', 'old']);
+    const tagWords = tagLower.split(/\s+/).filter(w => !stop.has(w));
+    entry = JUNGIAN_TERMS.find(t => {
+      const termWords = t.term.toLowerCase().split(/\s+/).filter(w => !stop.has(w));
+      return tagWords.some(w => termWords.includes(w));
+    });
+    return entry || null;
   }
 
   return (

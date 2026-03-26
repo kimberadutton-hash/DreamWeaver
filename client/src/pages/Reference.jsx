@@ -15,7 +15,7 @@ function getSource(term) {
   if (term.category === 'alchemical') return 'Alchemical tradition';
   if (term.category === 'dream-structure') return 'Greek / analytical tradition';
   if (term.subcategory === 'post-jungian') return 'Post-Jungian development';
-  const greek = ['enantiodromia', 'numinous', 'temenos', 'katabasis', 'sophia'];
+  const greek = ['enantiodromia', 'numinous', 'temenos', 'katabasis'];
   if (greek.includes(term.id)) return 'Greek / analytical tradition';
   return "Jung's core concept";
 }
