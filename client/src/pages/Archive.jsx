@@ -22,7 +22,7 @@ export default function Archive() {
     setLoading(true);
     const { data, error } = await supabase
       .from('dreams')
-      .select('id, dream_date, title, body, mood, tags, has_analysis, is_big_dream, created_at, dream_series ( name )')
+      .select('id, dream_date, title, body, mood, tags, archetypes, has_analysis, is_big_dream, created_at, dream_series ( name )')
       .eq('user_id', user.id)
       .order('dream_date', { ascending: false });
 
@@ -67,7 +67,8 @@ export default function Archive() {
       d.title?.toLowerCase().includes(q) ||
       d.body?.toLowerCase().includes(q) ||
       d.mood?.some(m => m.toLowerCase().includes(q)) ||
-      d.tags?.some(t => t.toLowerCase().includes(q))
+      d.tags?.some(t => t.toLowerCase().includes(q)) ||
+      (d.archetypes || []).some(a => a.toLowerCase().includes(q))
     );
   });
 

@@ -5,6 +5,15 @@ import { useAuth } from '../contexts/AuthContext';
 import { suggestComplexes, hasApiKey, AiError } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
 
+const toSlug = (name) =>
+  name.toLowerCase()
+    .replace(/\//g, '-')
+    .replace(/the\s/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/[^a-z-]/g, '')
+    .replace(/-+/g, '-')
+    .trim();
+
 // ── Integration status config ─────────────────────────────────────────────────
 
 const STATUSES = [
@@ -244,12 +253,13 @@ function ComplexCard({ complex, onUpdate, onDelete }) {
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {complex.related_archetypes.map((a, i) => (
-                    <span
+                    <Link
                       key={i}
-                      className="text-[10px] font-body px-2 py-0.5 rounded-full border border-black/10 dark:border-white/10 text-ink/50 dark:text-white/40"
+                      to={`/reference#${toSlug(a)}`}
+                      className="text-[10px] font-body px-2 py-0.5 rounded-full border border-black/10 dark:border-white/10 text-ink/50 dark:text-white/40 hover:border-gold/40 hover:text-gold transition-colors"
                     >
                       {a}
-                    </span>
+                    </Link>
                   ))}
                 </div>
               </div>
@@ -521,7 +531,7 @@ export default function ComplexesMap() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="font-display italic text-xl text-ink/40">Loading…</p>
+        <p className="font-display italic text-xl text-ink/40">A moment…</p>
       </div>
     );
   }

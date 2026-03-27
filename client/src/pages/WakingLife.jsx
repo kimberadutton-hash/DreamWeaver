@@ -894,7 +894,7 @@ export default function WakingLife() {
 
       {/* Content */}
       {loading ? (
-        <p className="text-sm font-body text-ink/30 dark:text-white/25 italic mt-8">Loading…</p>
+        <p className="text-sm font-body text-ink/30 dark:text-white/25 italic mt-8">Gathering your traces…</p>
       ) : entries.length === 0 ? (
         // Empty state
         <div className="flex flex-col items-center justify-center py-24 text-center">

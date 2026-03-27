@@ -357,7 +357,7 @@ function SeriesDetail({ seriesId }) {
   if (loading) {
     return (
       <div className="text-center py-20">
-        <p className="font-display italic text-2xl text-ink/40 dark:text-white/40">Loading…</p>
+        <p className="font-display italic text-2xl text-ink/40 dark:text-white/40">A moment…</p>
       </div>
     );
   }

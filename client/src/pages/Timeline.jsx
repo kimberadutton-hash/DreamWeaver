@@ -57,7 +57,22 @@ export default function Timeline() {
       {loading ? (
         <p className="font-display italic text-xl text-ink/40">Tracing the arc of time…</p>
       ) : byYear.length === 0 ? (
-        <p className="font-display italic text-xl text-ink/40">No dreams recorded yet.</p>
+        <div className="text-center py-16 space-y-4">
+          <p className="font-display italic text-2xl text-ink/40 dark:text-white/30">
+            The arc is waiting to be traced.
+          </p>
+          <p className="text-sm font-body text-ink/35 dark:text-white/25 leading-relaxed max-w-sm mx-auto">
+            Every dream you record becomes a point on the map of your inner life.
+            The timeline will show you how far you have come — and where the psyche has been leading you.
+          </p>
+          <button
+            onClick={() => navigate('/new')}
+            className="inline-block mt-2 px-6 py-3 rounded-xl text-sm font-body font-medium text-white"
+            style={{ backgroundColor: '#3d2b4a' }}
+          >
+            Record a dream →
+          </button>
+        </div>
       ) : (
         <div className="space-y-10">
           {byYear.map(({ year, dreams, topThemes }) => (

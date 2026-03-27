@@ -1002,7 +1002,7 @@ export default function ActiveImagination() {
 
       {/* Sessions list */}
       {loading ? (
-        <p className="text-sm font-body text-ink/30 dark:text-white/25 italic mt-4">Loading…</p>
+        <p className="text-sm font-body text-ink/30 dark:text-white/25 italic mt-4">A moment…</p>
       ) : sessions.length === 0 && view !== 'setup' ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <p className="font-display italic text-2xl text-ink/35 dark:text-white/25 mb-4 leading-relaxed">

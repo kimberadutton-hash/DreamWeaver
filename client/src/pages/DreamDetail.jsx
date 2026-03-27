@@ -242,7 +242,7 @@ export default function DreamDetail() {
 
   if (loading) return (
     <div className="flex items-center justify-center h-64">
-      <p className="font-display italic text-xl text-ink/40">Loading…</p>
+      <p className="font-display italic text-xl text-ink/40">A moment…</p>
     </div>
   );
   if (!dream) return null;
@@ -357,8 +357,9 @@ export default function DreamDetail() {
       {/* ── 5. Jungian Reflection (A: scroll target) ── */}
       {dream.reflection && (
         <div ref={reflectionRef} style={{ scrollMarginTop: 24 }} className="mb-8 pl-5 border-l-2 border-gold/40">
-          <h2 className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-3">
+          <h2 className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-3 flex items-center gap-2">
             Jungian Reflection
+            <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(184,146,74,0.6)', fontFamily: 'monospace' }}>✦ AI</span>
           </h2>
           <p className="font-dream whitespace-pre-wrap text-ink dark:text-white/90">{dream.reflection}</p>
           {dream.invitation && (
@@ -475,6 +476,12 @@ export default function DreamDetail() {
                   Record as shadow encounter →
                 </button>
               )}
+              <Link
+                to={`/imagination?dreamId=${dream.id}`}
+                className="text-xs font-body text-ink/25 dark:text-white/20 hover:text-plum dark:hover:text-gold transition-colors mt-2 inline-block"
+              >
+                ◎ Begin active imagination with a figure from this dream →
+              </Link>
             </div>
           )}
         </div>

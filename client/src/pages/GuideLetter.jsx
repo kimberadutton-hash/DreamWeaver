@@ -39,6 +39,7 @@ export default function GuideLetter() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [showSavePrompt, setShowSavePrompt] = useState(false);
   const [previousLetters, setPreviousLetters] = useState([]);
   const [expandedId, setExpandedId] = useState(null);
   const [dreamRange, setDreamRange] = useState({ start: null, end: null });
@@ -159,15 +160,29 @@ export default function GuideLetter() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  function openMailto() {
+    const monthYear = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+    const subject = encodeURIComponent(`Dream work — ${monthYear}`);
+    const body = encodeURIComponent(letterPlainText);
+    window.open(`mailto:${profile.analyst_email}?subject=${subject}&body=${body}`);
+  }
+
   function handleSend() {
     if (!profile?.analyst_email) {
       alert(`Add ${guideName}'s email address in Settings first.`);
       return;
     }
-    const monthYear = new Date().toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
-    const subject = encodeURIComponent(`Dream work — ${monthYear}`);
-    const body = encodeURIComponent(letterPlainText);
-    window.open(`mailto:${profile.analyst_email}?subject=${subject}&body=${body}`);
+    if (saved) {
+      openMailto();
+    } else {
+      setShowSavePrompt(true);
+    }
+  }
+
+  async function handleSaveAndSend() {
+    setShowSavePrompt(false);
+    await handleSave();
+    openMailto();
   }
 
   async function handleSave() {
@@ -364,7 +379,25 @@ export default function GuideLetter() {
           </div>
 
           {/* Actions */}
-          <div className="mt-10 max-w-[680px] mx-auto border-t border-black/8 dark:border-white/8 pt-6 flex flex-wrap gap-3">
+          <div className="mt-10 max-w-[680px] mx-auto border-t border-black/8 dark:border-white/8 pt-6">
+            {showSavePrompt && (
+              <div className="mb-4 flex items-center gap-3 flex-wrap">
+                <p className="text-sm font-body text-ink/55 dark:text-white/45">Save a copy before sending?</p>
+                <button
+                  onClick={handleSaveAndSend}
+                  className="px-4 py-1.5 rounded-lg font-body text-sm font-medium text-white bg-plum hover:opacity-90 transition-opacity"
+                >
+                  Save and send
+                </button>
+                <button
+                  onClick={() => { setShowSavePrompt(false); openMailto(); }}
+                  className="px-4 py-1.5 rounded-lg font-body text-sm font-medium border border-black/15 dark:border-white/15 text-ink/60 dark:text-white/50 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+                >
+                  Send without saving
+                </button>
+              </div>
+            )}
+          <div className="flex flex-wrap gap-3">
             <button
               onClick={handleSend}
               className="px-5 py-2.5 rounded-xl font-body text-sm font-medium text-white bg-plum transition-opacity hover:opacity-90"
@@ -396,6 +429,7 @@ export default function GuideLetter() {
             >
               ← Back
             </button>
+          </div>
           </div>
         </div>
       )}

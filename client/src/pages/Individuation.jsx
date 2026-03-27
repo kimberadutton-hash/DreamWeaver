@@ -311,7 +311,7 @@ export default function Individuation() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="font-display italic text-xl text-ink/40">Loading…</p>
+        <p className="font-display italic text-xl text-ink/40">Following the thread…</p>
       </div>
     );
   }
@@ -369,7 +369,13 @@ export default function Individuation() {
                       {q.embodiment_prompt}
                     </p>
                     <p className="text-xs font-body text-ink/35 dark:text-white/25">
-                      {q.title || 'Untitled'} · {formatDate(q.dream_date)}
+                      <Link
+                        to={`/dream/${q.id}`}
+                        className="italic hover:underline transition-colors"
+                        style={{ color: '#b8924a' }}
+                      >
+                        {q.title || 'Untitled'} · {formatDate(q.dream_date)}
+                      </Link>
                     </p>
                   </div>
                   <button

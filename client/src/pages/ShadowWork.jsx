@@ -1139,7 +1139,7 @@ export default function ShadowWork() {
       {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center h-40">
-          <p className="font-display italic text-xl text-ink/30 dark:text-white/25">Loading…</p>
+          <p className="font-display italic text-xl text-ink/30 dark:text-white/25">A moment…</p>
         </div>
       ) : tab === 'encounters' ? (
         encounters.length === 0 ? (

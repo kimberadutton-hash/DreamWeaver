@@ -54,7 +54,7 @@ export default function EditDream() {
   }
 
   if (!form) {
-    return <div className="flex items-center justify-center h-64"><p className="font-display italic text-xl text-ink/40">Loading…</p></div>;
+    return <div className="flex items-center justify-center h-64"><p className="font-display italic text-xl text-ink/40">Calling up the dream…</p></div>;
   }
 
   const analystLabel = profile?.analyst_name || 'Analyst';

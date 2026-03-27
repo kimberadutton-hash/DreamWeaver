@@ -87,7 +87,7 @@ export default function AnalystFocus() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <p className="font-display italic text-xl text-ink/40">Loading…</p>
+        <p className="font-display italic text-xl text-ink/40">Gathering the focus…</p>
       </div>
     );
   }
