@@ -189,7 +189,20 @@ export default function Individuation() {
       .eq('user_id', user.id)
       .order('entry_date', { ascending: false })
       .limit(3);
-    setRecentWakingLife(data || []);
+    const entries = data || [];
+    const hydrated = await Promise.all(
+      entries.map(async entry => {
+        if (!entry.media_url || entry.media_type !== 'image') return entry;
+        const marker = '/embodiment-media/';
+        const idx = entry.media_url.indexOf(marker);
+        const storagePath = idx !== -1 ? entry.media_url.slice(idx + marker.length) : entry.media_url;
+        const { data: signed } = await supabase.storage
+          .from('embodiment-media')
+          .createSignedUrl(storagePath, 3600);
+        return { ...entry, media_url_signed: signed?.signedUrl || null };
+      })
+    );
+    setRecentWakingLife(hydrated);
   }
 
   async function handleSatWith(dreamId) {
@@ -450,7 +463,7 @@ export default function Individuation() {
                   >
                     {entry.media_url && entry.media_type === 'image' && (
                       <div className="w-full h-24 overflow-hidden">
-                        <img src={entry.media_url} alt={entry.title} className="w-full h-full object-cover" />
+                        <img src={entry.media_url_signed || entry.media_url} alt={entry.title} className="w-full h-full object-cover" />
                       </div>
                     )}
                     <div className="px-3 py-2.5">

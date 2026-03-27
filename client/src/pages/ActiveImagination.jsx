@@ -362,16 +362,23 @@ function SetupFlow({ initialDreamId, onSessionReady, onCancel, userId }) {
 
 // ── Session Card ───────────────────────────────────────────────────────────
 
-function SessionCard({ session, onClick }) {
+function SessionCard({ session, onClick, onDelete }) {
   const messages = session.messages || [];
   const lastMessage = messages[messages.length - 1];
   const isOpen = !session.closed_at;
   const excerpt = lastMessage?.content?.slice(0, 80) || '';
 
+  async function handleDelete(e) {
+    e.stopPropagation();
+    if (!window.confirm(`Delete this session with ${session.figure_name}? This cannot be undone.`)) return;
+    await supabase.from('imagination_sessions').delete().eq('id', session.id);
+    onDelete(session.id);
+  }
+
   return (
     <div
       onClick={() => onClick(session)}
-      className="rounded-xl border border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/3 hover:border-black/15 dark:hover:border-white/15 hover:bg-white/60 dark:hover:bg-white/5 transition-all duration-150 cursor-pointer px-5 py-4"
+      className="group rounded-xl border border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/3 hover:border-black/15 dark:hover:border-white/15 hover:bg-white/60 dark:hover:bg-white/5 transition-all duration-150 cursor-pointer px-5 py-4"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
@@ -399,6 +406,12 @@ function SessionCard({ session, onClick }) {
               {messages.length} exchange{messages.length !== 1 ? 's' : ''}
             </p>
           )}
+          <button
+            onClick={handleDelete}
+            className="mt-1 text-[11px] font-body text-ink/20 dark:text-white/15 hover:text-red-400 dark:hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100"
+          >
+            Delete
+          </button>
         </div>
       </div>
     </div>
@@ -959,6 +972,10 @@ export default function ActiveImagination() {
     loadSessions();
   }
 
+  function handleSessionDelete(id) {
+    setSessions(prev => prev.filter(s => s.id !== id));
+  }
+
   function handleNewSessionFromDialogue(prefillName) {
     setNewSessionFigureName(prefillName || '');
     setActiveSession(null);
@@ -1028,6 +1045,7 @@ export default function ActiveImagination() {
               key={session.id}
               session={session}
               onClick={handleSessionClick}
+              onDelete={handleSessionDelete}
             />
           ))}
         </div>
