@@ -21,6 +21,7 @@ import ActiveImagination from './pages/ActiveImagination';
 import ShadowWork from './pages/ShadowWork';
 import ComplexesMap from './pages/ComplexesMap';
 import DreamSeries from './pages/DreamSeries';
+import DailyPractice from './pages/DailyPractice';
 
 function LoadingScreen() {
   return (
@@ -75,6 +76,7 @@ export default function App() {
                     <Route path="/letter" element={<GuideLetter />} />
                     <Route path="/reference" element={<Reference />} />
                     <Route path="/individuation" element={<Individuation />} />
+                    <Route path="/practice" element={<DailyPractice />} />
                     <Route path="/waking-life" element={<WakingLife />} />
                     <Route path="/imagination" element={<ActiveImagination />} />
                     <Route path="/shadow" element={<ShadowWork />} />

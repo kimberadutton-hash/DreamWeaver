@@ -1,12 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
-import EmbodimentCheckIn from './EmbodimentCheckIn';
-import { useAuth } from '../contexts/AuthContext';
 import { usePauseGate } from '../hooks/usePauseGate';
 
 export default function Layout({ children }) {
-  const { user } = useAuth();
   const { showPauseGate, dismissPauseGate } = usePauseGate();
 
   return (
@@ -14,7 +11,6 @@ export default function Layout({ children }) {
       <Sidebar />
       <main className="flex-1 overflow-y-auto scrollbar-thin">
         {showPauseGate && <PauseGate onDismiss={dismissPauseGate} />}
-        {user && <EmbodimentCheckIn />}
         {children}
       </main>
     </div>

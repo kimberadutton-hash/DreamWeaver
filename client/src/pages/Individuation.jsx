@@ -6,7 +6,6 @@ import { generateIndividuationNarrative, updateIndividuationNarrative, hasApiKey
 import AiErrorMessage from '../components/AiErrorMessage';
 import DreamPreviewDrawer from '../components/DreamPreviewDrawer';
 import { format, parseISO } from 'date-fns';
-import { formatDate } from '../lib/constants';
 
 const MIN_DREAMS = 10;
 
@@ -134,16 +133,7 @@ export default function Individuation() {
   const chapterRefs = useRef({});
   const [activeChapterId, setActiveChapterId] = useState(null);
 
-  // Living questions — unanswered embodiment prompts
-  const [livingQuestions, setLivingQuestions] = useState([]);
-
-  // Active complexes strip
-  const [activeComplexes, setActiveComplexes] = useState([]);
-
-  // Recent waking life entries for strip
-  const [recentWakingLife, setRecentWakingLife] = useState([]);
-
-  useEffect(() => { loadData(); loadLivingQuestions(); loadActiveComplexes(); loadRecentWakingLife(); }, []);
+  useEffect(() => { loadData(); }, []);
 
   async function loadData() {
     const [{ count }, { data: narratives }] = await Promise.all([
@@ -157,59 +147,6 @@ export default function Individuation() {
       setCurrentRecord(current);
     }
     setLoading(false);
-  }
-
-  async function loadLivingQuestions() {
-    const { data } = await supabase
-      .from('dreams')
-      .select('id, title, dream_date, embodiment_prompt')
-      .eq('user_id', user.id)
-      .not('embodiment_prompt', 'is', null)
-      .is('embodiment_checked_at', null)
-      .order('created_at', { ascending: false })
-      .limit(5);
-    setLivingQuestions(data || []);
-  }
-
-  async function loadActiveComplexes() {
-    const { data } = await supabase
-      .from('complexes')
-      .select('id, name, integration_status')
-      .eq('user_id', user.id)
-      .in('integration_status', ['active', 'becoming-conscious'])
-      .order('created_at', { ascending: true })
-      .limit(6);
-    setActiveComplexes(data || []);
-  }
-
-  async function loadRecentWakingLife() {
-    const { data } = await supabase
-      .from('waking_life_entries')
-      .select('id, entry_type, entry_date, title, media_url, media_type')
-      .eq('user_id', user.id)
-      .order('entry_date', { ascending: false })
-      .limit(3);
-    const entries = data || [];
-    const hydrated = await Promise.all(
-      entries.map(async entry => {
-        if (!entry.media_url || entry.media_type !== 'image') return entry;
-        const marker = '/embodiment-media/';
-        const idx = entry.media_url.indexOf(marker);
-        const storagePath = idx !== -1 ? entry.media_url.slice(idx + marker.length) : entry.media_url;
-        const { data: signed } = await supabase.storage
-          .from('embodiment-media')
-          .createSignedUrl(storagePath, 3600);
-        return { ...entry, media_url_signed: signed?.signedUrl || null };
-      })
-    );
-    setRecentWakingLife(hydrated);
-  }
-
-  async function handleSatWith(dreamId) {
-    setLivingQuestions(prev => prev.filter(q => q.id !== dreamId));
-    await supabase.from('dreams').update({
-      embodiment_checked_at: new Date().toISOString(),
-    }).eq('id', dreamId);
   }
 
   async function saveNarrative(parsed, dreamCountNow, lastDreamId) {
@@ -367,143 +304,15 @@ export default function Individuation() {
 
       <div className="max-w-3xl mx-auto px-6 sm:px-8 py-10 pb-24">
 
-        {/* ── Living Questions ── */}
-        {livingQuestions.length > 0 && (
-          <div className="mb-10">
-            <p style={{ fontSize: 9, letterSpacing: '0.18em' }} className="uppercase font-body text-ink/35 dark:text-white/25 mb-5">
-              Living Questions
-            </p>
-            {livingQuestions.map((q, i) => (
-              <div key={q.id}>
-                {i > 0 && <div className="border-t border-gold/20 my-5" />}
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1 min-w-0">
-                    <p className="font-display italic leading-relaxed text-ink dark:text-white/85 mb-2" style={{ fontSize: 17 }}>
-                      {q.embodiment_prompt}
-                    </p>
-                    <p className="text-xs font-body text-ink/35 dark:text-white/25">
-                      <Link
-                        to={`/dream/${q.id}`}
-                        className="italic hover:underline transition-colors"
-                        style={{ color: '#b8924a' }}
-                      >
-                        {q.title || 'Untitled'} · {formatDate(q.dream_date)}
-                      </Link>
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleSatWith(q.id)}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body text-ink/40 dark:text-white/30 hover:text-ink/70 dark:hover:text-white/55 border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 transition-colors whitespace-nowrap"
-                  >
-                    <span className="text-sm leading-none">◎</span>
-                    I sat with this
-                  </button>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* ── Active Complexes strip ── */}
-        {activeComplexes.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-3">
-              <p style={{ fontSize: 9, letterSpacing: '0.18em' }} className="uppercase font-body text-ink/35 dark:text-white/25">
-                Active Complexes
-              </p>
-              <Link to="/complexes" className="text-xs font-body text-gold/60 hover:text-gold transition-colors">
-                View all →
-              </Link>
-            </div>
-            <div className="flex flex-wrap gap-2">
-              {activeComplexes.map(c => {
-                const isActive = c.integration_status === 'active';
-                return (
-                  <Link
-                    key={c.id}
-                    to="/complexes"
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-body transition-colors hover:opacity-80"
-                    style={isActive
-                      ? { color: '#8b4a4a', backgroundColor: 'rgba(139,74,74,0.07)', borderColor: 'rgba(139,74,74,0.18)' }
-                      : { color: '#b8924a', backgroundColor: 'rgba(184,146,74,0.07)', borderColor: 'rgba(184,146,74,0.2)' }
-                    }
-                  >
-                    <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: isActive ? '#8b4a4a' : '#b8924a' }} />
-                    {c.name}
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── Recent Waking Life strip ── */}
-        {recentWakingLife.length > 0 && (
-          <div className="mb-10">
-            <div className="flex items-center justify-between mb-3">
-              <p style={{ fontSize: 9, letterSpacing: '0.18em' }} className="uppercase font-body text-ink/35 dark:text-white/25">
-                Waking Life
-              </p>
-              <Link to="/waking-life" className="text-xs font-body text-gold/60 hover:text-gold transition-colors">
-                View all →
-              </Link>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-1">
-              {recentWakingLife.map(entry => {
-                const WAKING_COLORS = {
-                  art: '#3d2b4a', music: '#4a7c74', writing: '#7c6b5a',
-                  milestone: '#b8924a', body: '#9a4a6a', synchronicity: '#3a5a7a',
-                };
-                const color = WAKING_COLORS[entry.entry_type] || '#7c6b5a';
-                return (
-                  <Link
-                    key={entry.id}
-                    to="/waking-life"
-                    className="shrink-0 w-44 rounded-xl border border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/3 overflow-hidden hover:border-black/15 dark:hover:border-white/15 transition-all duration-150"
-                  >
-                    {entry.media_url && entry.media_type === 'image' && (
-                      <div className="w-full h-24 overflow-hidden">
-                        <img src={entry.media_url_signed || entry.media_url} alt={entry.title} className="w-full h-full object-cover" />
-                      </div>
-                    )}
-                    <div className="px-3 py-2.5">
-                      <span
-                        style={{
-                          fontSize: 8,
-                          letterSpacing: '0.15em',
-                          color,
-                          backgroundColor: color + '22',
-                          padding: '1px 6px',
-                          borderRadius: 99,
-                          textTransform: 'uppercase',
-                          fontFamily: 'monospace',
-                          display: 'inline-block',
-                          marginBottom: 4,
-                        }}
-                      >
-                        {entry.entry_type}
-                      </span>
-                      <p className="text-xs font-body text-ink/75 dark:text-white/60 leading-snug line-clamp-2">{entry.title}</p>
-                      <p className="text-xs font-body text-ink/30 dark:text-white/20 mt-0.5">{formatDate(entry.entry_date)}</p>
-                    </div>
-                  </Link>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* ── Static page chrome (shown when no narrative yet) ── */}
-        {!current && (
-          <div className="mb-10">
-            <h1 className="font-display italic text-4xl text-ink dark:text-white mb-2">
-              Individuation Journey
-            </h1>
-            <p className="text-sm font-body text-ink/50 dark:text-white/40">
-              A Jungian analyst's perspective on your inner work, drawn from your full dream record.
-            </p>
-          </div>
-        )}
+        {/* ── Page header ── */}
+        <div className="mb-10">
+          <h1 className="font-display italic text-4xl text-ink dark:text-white mb-2">
+            My Journey
+          </h1>
+          <p className="text-sm font-body text-ink/50 dark:text-white/40">
+            The long view — where the psyche has been leading you.
+          </p>
+        </div>
 
         {/* API key warning */}
         {!hasApiKey() && (

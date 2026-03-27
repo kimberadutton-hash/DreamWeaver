@@ -18,13 +18,13 @@ const NAV_GROUPS = [
       { to: '/symbols',       label: 'Symbols & Archetypes', icon: '◈' },
       { to: '/complexes',     label: 'Complexes',            icon: '◉' },
       { to: '/timeline',      label: 'Timeline',             icon: '◌' },
-      { to: '/series',        label: 'Dream Series',         icon: '◌' },
     ],
   },
   {
     label: 'The Embodiment',
     items: [
-      { to: '/waking-life', label: 'Waking Life', icon: '◉' },
+      { to: '/practice',    label: 'Daily Practice', icon: '◎' },
+      { to: '/waking-life', label: 'Waking Life',    icon: '◉' },
     ],
   },
   {
