@@ -22,7 +22,7 @@ export default function Archive() {
     setLoading(true);
     const { data, error } = await supabase
       .from('dreams')
-      .select('id, dream_date, title, body, mood, tags, has_analysis, is_big_dream, created_at')
+      .select('id, dream_date, title, body, mood, tags, has_analysis, is_big_dream, created_at, dream_series ( name )')
       .eq('user_id', user.id)
       .order('dream_date', { ascending: false });
 
@@ -179,9 +179,12 @@ function DreamCard({ dream, onClick }) {
           )}
         </div>
       </div>
-      <h3 className="font-display italic text-xl text-ink dark:text-white group-hover:text-plum dark:group-hover:text-gold transition-colors mb-2">
+      <h3 className="font-display italic text-xl text-ink dark:text-white group-hover:text-plum dark:group-hover:text-gold transition-colors mb-1">
         {dream.title || <span className="text-ink/30 dark:text-white/20">Untitled Dream</span>}
       </h3>
+      {dream.dream_series?.name && (
+        <p className="text-xs font-body text-plum/60 dark:text-white/35 mb-2">◌ {dream.dream_series.name}</p>
+      )}
       <p className="text-sm text-ink/60 dark:text-white/50 font-body leading-relaxed mb-3">
         {excerpt}
       </p>

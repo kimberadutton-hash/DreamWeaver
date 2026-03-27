@@ -653,7 +653,7 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
               type="text"
               value={title}
               onChange={e => setTitle(e.target.value)}
-              placeholder="Name what you met — the quality or figure encountered… e.g. 'The capacity to be ruthless' or 'Permission I never gave myself'"
+              placeholder="Name what you met — e.g. 'Reckless abandon' or 'Permission I never gave myself'"
               className="w-full px-4 py-2.5 rounded-xl border border-black/10 bg-white/60 text-sm font-body text-ink placeholder-ink/25 focus:outline-none focus:ring-2 focus:ring-gold/40"
             />
           </div>
@@ -1049,8 +1049,17 @@ export default function ShadowWork() {
       `)
       .eq('user_id', user.id)
       .order('encounter_date', { ascending: false });
-    setEncounters(data || []);
+    const list = data || [];
+    setEncounters(list);
     setLoading(false);
+
+    // Open specific encounter drawer if encounterId is in the URL
+    const encounterId = new URLSearchParams(window.location.search).get('encounterId');
+    if (encounterId) {
+      const match = list.find(e => e.id === encounterId);
+      if (match) setSelectedEncounter(match);
+      window.history.replaceState(null, '', window.location.pathname);
+    }
   }
 
   function handleSaved(encounter, isEdit) {

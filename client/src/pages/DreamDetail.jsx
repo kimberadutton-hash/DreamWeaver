@@ -24,6 +24,8 @@ export default function DreamDetail() {
   const [suggestions, setSuggestions] = useState(null);
   const [suggesting, setSuggesting] = useState(false);
 
+  const [dreamSeries, setDreamSeries] = useState(null); // series this dream belongs to
+
   // Shadow material panel state
   const [shadowAnalysis, setShadowAnalysis] = useState(null); // loaded from dream.shadow_analysis
   const [shadowLoading, setShadowLoading] = useState(false);
@@ -75,6 +77,17 @@ export default function DreamDetail() {
         Array.isArray(sa.projectedQualities)
       ) {
         setShadowAnalysis(sa);
+      }
+      // Load series info if dream belongs to one
+      if (data.series_id) {
+        const { data: s } = await supabase
+          .from('dream_series')
+          .select('id, name')
+          .eq('id', data.series_id)
+          .single();
+        setDreamSeries(s || null);
+      } else {
+        setDreamSeries(null);
       }
     }
     setLoading(false);
@@ -264,7 +277,17 @@ export default function DreamDetail() {
 
       {/* ── 1. Page header ── */}
       <div className="mt-6 mb-8">
-        <p className="text-xs uppercase tracking-widest text-ink/40 dark:text-white/40 font-body mb-2">{date}</p>
+        <div className="flex items-center gap-4 mb-2">
+          <p className="text-xs uppercase tracking-widest text-ink/40 dark:text-white/40 font-body">{date}</p>
+          {dreamSeries && (
+            <Link
+              to={`/series/${dreamSeries.id}`}
+              className="text-xs font-body text-plum/60 dark:text-white/35 hover:text-plum dark:hover:text-gold transition-colors"
+            >
+              ◌ {dreamSeries.name}
+            </Link>
+          )}
+        </div>
         <div className="flex items-start gap-3 flex-wrap mb-3">
           <h1 className="font-display italic text-4xl text-ink dark:text-white leading-tight">
             {dream.title || 'Untitled Dream'}
@@ -281,6 +304,14 @@ export default function DreamDetail() {
               <span key={m} className="px-3 py-1 rounded-full text-xs font-body bg-plum/10 text-plum dark:bg-white/10 dark:text-white/60">{m}</span>
             ))}
           </div>
+        )}
+        {!dreamSeries && (
+          <Link
+            to="/series"
+            className="inline-block text-xs font-body text-ink/30 dark:text-white/25 hover:text-plum dark:hover:text-gold transition-colors mb-4"
+          >
+            + Add to a series
+          </Link>
         )}
 
         {/* Action buttons */}
@@ -415,7 +446,13 @@ export default function DreamDetail() {
 
               {existingEncounter ? (
                 <p className="text-xs font-body text-ink/30 dark:text-white/25 italic">
-                  Encounter recorded: <span className="not-italic text-ink/50 dark:text-white/40">{existingEncounter.title}</span>
+                  Encounter recorded:{' '}
+                  <Link
+                    to={`/shadow?encounterId=${existingEncounter.id}`}
+                    className="not-italic text-ink/50 dark:text-white/40 hover:text-plum dark:hover:text-gold transition-colors"
+                  >
+                    {existingEncounter.title}
+                  </Link>
                 </p>
               ) : (
                 <button
