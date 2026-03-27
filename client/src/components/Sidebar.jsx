@@ -1,50 +1,83 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavTier } from '../hooks/useNavTier';
 
-const NAV_GROUPS = [
-  {
-    label: 'The Inner Work',
-    items: [
-      { to: '/new',          label: 'Record a Dream',     icon: '✦' },
-      { to: '/archive',      label: 'Dream Archive',       icon: '◎' },
-      { to: '/imagination',  label: 'Active Imagination',  icon: '◎' },
-      { to: '/shadow',       label: 'Shadow Work',         icon: '◈' },
-    ],
-  },
-  {
-    label: 'The Journey',
-    items: [
-      { to: '/individuation', label: 'My Journey',           icon: '⌾' },
-      { to: '/symbols',       label: 'Symbols & Archetypes', icon: '◈' },
-      { to: '/complexes',     label: 'Complexes',            icon: '◉' },
-      { to: '/timeline',      label: 'Timeline',             icon: '◌' },
-    ],
-  },
-  {
-    label: 'The Embodiment',
-    items: [
-      { to: '/practice',    label: 'Daily Practice', icon: '◎' },
-      { to: '/waking-life', label: 'Waking Life',    icon: '◉' },
-    ],
-  },
-  {
-    label: 'The Relationship',
-    items: [
-      { to: '/focus',     label: 'Analyst Focus',   icon: '◇' },
-      { to: '/letter',    label: 'Session Letter',  icon: '◎' },
-      { to: '/ask',       label: 'Ask the Archive', icon: '◉' },
-      { to: '/reference', label: 'Reference',       icon: '◉' },
-    ],
-  },
-];
+// ── Locked nav item with hover tooltip ────────────────────────────────────────
 
-const BOTTOM_ITEMS = [
-  { to: '/import',   label: 'Import',   icon: '⊕' },
-  { to: '/settings', label: 'Settings', icon: '◦' },
-];
+function LockedItem({ label, icon, requirement }) {
+  return (
+    <div className="relative group/locked">
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body text-white/60 opacity-35 cursor-default select-none">
+        <span className="text-base opacity-80">{icon}</span>
+        {label}
+      </div>
+      <div
+        className="absolute left-4 bottom-full mb-1.5 z-50 pointer-events-none opacity-0 group-hover/locked:opacity-100 transition-opacity duration-150"
+        style={{ minWidth: 180 }}
+      >
+        <div
+          className="px-2.5 py-1.5 rounded-lg"
+          style={{
+            backgroundColor: 'rgba(61,43,74,0.97)',
+            border: '1px solid rgba(184,146,74,0.2)',
+          }}
+        >
+          <p
+            style={{
+              fontFamily: 'monospace',
+              fontSize: 10,
+              color: 'rgba(184,146,74,0.65)',
+              fontStyle: 'italic',
+              letterSpacing: '0.02em',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Unlocks with {requirement}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Nav item (active link) ────────────────────────────────────────────────────
+
+function NavItem({ to, label, icon }) {
+  return (
+    <NavLink
+      to={to}
+      className={({ isActive }) =>
+        `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body transition-all duration-150 ${
+          isActive
+            ? 'bg-white/15 text-gold'
+            : 'text-white/60 hover:text-white/90 hover:bg-white/8'
+        }`
+      }
+    >
+      <span className="text-base opacity-80">{icon}</span>
+      {label}
+    </NavLink>
+  );
+}
+
+// ── Section label ─────────────────────────────────────────────────────────────
+
+function NavSectionLabel({ children }) {
+  return (
+    <p
+      className="px-4 font-body uppercase text-white/30"
+      style={{ fontSize: 9, letterSpacing: '0.18em', marginTop: 20, marginBottom: 6 }}
+    >
+      {children}
+    </p>
+  );
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
 
 export default function Sidebar() {
   const { profile, signOut } = useAuth();
+  const { unlocked, visibleLocked, unlockRequirement } = useNavTier();
   const navigate = useNavigate();
 
   async function handleSignOut() {
@@ -72,57 +105,98 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 px-4 py-4 overflow-y-auto scrollbar-thin">
 
-        {/* Grouped sections */}
-        {NAV_GROUPS.map(({ label, items }) => (
-          <div key={label} className="mb-1">
-            <p
-              className="px-4 font-body uppercase text-white/30"
-              style={{ fontSize: 9, letterSpacing: '0.18em', marginTop: 20, marginBottom: 6 }}
-            >
-              {label}
-            </p>
-            <div className="space-y-0.5">
-              {items.map(({ to, label: itemLabel, icon }) => (
-                <NavLink
-                  key={to}
-                  to={to}
-                  className={({ isActive }) =>
-                    `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body transition-all duration-150 ${
-                      isActive
-                        ? 'bg-white/15 text-gold'
-                        : 'text-white/60 hover:text-white/90 hover:bg-white/8'
-                    }`
-                  }
-                >
-                  <span className="text-base opacity-80">{icon}</span>
-                  {itemLabel}
-                </NavLink>
-              ))}
-            </div>
-          </div>
-        ))}
+        {/* Record a Dream — always visible, always unlocked */}
+        <div className="mb-1">
+          <NavItem to="/new" label="Record a Dream" icon="✦" />
+        </div>
+
+        {/* THE EMBODIMENT */}
+        <NavSectionLabel>The Embodiment</NavSectionLabel>
+        <div className="space-y-0.5">
+          <NavItem to="/practice" label="Daily Practice" icon="◎" />
+          {unlocked.wakingLife
+            ? <NavItem to="/waking-life" label="Waking Life" icon="◉" />
+            : visibleLocked.wakingLife && (
+                <LockedItem label="Waking Life" icon="◉" requirement={unlockRequirement.wakingLife} />
+              )
+          }
+        </div>
+
+        {/* THE INNER WORK */}
+        <NavSectionLabel>The Inner Work</NavSectionLabel>
+        <div className="space-y-0.5">
+          {unlocked.dreamArchive
+            ? <NavItem to="/archive" label="Dream Archive" icon="◎" />
+            : visibleLocked.dreamArchive && (
+                <LockedItem label="Dream Archive" icon="◎" requirement={unlockRequirement.dreamArchive} />
+              )
+          }
+          {unlocked.activeImagination
+            ? <NavItem to="/imagination" label="Active Imagination" icon="◎" />
+            : visibleLocked.activeImagination && (
+                <LockedItem label="Active Imagination" icon="◎" requirement={unlockRequirement.activeImagination} />
+              )
+          }
+          {unlocked.shadowWork
+            ? <NavItem to="/shadow" label="Shadow Work" icon="◈" />
+            : visibleLocked.shadowWork && (
+                <LockedItem label="Shadow Work" icon="◈" requirement={unlockRequirement.shadowWork} />
+              )
+          }
+        </div>
+
+        {/* THE JOURNEY */}
+        <NavSectionLabel>The Journey</NavSectionLabel>
+        <div className="space-y-0.5">
+          {unlocked.myJourney
+            ? <NavItem to="/individuation" label="My Journey" icon="⌾" />
+            : visibleLocked.myJourney && (
+                <LockedItem label="My Journey" icon="⌾" requirement={unlockRequirement.myJourney} />
+              )
+          }
+          {unlocked.dreamSeries
+            ? <NavItem to="/series" label="Dream Series" icon="◎" />
+            : visibleLocked.dreamSeries && (
+                <LockedItem label="Dream Series" icon="◎" requirement={unlockRequirement.dreamSeries} />
+              )
+          }
+          {unlocked.timeline
+            ? <NavItem to="/timeline" label="Timeline" icon="◌" />
+            : visibleLocked.timeline && (
+                <LockedItem label="Timeline" icon="◌" requirement={unlockRequirement.timeline} />
+              )
+          }
+        </div>
+
+        {/* THE RELATIONSHIP */}
+        <NavSectionLabel>The Relationship</NavSectionLabel>
+        <div className="space-y-0.5">
+          {unlocked.analystFocus
+            ? <NavItem to="/focus" label="Analyst Focus" icon="◇" />
+            : visibleLocked.analystFocus && (
+                <LockedItem label="Analyst Focus" icon="◇" requirement={unlockRequirement.analystFocus} />
+              )
+          }
+          {unlocked.sessionLetter
+            ? <NavItem to="/letter" label="Session Letter" icon="◎" />
+            : visibleLocked.sessionLetter && (
+                <LockedItem label="Session Letter" icon="◎" requirement={unlockRequirement.sessionLetter} />
+              )
+          }
+          {unlocked.askArchive
+            ? <NavItem to="/ask" label="Ask the Archive" icon="◉" />
+            : <LockedItem label="Ask the Archive" icon="◉" requirement={unlockRequirement.askArchive} />
+          }
+        </div>
 
         {/* Divider */}
         <div className="border-t border-white/10 my-4 mx-4" />
 
         {/* Bottom items */}
         <div className="space-y-0.5">
-          {BOTTOM_ITEMS.map(({ to, label, icon }) => (
-            <NavLink
-              key={to}
-              to={to}
-              className={({ isActive }) =>
-                `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body transition-all duration-150 ${
-                  isActive
-                    ? 'bg-white/15 text-gold'
-                    : 'text-white/60 hover:text-white/90 hover:bg-white/8'
-                }`
-              }
-            >
-              <span className="text-base opacity-80">{icon}</span>
-              {label}
-            </NavLink>
-          ))}
+          <NavItem to="/reference" label="Reference" icon="◉" />
+          {unlocked.import && <NavItem to="/import" label="Import" icon="⊕" />}
+          <NavItem to="/settings" label="Settings" icon="◦" />
         </div>
       </nav>
 

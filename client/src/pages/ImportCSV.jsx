@@ -50,7 +50,7 @@ function readFileAsText(file) {
 }
 
 export default function ImportCSV() {
-  const { user } = useAuth();
+  const { user, refreshDreamCount } = useAuth();
   const fileRef = useRef(null);
   const [importing, setImporting] = useState(false);
   const [clearing, setClearing] = useState(false);
@@ -151,6 +151,7 @@ export default function ImportCSV() {
     }
 
     setResults({ total: rows.length, imported, skipped, failed });
+    refreshDreamCount();
     setImporting(false);
   }
 

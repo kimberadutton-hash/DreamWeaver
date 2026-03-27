@@ -7,6 +7,7 @@ export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [dreamCount, setDreamCount] = useState(0);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -26,8 +27,12 @@ export function AuthProvider({ children }) {
 
   async function fetchProfile(userId) {
     try {
-      const { data } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      const [{ data }, { count }] = await Promise.all([
+        supabase.from('profiles').select('*').eq('id', userId).single(),
+        supabase.from('dreams').select('*', { count: 'exact', head: true }).eq('user_id', userId),
+      ]);
       setProfile(data);
+      setDreamCount(count || 0);
       if (data?.dark_mode) {
         document.documentElement.classList.add('dark');
       } else {
@@ -38,6 +43,15 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function refreshDreamCount() {
+    if (!user) return;
+    const { count } = await supabase
+      .from('dreams')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', user.id);
+    setDreamCount(count || 0);
   }
 
   async function updateProfile(updates) {
@@ -62,7 +76,7 @@ export function AuthProvider({ children }) {
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, updateProfile, signOut }}>
+    <AuthContext.Provider value={{ user, profile, loading, updateProfile, signOut, dreamCount, refreshDreamCount }}>
       {children}
     </AuthContext.Provider>
   );

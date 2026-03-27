@@ -25,7 +25,7 @@ function getDailyPrompt() {
 
 export default function NewDream() {
   const navigate = useNavigate();
-  const { user, profile } = useAuth();
+  const { user, profile, refreshDreamCount } = useAuth();
   const { privacySettings } = usePrivacySettings();
 
   const [form, setForm] = useState({
@@ -238,6 +238,7 @@ export default function NewDream() {
       if (dbError) throw dbError;
       savedRef.current = true;
       resetPauseCounts();
+      refreshDreamCount();
       navigate(`/dream/${data.id}`);
     } catch (err) {
       setAiError(err);
