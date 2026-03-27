@@ -73,7 +73,7 @@ export default function EmbodimentCheckIn() {
         style={{ borderLeft: '4px solid #b8924a' }}
       >
         {/* Dream title */}
-        <p className="font-display italic text-lg text-ink dark:text-ink mb-1 leading-snug">
+        <p className="font-display italic text-lg text-ink dark:text-white mb-1 leading-snug">
           {dream.title || 'A dream from last week'}
         </p>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { identifyShadowMaterial } from '../lib/ai';
@@ -1093,6 +1093,14 @@ export default function ShadowWork() {
 
       {/* Header */}
       <div className="mb-8">
+        {shadowPrefill?.dreamTitle && (
+          <Link
+            to={`/dream/${shadowPrefill.dreamId}`}
+            className="inline-flex items-center gap-1 text-sm font-body text-ink/40 dark:text-white/35 hover:text-ink/70 dark:hover:text-white/60 transition-colors mb-4"
+          >
+            ← Return to {shadowPrefill.dreamTitle}
+          </Link>
+        )}
         <h1 className="font-display italic text-4xl text-ink dark:text-white mb-1">Shadow Work</h1>
         <p className="text-sm font-body text-ink/45 dark:text-white/35 mb-4">
           The qualities disowned — and waiting to be reclaimed.

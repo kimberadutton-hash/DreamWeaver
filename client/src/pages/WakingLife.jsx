@@ -749,6 +749,17 @@ export default function WakingLife() {
     if (user) loadEntries();
   }, [user]);
 
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem('waking-life-prefill');
+      if (raw) {
+        sessionStorage.removeItem('waking-life-prefill');
+        setEditEntry(JSON.parse(raw));
+        setShowForm(true);
+      }
+    } catch {}
+  }, []);
+
   async function loadEntries() {
     const { data } = await supabase
       .from('waking_life_entries')

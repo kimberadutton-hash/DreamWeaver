@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { prepareImagination, reflectOnSession, imaginationEmbodimentPrompt, AiError } from '../lib/ai';
@@ -408,6 +408,7 @@ function SessionCard({ session, onClick }) {
 // ── Dialogue View ──────────────────────────────────────────────────────────
 
 function DialogueView({ session: initialSession, onBack, onNewSession, onSessionUpdate, userId }) {
+  const navigate = useNavigate();
   const [session, setSession] = useState(initialSession);
   const [messages, setMessages] = useState(initialSession.messages || []);
   const [inputText, setInputText] = useState('');
@@ -722,6 +723,23 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
               <p className="font-display italic text-[18px] text-ink/70 leading-[1.85] text-center mx-auto" style={{ maxWidth: 600 }}>
                 {embodimentPrompt}
               </p>
+              <div className="text-center mt-5">
+                <button
+                  onClick={() => {
+                    sessionStorage.setItem('waking-life-prefill', JSON.stringify({
+                      entry_type: 'reflection',
+                      title: `Embodying ${session.figure_name}`,
+                      description: embodimentPrompt,
+                      linked_dream_id: session.linked_dream_id || null,
+                      linked_dream_title: session.linked_dream_title || null,
+                    }));
+                    navigate('/waking-life');
+                  }}
+                  className="text-sm font-body text-gold hover:text-gold/70 transition-colors"
+                >
+                  Record in Waking Life →
+                </button>
+              </div>
             </div>
           )}
 

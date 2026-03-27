@@ -65,13 +65,14 @@ export default function NewDream() {
   }, []);
 
   async function fetchActiveFocus() {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('analyst_focuses')
       .select('id, focus_text')
       .eq('user_id', user.id)
       .eq('is_active', true)
       .limit(1)
-      .single();
+      .maybeSingle();
+    if (error && error.code !== 'PGRST116') console.error('fetchActiveFocus:', error);
     if (data) setActiveFocus(data);
   }
 

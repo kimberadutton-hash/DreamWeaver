@@ -830,33 +830,6 @@ Respond ONLY with valid JSON:
   return parseNarrativeJSON(text);
 }
 
-// ── Generate a suggested title for a shadow encounter ─────────────────────────
-// Haiku — fast. Called when form opens from DreamDetail prefill.
-
-export async function generateEncounterTitle({ figureName, projectedQualities, dreamTitle }) {
-  const systemPrompt = `You are naming a shadow encounter — a moment of meeting with a disowned part of the psyche.
-Return a 3-5 word evocative title. Examples:
-- "The permission-seeking shadow"
-- "Recklessness in the cathedral"
-- "Charles and the unlived boldness"
-- "The figure at the threshold"
-Name it as you would name a dream — specific, imaginal, not generic.
-Return only the title, no punctuation, no quotes, no explanation.`;
-
-  const userPrompt = [
-    figureName ? `Shadow figure: ${figureName}` : null,
-    projectedQualities?.length ? `Qualities: ${projectedQualities.join(', ')}` : null,
-    dreamTitle ? `From the dream: "${dreamTitle}"` : null,
-  ].filter(Boolean).join('\n');
-
-  return call({
-    messages: [{ role: 'user', content: userPrompt }],
-    system: systemPrompt,
-    maxTokens: 24,
-    model: AI_MODELS.title,
-  });
-}
-
 // ── Suggest active complexes from the full dream archive ─────────────────────
 // Opus — uses full archive pattern data to identify autonomous complexes.
 // Returns JSON with complexes array.

@@ -3,6 +3,7 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { MOODS } from '../lib/constants';
+import { usePrivacySettings } from '../hooks/usePrivacySettings';
 
 export default function EditDream() {
   const { id } = useParams();
@@ -57,6 +58,7 @@ export default function EditDream() {
   }
 
   const analystLabel = profile?.analyst_name || 'Analyst';
+  const { privacySettings } = usePrivacySettings();
 
   return (
     <div className="max-w-3xl mx-auto px-8 py-10">
@@ -124,12 +126,24 @@ export default function EditDream() {
         </div>
 
         <div>
-          <label className="field-label">My Notes <span className="text-xs text-ink/30 normal-case tracking-normal">Private — never shared with AI</span></label>
+          <label className="field-label">
+            My Notes{' '}
+            {privacySettings.share_notes_with_ai
+              ? <span className="text-xs text-amber-500 normal-case tracking-normal font-body font-normal">◈ shared with AI</span>
+              : <span className="text-xs text-ink/30 dark:text-white/30 normal-case tracking-normal font-body font-normal">◎ private</span>
+            }
+          </label>
           <textarea value={form.notes} onChange={e => setField('notes', e.target.value)} rows={3} className="field-input resize-y" />
         </div>
 
         <div>
-          <label className="field-label">{analystLabel} Session</label>
+          <label className="field-label">
+            {analystLabel} Session{' '}
+            {privacySettings.share_analyst_session_with_ai
+              ? <span className="text-xs text-amber-500 normal-case tracking-normal font-body font-normal">◈ shared with AI</span>
+              : <span className="text-xs text-ink/30 dark:text-white/30 normal-case tracking-normal font-body font-normal">◎ private</span>
+            }
+          </label>
           <textarea value={form.analyst_session} onChange={e => setField('analyst_session', e.target.value)} rows={3} className="field-input resize-y" />
         </div>
 
