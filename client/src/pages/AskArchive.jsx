@@ -1,273 +1,443 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { askArchive, hasApiKey, AiError } from '../lib/ai';
-import { usePrivacySettings } from '../hooks/usePrivacySettings';
+import { useApiKey } from '../hooks/useApiKey';
+import { supabase } from '../lib/supabase';
+import { askArchive } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
-import { Link } from 'react-router-dom';
-import { format, parseISO } from 'date-fns';
 
-const EXAMPLE_QUESTIONS = [
-  'What recurring symbols appear across my dreams?',
-  'How has my relationship to water evolved in my dreams?',
-  'Which Jungian archetypes appear most frequently?',
-  'What do my dreams suggest about my current emotional state?',
-  'Are there any transformation themes in my recent dreams?',
-];
+// ─── helpers ────────────────────────────────────────────────────────────────
 
-export default function AskArchive() {
-  const { user } = useAuth();
-  const { privacySettings } = usePrivacySettings();
-  const [question, setQuestion] = useState('');
-  const [answer, setAnswer] = useState('');
-  const [askedQuestion, setAskedQuestion] = useState('');
+function formatDate(iso) {
+  if (!iso) return '';
+  return new Date(iso).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  });
+}
+
+// Renders AI markdown: bold, line breaks. No external libraries needed.
+function MarkdownText({ content, className = '' }) {
+  const paragraphs = content.split(/\n\n+/);
+  return (
+    <div className={className}>
+      {paragraphs.map((para, i) => {
+        // Convert **bold** to <strong>
+        const parts = para.split(/\*\*(.*?)\*\*/g);
+        const rendered = parts.map((part, j) =>
+          j % 2 === 1 ? <strong key={j}>{part}</strong> : part
+        );
+        return (
+          <p key={i} className={i > 0 ? 'mt-3' : ''}>
+            {rendered}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+// ─── MessageBubble ───────────────────────────────────────────────────────────
+
+function MessageBubble({ role, content, timestamp }) {
+  const isUser = role === 'user';
+  return (
+    <div className={`flex ${isUser ? 'justify-end' : 'justify-start'} mb-4`}>
+      <div
+        className={`max-w-[85%] rounded-2xl px-5 py-4 ${
+          isUser
+            ? 'bg-plum text-parchment rounded-tr-sm'
+            : 'bg-parchment border border-gold/20 text-ink rounded-tl-sm'
+        }`}
+      >
+        {!isUser && (
+          <p className="text-[10px] uppercase tracking-widest text-gold mb-2 font-mono">
+            The Archive
+          </p>
+        )}
+        {isUser ? (
+          <p className="text-sm leading-relaxed font-sans">{content}</p>
+        ) : (
+          <MarkdownText
+            content={content}
+            className="text-sm leading-relaxed font-serif italic"
+          />
+        )}
+        {timestamp && (
+          <p
+            className={`text-[10px] mt-2 font-mono ${
+              isUser ? 'text-parchment/50 text-right' : 'text-ink/40'
+            }`}
+          >
+            {formatDate(timestamp)}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── ArchiveThread ───────────────────────────────────────────────────────────
+
+function ArchiveThread({ queryRecord, dreams, apiKey, onThreadUpdated }) {
+  const messages = queryRecord.messages || [];
+  const [followUp, setFollowUp] = useState('');
   const [loading, setLoading] = useState(false);
-  const [aiError, setAiError] = useState(null);
-
-  const [saving, setSaving] = useState(false);
-  const [savedId, setSavedId] = useState(null); // id of just-saved entry
-
-  const [saved, setSaved] = useState([]); // previously saved Q&As
-  const [loadingSaved, setLoadingSaved] = useState(true);
+  const [error, setError] = useState(null);
+  const bottomRef = useRef(null);
+  const inputRef = useRef(null);
 
   useEffect(() => {
-    fetchSaved();
-  }, []);
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length]);
 
-  async function fetchSaved() {
-    const { data } = await supabase
-      .from('archive_queries')
-      .select('*')
-      .eq('user_id', user.id)
-      .order('created_at', { ascending: false });
-    setSaved(data || []);
-    setLoadingSaved(false);
-  }
+  async function handleFollowUp(e) {
+    e.preventDefault();
+    const q = followUp.trim();
+    if (!q || loading) return;
 
-  async function handleAsk(q) {
-    const query = q || question;
-    if (!query.trim()) return;
-
+    setError(null);
     setLoading(true);
-    setAnswer('');
-    setAskedQuestion(query);
-    setAiError(null);
-    setSavedId(null);
+    setFollowUp('');
 
-    const { data: dreams, error: dbErr } = await supabase
-      .from('dreams')
-      .select('dream_date, title, body, summary, tags, archetypes, symbols, mood, notes, analyst_session')
-      .eq('user_id', user.id)
-      .order('dream_date', { ascending: false })
-      .limit(50);
+    const userMsg = { role: 'user', content: q, timestamp: new Date().toISOString() };
+    const optimisticMessages = [...messages, userMsg];
 
-    if (dbErr || !dreams?.length) {
-      setAiError(new AiError('No dreams found to query. Record some dreams first.', 'api_error'));
-      setLoading(false);
-      return;
-    }
+    await supabase
+      .from('archive_queries')
+      .update({ messages: optimisticMessages })
+      .eq('id', queryRecord.id);
+    onThreadUpdated(queryRecord.id, optimisticMessages);
 
     try {
-      const text = await askArchive({ question: query, dreams, privacySettings });
-      setAnswer(text);
+      const answer = await askArchive(q, dreams, apiKey, messages);
+      const assistantMsg = {
+        role: 'assistant',
+        content: answer,
+        timestamp: new Date().toISOString(),
+      };
+      const finalMessages = [...optimisticMessages, assistantMsg];
+
+      await supabase
+        .from('archive_queries')
+        .update({ messages: finalMessages })
+        .eq('id', queryRecord.id);
+      onThreadUpdated(queryRecord.id, finalMessages);
     } catch (err) {
-      setAiError(err);
+      setError(err);
+      await supabase
+        .from('archive_queries')
+        .update({ messages })
+        .eq('id', queryRecord.id);
+      onThreadUpdated(queryRecord.id, messages);
     } finally {
       setLoading(false);
+      setTimeout(() => inputRef.current?.focus(), 100);
     }
-  }
-
-  async function handleSave() {
-    setSaving(true);
-    const { data, error } = await supabase
-      .from('archive_queries')
-      .insert({ user_id: user.id, question: askedQuestion, answer })
-      .select()
-      .single();
-
-    if (!error && data) {
-      setSavedId(data.id);
-      setSaved(prev => [data, ...prev]);
-    }
-    setSaving(false);
-  }
-
-  async function handleDelete(id) {
-    await supabase.from('archive_queries').delete().eq('id', id);
-    setSaved(prev => prev.filter(q => q.id !== id));
-  }
-
-  function handleReset() {
-    setAnswer('');
-    setQuestion('');
-    setAskedQuestion('');
-    setAiError(null);
-    setSavedId(null);
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-8 py-10">
-      <h1 className="font-display italic text-4xl text-ink dark:text-white mb-2">
-        Ask Your Archive
-      </h1>
-      <p className="text-sm font-body text-ink/50 dark:text-white/40 mb-8">
-        Ask anything about the patterns, symbols, and themes across all your dreams.
-      </p>
-
-      {!hasApiKey() && (
-        <div className="mb-6 flex items-start justify-between gap-4 px-5 py-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
-          <p className="text-sm font-body text-amber-800 dark:text-amber-300">
-            An Anthropic API key is required to query your archive.
+    <div className="mt-2">
+      {/* Message thread */}
+      <div className="mb-4 max-h-[600px] overflow-y-auto pr-1">
+        {messages.length === 0 && (
+          <p className="text-sm font-serif italic text-ink/40 mb-4 py-2">
+            Ask a follow-up below to continue this conversation.
           </p>
-          <Link to="/settings" className="shrink-0 text-sm font-body font-medium text-amber-800 dark:text-amber-300 underline">
-            Settings →
-          </Link>
-        </div>
-      )}
-
-      {/* Input */}
-      <div className="flex gap-3 mb-6">
-        <input
-          type="text"
-          value={question}
-          onChange={e => setQuestion(e.target.value)}
-          onKeyDown={e => e.key === 'Enter' && handleAsk()}
-          placeholder="What patterns do you notice in my dreams?"
-          className="flex-1 field-input"
-        />
-        <button
-          onClick={() => handleAsk()}
-          disabled={loading || !question.trim()}
-          className="px-5 py-3 rounded-xl text-sm font-body font-medium text-white disabled:opacity-50 transition-opacity"
-          style={{ backgroundColor: '#3d2b4a' }}
-        >
-          {loading ? '…' : 'Ask'}
-        </button>
+        )}
+        {messages.map((msg, i) => (
+          <MessageBubble key={i} {...msg} />
+        ))}
+        {loading && (
+          <div className="flex justify-start mb-4">
+            <div className="bg-parchment border border-gold/20 rounded-2xl rounded-tl-sm px-5 py-4">
+              <p className="text-[10px] uppercase tracking-widest text-gold mb-2 font-mono">
+                The Archive
+              </p>
+              <div className="flex gap-1 items-center h-5">
+                <span className="w-1.5 h-1.5 bg-gold/60 rounded-full animate-bounce [animation-delay:0ms]" />
+                <span className="w-1.5 h-1.5 bg-gold/60 rounded-full animate-bounce [animation-delay:150ms]" />
+                <span className="w-1.5 h-1.5 bg-gold/60 rounded-full animate-bounce [animation-delay:300ms]" />
+              </div>
+            </div>
+          </div>
+        )}
+        <div ref={bottomRef} />
       </div>
 
-      {/* Example questions */}
-      {!answer && !loading && (
-        <div className="mb-10">
-          <p className="text-xs uppercase tracking-widest text-ink/30 dark:text-white/30 font-body mb-3">
-            Example questions
-          </p>
-          <div className="space-y-2">
-            {EXAMPLE_QUESTIONS.map(q => (
-              <button
-                key={q}
-                onClick={() => { setQuestion(q); handleAsk(q); }}
-                className="block w-full text-left px-4 py-3 rounded-xl text-sm font-body text-ink/60 dark:text-white/50 bg-white/40 dark:bg-white/5 border border-black/5 dark:border-white/5 hover:bg-white/70 dark:hover:bg-white/10 hover:text-plum dark:hover:text-gold transition-colors"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
+      {error && (
+        <div className="mb-4">
+          <AiErrorMessage error={error} />
         </div>
       )}
 
-      {loading && (
-        <div className="text-center py-12">
-          <p className="font-display italic text-xl text-ink/40 dark:text-white/40">Consulting the archive…</p>
-        </div>
-      )}
+      {/* Follow-up input — always visible */}
+      <form onSubmit={handleFollowUp} className="flex gap-2 items-end">
+        <textarea
+          ref={inputRef}
+          value={followUp}
+          onChange={(e) => setFollowUp(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              handleFollowUp(e);
+            }
+          }}
+          placeholder="Continue the conversation…"
+          rows={2}
+          disabled={loading}
+          className="flex-1 resize-none rounded-xl border border-gold/20 bg-white/60 px-4 py-3
+                     text-sm text-ink font-sans placeholder:text-ink/30
+                     focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20
+                     disabled:opacity-50 transition-colors"
+        />
+        <button
+          type="submit"
+          disabled={!followUp.trim() || loading}
+          className="self-end px-5 py-3 rounded-xl bg-gold text-white text-sm font-sans
+                     hover:bg-gold/90 active:scale-95 transition-all
+                     disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+        >
+          {loading ? 'Asking…' : 'Ask'}
+        </button>
+      </form>
+      <p className="text-[11px] text-ink/30 font-mono mt-2 ml-1">
+        ↵ to send · shift+↵ for new line
+      </p>
+    </div>
+  );
+}
 
-      {aiError && <AiErrorMessage error={aiError} />}
+// ─── QueryCard ───────────────────────────────────────────────────────────────
 
-      {/* Answer */}
-      {answer && (
-        <div className="mt-2 p-6 rounded-2xl bg-white/60 dark:bg-white/5 border border-black/8 dark:border-white/8">
-          <p className="text-xs uppercase tracking-widest text-ink/30 dark:text-white/30 font-body mb-1">
-            {askedQuestion}
+function QueryCard({ queryRecord, dreams, apiKey, onThreadUpdated, defaultOpen }) {
+  const [open, setOpen] = useState(defaultOpen || false);
+  const messages = queryRecord.messages || [];
+  const exchangeCount = Math.floor(messages.length / 2);
+
+  return (
+    <div className="bg-white/70 rounded-2xl border border-gold/15 overflow-hidden">
+      {/* Collapsed header — always visible, click to expand */}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full text-left px-6 py-5 flex items-start justify-between gap-4 group"
+      >
+        <div className="flex-1 min-w-0">
+          <p className="font-serif italic text-ink text-base leading-snug line-clamp-2 group-hover:text-plum transition-colors">
+            {queryRecord.question}
           </p>
-          <p className="font-dream whitespace-pre-wrap text-ink dark:text-white/90 mt-3">
-            {answer}
-          </p>
-
-          {/* Save / reset actions */}
-          <div className="flex items-center justify-between mt-5 pt-4 border-t border-black/8 dark:border-white/8">
-            {savedId ? (
-              <span className="text-sm font-body text-green-700 dark:text-green-400">
-                ✓ Saved to your archive
+          <div className="flex items-center gap-3 mt-2">
+            <span className="text-[11px] font-mono text-ink/40">
+              {formatDate(queryRecord.created_at)}
+            </span>
+            {exchangeCount > 1 && (
+              <span className="text-[11px] font-mono text-gold/70">
+                {exchangeCount} exchanges
               </span>
-            ) : (
-              <button
-                onClick={handleSave}
-                disabled={saving}
-                className="text-sm font-body font-medium text-plum dark:text-gold hover:opacity-70 disabled:opacity-40 transition-opacity"
-              >
-                {saving ? 'Saving…' : '+ Save this response'}
-              </button>
             )}
-            <button
-              onClick={handleReset}
-              className="text-xs font-body text-ink/30 dark:text-white/30 hover:text-ink dark:hover:text-white transition-colors"
-            >
-              Ask another question
-            </button>
           </div>
         </div>
-      )}
+        <span
+          className={`text-gold/50 mt-1 transition-transform duration-200 select-none text-lg ${
+            open ? 'rotate-180' : ''
+          }`}
+        >
+          ▾
+        </span>
+      </button>
 
-      {/* Saved Q&As */}
-      {!loadingSaved && saved.length > 0 && (
-        <div className="mt-12">
-          <h2 className="text-xs uppercase tracking-widest font-body text-ink/40 dark:text-white/30 mb-4">
-            Saved Insights
-          </h2>
-          <div className="space-y-4">
-            {saved.map(entry => (
-              <SavedEntry
-                key={entry.id}
-                entry={entry}
-                onDelete={() => handleDelete(entry.id)}
-                highlight={entry.id === savedId}
-              />
-            ))}
-          </div>
+      {/* Expanded: full thread + follow-up input */}
+      {open && (
+        <div className="px-6 pb-6 border-t border-gold/10">
+          <ArchiveThread
+            queryRecord={queryRecord}
+            dreams={dreams}
+            apiKey={apiKey}
+            onThreadUpdated={onThreadUpdated}
+          />
         </div>
       )}
     </div>
   );
 }
 
-function SavedEntry({ entry, onDelete, highlight }) {
-  const [expanded, setExpanded] = useState(highlight);
-  const date = format(parseISO(entry.created_at), 'MMMM d, yyyy');
+// ─── Main page ───────────────────────────────────────────────────────────────
+
+export default function AskArchive() {
+  const { user } = useAuth();
+  const { apiKey } = useApiKey();
+
+  const [dreams, setDreams] = useState([]);
+  const [queries, setQueries] = useState([]);
+  const [question, setQuestion] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [loadingQueries, setLoadingQueries] = useState(true);
+  const [error, setError] = useState(null);
+  const [newestId, setNewestId] = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+    supabase
+      .from('dreams')
+      .select('id, title, body, dream_date, archetypes, symbols, tags, reflection')
+      .eq('user_id', user.id)
+      .order('dream_date', { ascending: true })
+      .then(({ data }) => setDreams(data || []));
+  }, [user]);
+
+  useEffect(() => {
+    if (!user) return;
+    setLoadingQueries(true);
+    supabase
+      .from('archive_queries')
+      .select('id, question, answer, messages, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .then(({ data }) => {
+        // Normalize null messages to empty array
+        const normalized = (data || []).map((q) => ({
+          ...q,
+          messages: q.messages || [],
+        }));
+        setQueries(normalized);
+        setLoadingQueries(false);
+      });
+  }, [user]);
+
+  function handleThreadUpdated(queryId, newMessages) {
+    setQueries((prev) =>
+      prev.map((q) => (q.id === queryId ? { ...q, messages: newMessages } : q))
+    );
+  }
+
+  async function handleAsk(e) {
+    e.preventDefault();
+    const q = question.trim();
+    if (!q || loading || !apiKey) return;
+
+    setError(null);
+    setLoading(true);
+    setQuestion('');
+
+    try {
+      const answer = await askArchive(q, dreams, apiKey, []);
+      const now = new Date().toISOString();
+      const initialMessages = [
+        { role: 'user', content: q, timestamp: now },
+        { role: 'assistant', content: answer, timestamp: now },
+      ];
+
+      const { data, error: dbError } = await supabase
+        .from('archive_queries')
+        .insert({
+          user_id: user.id,
+          question: q,
+          answer,
+          messages: initialMessages,
+        })
+        .select()
+        .single();
+
+      if (dbError) throw dbError;
+
+      setQueries((prev) => [{ ...data, messages: initialMessages }, ...prev]);
+      setNewestId(data.id);
+    } catch (err) {
+      setError(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const hasDreams = dreams.length > 0;
+  const hasApiKey = !!apiKey;
 
   return (
-    <div className={`rounded-xl border transition-colors ${
-      highlight
-        ? 'border-gold/40 bg-gold/5'
-        : 'border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/5'
-    }`}>
-      <button
-        onClick={() => setExpanded(v => !v)}
-        className="w-full text-left px-5 py-4 flex items-start justify-between gap-4"
-      >
-        <div>
-          <p className="text-xs font-body text-ink/30 dark:text-white/25 mb-1">{date}</p>
-          <p className="text-sm font-body text-ink/80 dark:text-white/70 leading-snug">
-            {entry.question}
-          </p>
-        </div>
-        <span className="text-ink/30 dark:text-white/20 text-xs mt-1 shrink-0">
-          {expanded ? '▲' : '▼'}
-        </span>
-      </button>
+    <div className="max-w-2xl mx-auto px-4 py-10 space-y-10">
+      <header>
+        <h1 className="font-serif italic text-3xl text-plum">Ask the Archive</h1>
+        <p className="text-ink/50 text-sm font-sans mt-2 leading-relaxed">
+          Ask anything about the patterns, figures, and threads across all your dreams.
+          Each conversation is saved — click any past question to continue it.
+        </p>
+      </header>
 
-      {expanded && (
-        <div className="px-5 pb-5">
-          <p className="font-dream whitespace-pre-wrap text-ink dark:text-white/85 text-[15px] leading-relaxed border-t border-black/8 dark:border-white/8 pt-4">
-            {entry.answer}
-          </p>
-          <button
-            onClick={onDelete}
-            className="mt-4 text-xs font-body text-red-400 hover:text-red-600 transition-colors"
-          >
-            Delete
-          </button>
+      {!hasApiKey && (
+        <div className="bg-gold/10 border border-gold/30 rounded-xl px-5 py-4 text-sm text-ink/70 font-sans">
+          Add your Anthropic API key in{' '}
+          <a href="/settings" className="text-gold underline">Settings</a>{' '}
+          to ask the archive.
         </div>
       )}
+
+      {!hasDreams && hasApiKey && (
+        <div className="bg-parchment border border-gold/20 rounded-xl px-5 py-4 text-sm text-ink/60 font-serif italic">
+          Record some dreams first — the archive needs material to reflect back to you.
+        </div>
+      )}
+
+      {hasDreams && hasApiKey && (
+        <form onSubmit={handleAsk} className="space-y-3">
+          <textarea
+            value={question}
+            onChange={(e) => setQuestion(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleAsk(e);
+              }
+            }}
+            placeholder="What keeps appearing in my dreams? What is the recurring figure trying to tell me?"
+            rows={3}
+            disabled={loading}
+            className="w-full resize-none rounded-xl border border-gold/20 bg-white/80 px-5 py-4
+                       text-base text-ink font-serif italic placeholder:text-ink/25 placeholder:not-italic
+                       focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20
+                       disabled:opacity-50 transition-colors leading-relaxed"
+          />
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] font-mono text-ink/30">
+              {dreams.length} dream{dreams.length !== 1 ? 's' : ''} in archive
+            </p>
+            <button
+              type="submit"
+              disabled={!question.trim() || loading}
+              className="px-6 py-2.5 rounded-xl bg-plum text-parchment text-sm font-sans
+                         hover:bg-plum/90 active:scale-95 transition-all
+                         disabled:opacity-40 disabled:cursor-not-allowed"
+            >
+              {loading ? 'Consulting the archive…' : 'Ask'}
+            </button>
+          </div>
+          {error && <AiErrorMessage error={error} />}
+        </form>
+      )}
+
+      <section className="space-y-3">
+        {loadingQueries ? (
+          <p className="text-sm font-mono text-ink/30 text-center py-8">Loading conversations…</p>
+        ) : queries.length === 0 ? (
+          <p className="text-sm font-serif italic text-ink/40 text-center py-8">
+            No conversations yet. Ask your first question above.
+          </p>
+        ) : (
+          <>
+            <h2 className="text-xs uppercase tracking-widest font-mono text-ink/40 mb-4">
+              Conversations
+            </h2>
+            {queries.map((q) => (
+              <QueryCard
+                key={q.id}
+                queryRecord={q}
+                dreams={dreams}
+                apiKey={apiKey}
+                onThreadUpdated={handleThreadUpdated}
+                defaultOpen={q.id === newestId}
+              />
+            ))}
+          </>
+        )}
+      </section>
     </div>
   );
 }

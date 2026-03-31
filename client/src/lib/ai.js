@@ -268,34 +268,46 @@ Respond ONLY with valid JSON — no other text:
 
 // ── Ask the archive a natural-language question ──────────────────────────────
 
-export async function askArchive({ question, dreams, privacySettings }) {
-  const summaries = dreams.map((d, i) => {
-    // Prefer AI-generated summary if available; fall back to body excerpt.
-    const excerpt = d.summary?.trim()
-      ? d.summary.trim()
-      : `${d.body.slice(0, 300)}${d.body.length > 300 ? '...' : ''}`;
-    const moodStr = Array.isArray(d.mood) ? d.mood.join(', ') : (d.mood || '');
-    let entry = `Dream ${i + 1} (${d.dream_date}): "${d.title}" — ${excerpt} [Tags: ${(d.tags || []).join(', ')}${moodStr ? ` | Mood: ${moodStr}` : ''}]`;
-    // Include private fields only when the dreamer has explicitly enabled sharing.
-    if (privacySettings?.share_notes_with_ai && d.notes?.trim()) {
-      entry += `\n  Personal notes: ${d.notes.trim().slice(0, 300)}${d.notes.trim().length > 300 ? '...' : ''}`;
-    }
-    if (privacySettings?.share_analyst_session_with_ai && d.analyst_session?.trim()) {
-      entry += `\n  Analyst session: ${d.analyst_session.trim().slice(0, 300)}${d.analyst_session.trim().length > 300 ? '...' : ''}`;
-    }
-    return entry;
-  }).join('\n\n');
+/**
+ * Ask a question about the dream archive, with optional conversation history
+ * for threaded follow-ups.
+ *
+ * @param {string} question           - The new user question
+ * @param {Array}  dreams             - Full dream archive for context
+ * @param {string} apiKey             - User's Anthropic API key
+ * @param {Array}  [priorMessages=[]] - Existing thread messages
+ *                                      [{role, content, timestamp}, ...]
+ * @returns {string} AI answer
+ */
+export async function askArchive(question, dreams, apiKey, priorMessages = []) {
+  const dreamContext = dreams
+    .map(
+      (d) =>
+        `Dream (${d.dream_date}): ${d.title || 'Untitled'}\n${d.body}\n` +
+        (d.archetypes?.length ? `Archetypes: ${d.archetypes.join(', ')}\n` : '') +
+        (d.symbols?.length ? `Symbols: ${d.symbols.join(', ')}\n` : '') +
+        (d.tags?.length ? `Tags: ${d.tags.join(', ')}\n` : '') +
+        (d.reflection ? `Reflection: ${d.reflection}\n` : '')
+    )
+    .join('\n---\n');
 
-  const prompt = `You are a Jungian analyst reviewing a dreamer's personal dream archive. Answer the following question about their dreams with insight, warmth, and psychological depth. Cite specific dreams by title or date when relevant.
+  const systemPrompt = `You are a depth psychological companion helping someone explore their dream archive through the lens of Jungian psychology.
+
+You have access to the person's full dream archive below. Answer questions about patterns, symbols, recurring figures, emotional threads, and the individuation journey visible across their dreams.
+
+Speak with warmth and depth. Avoid clinical detachment. Use the language of the soul — not diagnosis. Reference specific dreams when relevant, including their dates. Be honest when patterns are unclear or absent.
+
+If this is a follow-up in an ongoing conversation, maintain continuity — you can reference what was said earlier.
 
 DREAM ARCHIVE:
-${summaries}
+${dreamContext}`;
 
-QUESTION: ${question}
+  const conversationMessages = [
+    ...priorMessages.map(({ role, content }) => ({ role, content })),
+    { role: 'user', content: question },
+  ];
 
-Respond conversationally in 2-4 paragraphs. Be specific, warm, and analytically thoughtful.`;
-
-  return call({ messages: [{ role: 'user', content: prompt }], maxTokens: 1024, model: AI_MODELS.analysis });
+  return call({ messages: conversationMessages, maxTokens: 1500, model: AI_MODELS.analysis, apiKey, system: systemPrompt });
 }
 
 // ── Generate personal recurring themes from dream archive ────────────────────

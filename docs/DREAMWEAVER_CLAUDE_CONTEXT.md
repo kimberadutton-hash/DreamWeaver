@@ -1,5 +1,5 @@
 DreamWeaver — Claude Project Context
-Last updated: March 2026
+Last updated: March 31, 2026
 
 What This App Is
 DreamWeaver is a depth psychological practice tool built on Jungian principles. It helps people record and analyze dreams, track their individuation journey, and bring the inner work into embodied daily life.
@@ -137,7 +137,7 @@ Database Schema Summary
 Core tables:
 
 profiles — extends auth.users, includes display_name, analyst_name, analyst_email, dark_mode, privacy_settings (jsonb), onboarding_complete, milestones_seen, solo_practitioner, working_together_length, meeting_frequency
-dreams — core content: body, title, mood (text[]), archetypes, symbols, tags, reflection, invitation, embodiment_prompt, embodiment_response, structure (jsonb), shadow_analysis (jsonb), series_id, is_big_dream, dreamer_associations, incubation_intention, waking_resonances
+dreams — core content: body, title, mood (text[]), archetypes, symbols, tags, reflection, invitation, embodiment_prompt, embodiment_response, structure (jsonb), shadow_analysis (jsonb), series_id, is_big_dream, dreamer_associations, incubation_intention, waking_resonances, has_analysis, last_analyzed_at
 archive_queries — saved Ask the Archive Q&A
 user_themes — AI-generated personal recurring themes
 
@@ -174,7 +174,7 @@ share_analyst_focus_with_ai (default false)
 Tiered navigation
 useNavTier() hook reads dreamCount from AuthContext and guide status from profile. Returns unlocked and visibleLocked objects consumed by Sidebar. No manual override — features unlock only when earned.
 Contextual dream analysis
-When analyzing a dream, fetches 15 most recent dreams with dream_date < current_dream_date to build context. Dreams analyzed in chronological context of when they occurred, not when they were entered.
+When analyzing a dream (new or re-analyzed), fetches the 15 most recent dreams where dream_date < this dream's dream_date, ordered by dream_date descending. Context prompt is explicitly framed as "prior history" — heading reads "DREAM HISTORY PRECEDING THIS DREAM (date range)" and the system prompt tells Claude it is analyzing a historical dream, not a current one. This prevents Claude from treating old dreams as if they are the most recently dreamed.
 Individuation narrative versioning
 v1 narratives: plain text stored in narrative column.
 v2 narratives: JSON with chapters, thesis, closing invitation. narrative_version column distinguishes them. v1 shows fallback banner.
@@ -220,6 +220,8 @@ Features Built — Complete List
 ✅ Dream series linking
 ✅ Symbols & Archetypes page (in sidebar, pending replacement by AI Dream Series)
 ✅ Personal themes generation
+✅ Re-analyze Dream button on EditDream — triggers fresh Jungian analysis using correct chronological context (dreams before this dream's date only), replaces AI-generated fields only, leaves all user-authored content untouched
+✅ 1-hour re-analysis cooldown — last_analyzed_at timestamp written on each re-analysis; button shows remaining time and goes muted until cooldown expires
 
 
 What's Next (Priority Order)
