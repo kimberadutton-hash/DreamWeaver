@@ -223,11 +223,11 @@ Features Built — Complete List
 ✅ Personal themes generation
 ✅ Re-analyze Dream button on EditDream — triggers fresh Jungian analysis using correct chronological context (dreams before this dream's date only), replaces AI-generated fields only, leaves all user-authored content untouched
 ✅ 1-hour re-analysis cooldown — last_analyzed_at timestamp written on each re-analysis; button shows remaining time and goes muted until cooldown expires
+✅ Duplicate dream detection — Settings → Data & Maintenance; Jaccard similarity scan within same-date dream groups, inline confirmation before delete, session-only "Not duplicates" dismissal
 
 
 What's Next (Priority Order)
 
-Duplicate dream detection — Settings → Data & Maintenance
 Global animation pass — Replace conditional rendering with CSS transitions
 "About this practice" orientation layer — Collapsible on each page for new users
 AI-suggested Dream Series — Replaces manual Dream Series and eventually Symbols & Archetypes in sidebar
@@ -241,7 +241,6 @@ Known Issues / Technical Debt
 
 Symbols & Archetypes page still in sidebar — pending replacement by AI Dream Series
 Global animation pass not yet done — collapsed sections use conditional rendering
-Duplicate dream detection not yet built
 generateEncounterTitle() removed from ShadowWork but may still exist as dead code in ai.js — verify
 Old archive_queries rows with null/empty messages require SQL backfill (supabase-migration-archive-threads.sql) to display as threads
 WakingLife strip on Daily Practice needs signed URL verification

@@ -396,6 +396,9 @@ export default function Settings() {
           Data & Maintenance
         </h2>
         <CleanupButton userId={user.id} />
+        <div className="mt-8 pt-8 border-t border-black/8 dark:border-white/8">
+          <DuplicateDreamDetector userId={user.id} />
+        </div>
       </section>
     </div>
   );
@@ -585,6 +588,237 @@ function CleanupButton({ userId }) {
             className="mt-2 text-xs font-body text-green-700 dark:text-green-400 underline">
             Dismiss
           </button>
+        </div>
+      )}
+
+      {error && <p className="text-red-500 text-sm font-body">{error}</p>}
+    </div>
+  );
+}
+
+function DuplicateDreamDetector({ userId }) {
+  const [status, setStatus] = useState('idle'); // idle | scanning | results | confirming
+  const [pairs, setPairs] = useState([]);        // [{ a, b, similarity }]
+  const [dismissed, setDismissed] = useState(new Set());
+  const [confirmDelete, setConfirmDelete] = useState(null); // { keepId, deleteId, deleteTitle }
+  const [deleting, setDeleting] = useState(false);
+  const [error, setError] = useState('');
+
+  function jaccardSimilarity(textA, textB) {
+    if (!textA || !textB) return 0;
+    const wordsOf = t =>
+      new Set(t.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean));
+    const a = wordsOf(textA);
+    const b = wordsOf(textB);
+    const intersection = [...a].filter(w => b.has(w)).length;
+    const union = new Set([...a, ...b]).size;
+    return union === 0 ? 0 : intersection / union;
+  }
+
+  async function handleScan() {
+    setStatus('scanning');
+    setError('');
+    setPairs([]);
+    setDismissed(new Set());
+
+    try {
+      const { data: dreams, error: fetchError } = await supabase
+        .from('dreams')
+        .select('id, title, dream_date, body')
+        .eq('user_id', userId)
+        .order('dream_date', { ascending: true });
+
+      if (fetchError) throw fetchError;
+      if (!dreams?.length) { setPairs([]); setStatus('results'); return; }
+
+      // Group by dream_date
+      const byDate = {};
+      dreams.forEach(d => {
+        const key = d.dream_date?.slice(0, 10) ?? 'unknown';
+        if (!byDate[key]) byDate[key] = [];
+        byDate[key].push(d);
+      });
+
+      // Compare within each date group
+      const found = [];
+      Object.values(byDate).forEach(group => {
+        if (group.length < 2) return;
+        for (let i = 0; i < group.length; i++) {
+          for (let j = i + 1; j < group.length; j++) {
+            const sim = jaccardSimilarity(group[i].body, group[j].body);
+            if (sim >= 0.4) {
+              found.push({ a: group[i], b: group[j], similarity: sim });
+            }
+          }
+        }
+      });
+
+      setPairs(found);
+      setStatus('results');
+    } catch (err) {
+      setError(err.message);
+      setStatus('idle');
+    }
+  }
+
+  async function handleDelete() {
+    if (!confirmDelete) return;
+    setDeleting(true);
+    try {
+      const { error: deleteError } = await supabase
+        .from('dreams')
+        .delete()
+        .eq('id', confirmDelete.deleteId);
+      if (deleteError) throw deleteError;
+      // Remove all pairs that involved the deleted dream
+      setPairs(prev => prev.filter(
+        p => p.a.id !== confirmDelete.deleteId && p.b.id !== confirmDelete.deleteId
+      ));
+      setConfirmDelete(null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  function dismiss(pairKey) {
+    setDismissed(prev => new Set([...prev, pairKey]));
+  }
+
+  const pairKey = (p) => [p.a.id, p.b.id].sort().join('-');
+  const visiblePairs = pairs.filter(p => !dismissed.has(pairKey(p)));
+
+  function similarityLabel(sim) {
+    if (sim >= 0.85) return { text: 'Nearly identical', color: 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30' };
+    if (sim >= 0.65) return { text: 'Very similar', color: 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30' };
+    return { text: 'Possibly duplicate', color: 'text-ink/50 dark:text-white/40 bg-black/5 dark:bg-white/5' };
+  }
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-sm font-body font-medium text-ink dark:text-white mb-1">
+          Duplicate Dream Detection
+        </p>
+        <p className="text-sm font-body text-ink/60 dark:text-white/50 leading-relaxed">
+          Find dreams recorded on the same date with similar content — likely accidental duplicates.
+        </p>
+      </div>
+
+      {status === 'idle' && (
+        <button
+          onClick={handleScan}
+          className="px-5 py-2.5 rounded-xl font-body text-sm border border-black/15 dark:border-white/15 text-ink/70 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+        >
+          Scan for duplicates
+        </button>
+      )}
+
+      {status === 'scanning' && (
+        <p className="text-sm font-body text-ink/40 dark:text-white/30 italic">Scanning your archive…</p>
+      )}
+
+      {status === 'results' && (
+        <div className="space-y-4">
+          {visiblePairs.length === 0 ? (
+            <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+              <p className="text-sm font-body text-green-800 dark:text-green-300">
+                ✓ No duplicates found{pairs.length > 0 && ' — all flagged pairs dismissed'}.
+              </p>
+              <button
+                onClick={() => { setPairs([]); setStatus('idle'); }}
+                className="mt-2 text-xs font-body text-green-700 dark:text-green-400 underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-body text-ink/50 dark:text-white/40">
+                {visiblePairs.length} possible duplicate {visiblePairs.length === 1 ? 'pair' : 'pairs'} found.
+              </p>
+              {visiblePairs.map(pair => {
+                const key = pairKey(pair);
+                const label = similarityLabel(pair.similarity);
+                return (
+                  <div key={key} className="rounded-xl border border-black/10 dark:border-white/10 overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-black/3 dark:bg-white/3 border-b border-black/8 dark:border-white/8">
+                      <span className={`text-xs font-body px-2 py-0.5 rounded-full ${label.color}`}>
+                        {label.text}
+                      </span>
+                      <button
+                        onClick={() => dismiss(key)}
+                        className="text-xs font-body text-ink/30 dark:text-white/30 hover:text-ink/60 dark:hover:text-white/60 transition-colors"
+                      >
+                        Not duplicates
+                      </button>
+                    </div>
+                    {/* Two dreams side by side */}
+                    <div className="grid grid-cols-2 divide-x divide-black/8 dark:divide-white/8">
+                      {[pair.a, pair.b].map((dream, idx) => (
+                        <div key={dream.id} className="p-4 space-y-2">
+                          <p className="text-xs font-mono text-ink/30 dark:text-white/30">
+                            {dream.dream_date?.slice(0, 10)}
+                          </p>
+                          <p className="text-sm font-display italic text-ink dark:text-white leading-snug line-clamp-2">
+                            {dream.title || 'Untitled'}
+                          </p>
+                          <p className="text-xs font-body text-ink/50 dark:text-white/40 leading-relaxed line-clamp-4">
+                            {dream.body?.slice(0, 180)}{dream.body?.length > 180 ? '…' : ''}
+                          </p>
+                          <button
+                            onClick={() => setConfirmDelete({
+                              keepId: idx === 0 ? pair.b.id : pair.a.id,
+                              deleteId: dream.id,
+                              deleteTitle: dream.title || 'Untitled',
+                              pairKey: key,
+                            })}
+                            className="mt-1 text-xs font-body text-red-500 hover:text-red-700 dark:hover:text-red-300 transition-colors underline"
+                          >
+                            Delete this one
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                onClick={() => { setPairs([]); setStatus('idle'); }}
+                className="text-xs font-body text-ink/30 dark:text-white/30 hover:text-ink/60 transition-colors underline"
+              >
+                Start over
+              </button>
+            </>
+          )}
+        </div>
+      )}
+
+      {/* Confirmation overlay — inline, not a browser dialog */}
+      {confirmDelete && (
+        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 space-y-3">
+          <p className="text-sm font-body text-red-800 dark:text-red-300">
+            Permanently delete <span className="font-medium italic">"{confirmDelete.deleteTitle}"</span>?
+            This cannot be undone.
+          </p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="px-4 py-2 rounded-lg font-body text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 transition-colors"
+            >
+              {deleting ? 'Deleting…' : 'Yes, delete it'}
+            </button>
+            <button
+              onClick={() => setConfirmDelete(null)}
+              disabled={deleting}
+              className="px-4 py-2 rounded-lg font-body text-sm border border-black/15 dark:border-white/15 text-ink/60 dark:text-white/50 hover:bg-black/5 transition-colors"
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
