@@ -150,24 +150,32 @@ export async function analyzeDream({
       ? dreamContext.recurringSymbols.join(', ')
       : 'none identified yet';
 
-    contextSection = `RECENT DREAM HISTORY (for context):
-${dreamDate ? `The dream you are analyzing occurred on ${dreamDate}. The context dreams below all occurred before this date. Read this dream as belonging to its own moment in the dreamer's journey — not through the lens of later development.\n` : ''}This dreamer has been working with these themes recently.
+    const analyzingDateStr = dreamDate
+      ? `The dream you are analyzing is from ${dreamDate}.`
+      : 'The date of this dream is not recorded.';
 
-Active archetypes across recent dreams: ${complexStr}
+    const contextDateRange = dreamContext.recentDreams.length > 1
+      ? `${dreamContext.recentDreams[0].date} – ${dreamContext.recentDreams[dreamContext.recentDreams.length - 1].date}`
+      : dreamContext.recentDreams[0].date;
 
-Recurring symbols: ${symbolStr}
+    contextSection = `DREAM HISTORY PRECEDING THIS DREAM (${contextDateRange}):
+${analyzingDateStr} All context dreams below occurred before this date and are provided strictly as prior history — not as recent or current material. Treat this dream as belonging to its own moment in the dreamer's journey: what was true at ${dreamDate ?? 'that time'}, not what is true now.
 
-Most recent dreams (oldest to newest):
+Archetypes active in the period before this dream: ${complexStr}
+
+Recurring symbols in the period before this dream: ${symbolStr}
+
+Prior dreams (oldest to newest):
 ${dreamLines}
 
-Analyze the following new dream IN THIS CONTEXT. Note what continues, what deepens, what shifts, and what appears for the first time. Do not simply describe the dream in isolation — relate it to the patterns above where relevant.
+Analyze the dream below as it stood at the time it occurred. Note what continues from prior dreams, what deepens, what shifts, and what appears for the first time — all relative to what had come before, not to anything that came after.
 
 ---
 
 `;
   }
 
-  const prompt = `You are a Jungian analyst working with a patient over time. You have access to their recent dream history and are tracking the development of themes, complexes, and symbols across sessions. When context is provided, your analysis should feel like a continuation of ongoing work — not a first meeting.
+  const prompt = `You are a Jungian analyst working with a patient's dream archive. You are analyzing a specific dream as it existed at the time it was dreamed — not as a recent or current dream. When prior dream history is provided, it represents only what preceded this dream chronologically. Your analysis should reflect the dreamer's psychological state at the moment this dream occurred.
 
 ${contextSection}${title ? `Dream Title: ${title}\n` : ''}${moodStr ? `Dreamer's Mood: ${moodStr}\n` : ''}Dream: ${body}
 

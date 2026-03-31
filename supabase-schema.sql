@@ -34,6 +34,7 @@ create table if not exists dreams (
   is_big_dream boolean default false,    -- Numinous / archetypal dream of unusual significance
   series_id uuid,                -- Self-referencing FK for dream series (SET NULL on delete)
   has_analysis boolean default false,
+  last_analyzed_at timestamptz,
   created_at timestamptz default now(),
   updated_at timestamptz default now(),
   foreign key (series_id) references dreams(id) on delete set null

@@ -4,15 +4,23 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { MOODS } from '../lib/constants';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
+import { analyzeDream, buildDreamContext, AiError } from '../lib/ai';
+import AiErrorMessage from '../components/AiErrorMessage';
 
 export default function EditDream() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, profile } = useAuth();
 
+  const { privacySettings } = usePrivacySettings();
+
   const [form, setForm] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [reanalyzing, setReanalyzing] = useState(false);
+  const [aiError, setAiError] = useState(null);
+  const [reanalyzed, setReanalyzed] = useState(false);
 
   useEffect(() => {
     fetchDream();
@@ -31,6 +39,7 @@ export default function EditDream() {
       notes: data.notes || '',
       analyst_session: data.analyst_session || '',
       tags: (data.tags || []).join(', '),
+      last_analyzed_at: data.last_analyzed_at || null,
     });
   }
 
@@ -53,12 +62,76 @@ export default function EditDream() {
     navigate(`/dream/${id}`);
   }
 
+  async function handleReanalyze() {
+    setShowConfirm(false);
+    setAiError(null);
+    setReanalyzed(false);
+    setReanalyzing(true);
+    try {
+      let dreamContext = null;
+      try {
+        const { data: priorDreams } = await supabase
+          .from('dreams')
+          .select('dream_date, title, summary, archetypes, symbols, mood, is_big_dream, body')
+          .eq('user_id', user.id)
+          .lt('dream_date', form.dream_date)
+          .order('dream_date', { ascending: false })
+          .limit(15);
+        if (priorDreams?.length) {
+          dreamContext = buildDreamContext(priorDreams);
+        }
+      } catch (ctxErr) {
+        console.warn('Dream context fetch failed — proceeding without context:', ctxErr);
+      }
+
+      const analysisData = await analyzeDream({
+        title: form.title,
+        body: form.body,
+        mood: form.moods,
+        dreamDate: form.dream_date,
+        privacySettings,
+        notes: privacySettings.share_notes_with_ai ? form.notes : undefined,
+        analyst_session: privacySettings.share_analyst_session_with_ai ? form.analyst_session : undefined,
+        dreamContext,
+      });
+
+      const { error: dbErr } = await supabase
+        .from('dreams')
+        .update({
+          reflection: analysisData.reflection || null,
+          archetypes: analysisData.archetypes || [],
+          symbols: analysisData.symbols || [],
+          tags: analysisData.tags || [],
+          structure: analysisData.structure || null,
+          invitation: analysisData.invitation || null,
+          embodiment_prompt: analysisData.embodimentPrompt || null,
+          has_analysis: !!analysisData.reflection,
+          last_analyzed_at: new Date().toISOString(),
+        })
+        .eq('id', id);
+
+      if (dbErr) throw dbErr;
+      setReanalyzed(true);
+      await fetchDream();
+    } catch (err) {
+      setAiError(err instanceof AiError ? err : new AiError(err.message || 'Analysis failed.', 'api_error'));
+    } finally {
+      setReanalyzing(false);
+    }
+  }
+
   if (!form) {
     return <div className="flex items-center justify-center h-64"><p className="font-display italic text-xl text-ink/40">Calling up the dream…</p></div>;
   }
 
   const analystLabel = profile?.analyst_name || 'Analyst';
-  const { privacySettings } = usePrivacySettings();
+
+  const cooldownMinutesLeft = (() => {
+    if (!form.last_analyzed_at) return 0;
+    const elapsed = (Date.now() - new Date(form.last_analyzed_at).getTime()) / 60000;
+    return Math.max(0, Math.ceil(60 - elapsed));
+  })();
+  const isOnCooldown = cooldownMinutesLeft > 0;
 
   return (
     <div className="max-w-3xl mx-auto px-8 py-10">
@@ -153,6 +226,10 @@ export default function EditDream() {
         </div>
 
         {error && <p className="text-red-600 text-sm font-body">{error}</p>}
+        {aiError && <AiErrorMessage error={aiError} />}
+        {reanalyzed && !aiError && (
+          <p className="text-sm font-body text-gold">✦ Analysis updated</p>
+        )}
 
         <div className="flex gap-3">
           <button onClick={handleSave} disabled={saving}
@@ -163,7 +240,46 @@ export default function EditDream() {
             Cancel
           </Link>
         </div>
+
+        <button
+          type="button"
+          onClick={() => { if (!isOnCooldown) setShowConfirm(true); }}
+          disabled={reanalyzing || saving || isOnCooldown}
+          className={`w-full py-3 rounded-xl font-body text-sm font-medium border transition-colors disabled:opacity-50 ${
+            isOnCooldown
+              ? 'border-black/15 dark:border-white/15 text-ink/40 dark:text-white/30 cursor-not-allowed'
+              : 'border-gold/40 text-gold hover:bg-gold/5'
+          }`}>
+          {reanalyzing
+            ? '◐ Analyzing…'
+            : isOnCooldown
+              ? `Re-analyze available in ${cooldownMinutesLeft}m`
+              : '◐ Re-analyze Dream'}
+        </button>
       </div>
+
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-6">
+          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-ink p-8 shadow-xl">
+            <h2 className="font-display italic text-xl text-ink dark:text-white mb-3">Replace existing analysis?</h2>
+            <p className="text-sm font-body text-ink/70 dark:text-white/60 leading-relaxed mb-6">
+              This will replace the existing analysis — reflection, archetypes, symbols, tags, structure, invitation, and embodiment prompt. Your own notes and associations will not be changed.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleReanalyze}
+                className="flex-1 py-2.5 rounded-xl font-body text-sm font-medium bg-gold text-white hover:bg-gold/90 transition-colors">
+                Continue
+              </button>
+              <button
+                onClick={() => setShowConfirm(false)}
+                className="flex-1 py-2.5 rounded-xl font-body text-sm font-medium border border-black/15 dark:border-white/15 text-ink/70 dark:text-white/70 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
