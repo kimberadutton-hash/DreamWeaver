@@ -1,8 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { todayString } from '../lib/constants';
-
 // Mandala SVG — used in Step 3
 function Mandala() {
   return (
@@ -58,6 +56,7 @@ export default function Onboarding() {
   const [visible, setVisible] = useState(true);
   const [saving, setSaving] = useState(false);
 
+  const [guideStatus, setGuideStatus] = useState(null); // 'yes' | 'exploring' | 'independent'
   const [guideForm, setGuideForm] = useState({
     analyst_name: '',
     analyst_email: '',
@@ -82,12 +81,22 @@ export default function Onboarding() {
 
   async function complete(destination) {
     setSaving(true);
+    const guideFields = guideStatus === 'yes'
+      ? {
+          analyst_name: guideForm.analyst_name.trim() || null,
+          analyst_email: guideForm.analyst_email.trim() || null,
+          working_together_length: guideForm.working_together_length || null,
+          meeting_frequency: guideForm.meeting_frequency || null,
+        }
+      : {
+          analyst_name: null,
+          analyst_email: null,
+          working_together_length: null,
+          meeting_frequency: null,
+        };
     await updateProfile({
-      ...guideForm,
-      analyst_name: guideForm.analyst_name.trim() || 'Analyst',
-      analyst_email: guideForm.analyst_email.trim() || null,
-      working_together_length: guideForm.working_together_length || null,
-      meeting_frequency: guideForm.meeting_frequency || null,
+      ...guideFields,
+      solo_practitioner: guideStatus === 'independent',
       onboarding_complete: true,
       onboarding_completed_at: new Date().toISOString(),
     });
@@ -95,7 +104,7 @@ export default function Onboarding() {
     navigate(destination, { replace: true });
   }
 
-  const guideNameForButton = guideForm.analyst_name.trim();
+  const guideNameForButton = guideStatus === 'yes' ? guideForm.analyst_name.trim() : '';
 
   return (
     <div className="min-h-screen bg-parchment dark:bg-gray-950 flex flex-col items-center justify-center px-6 py-12">
@@ -194,71 +203,97 @@ export default function Onboarding() {
             <div>
               <h1 className="font-display italic text-ink dark:text-white leading-snug mb-6"
                 style={{ fontSize: 42 }}>
-                You cannot do this alone.
+                Do you work with a guide?
               </h1>
-              <p className="font-display text-ink/70 dark:text-white/70 leading-[1.9] mx-auto mb-8"
-                style={{ fontSize: 20, maxWidth: 520 }}>
-                The unconscious material you will encounter here needs a human container. Someone
-                who has walked this territory themselves. Someone who can witness what arises
-                without being swept away.
-                <br /><br />
-                Before you begin, tell us who that person is.
+              <p className="font-display text-ink/70 dark:text-white/70 leading-relaxed mx-auto"
+                style={{ fontSize: 18, maxWidth: 520 }}>
+                A Jungian analyst, therapist, or trusted witness can hold the container for this work.
+                But the unconscious does not wait for perfect conditions.
               </p>
             </div>
 
-            <div className="text-left space-y-5 max-w-[520px] mx-auto">
-              <div>
-                <label className="field-label">Your analyst, therapist, or guide</label>
-                <input
-                  type="text"
-                  value={guideForm.analyst_name}
-                  onChange={e => setGuideField('analyst_name', e.target.value)}
-                  placeholder="Their name"
-                  className="field-input"
-                  autoFocus
-                />
-              </div>
-              <div>
-                <label className="field-label">Their email <span className="normal-case tracking-normal text-xs text-ink/30 font-body font-normal">(optional — for the session letter feature)</span></label>
-                <input
-                  type="email"
-                  value={guideForm.analyst_email}
-                  onChange={e => setGuideField('analyst_email', e.target.value)}
-                  placeholder="therapist@example.com"
-                  className="field-input"
-                />
-              </div>
-              <div>
-                <label className="field-label">How long have you been working together?</label>
-                <select
-                  value={guideForm.working_together_length}
-                  onChange={e => setGuideField('working_together_length', e.target.value)}
-                  className="field-input"
+            {/* Three-option cards */}
+            <div className="grid grid-cols-1 gap-3 max-w-[520px] mx-auto w-full text-left">
+              {[
+                { key: 'yes', title: 'Yes, I work with someone', sub: 'An analyst, therapist, or trusted guide' },
+                { key: 'exploring', title: 'Not yet — I\'m exploring', sub: 'I\'m open to finding one as the work deepens' },
+                { key: 'independent', title: 'I prefer to work independently', sub: 'I take full responsibility for what arises' },
+              ].map(({ key, title, sub }) => (
+                <button
+                  key={key}
+                  onClick={() => setGuideStatus(key)}
+                  className="p-5 rounded-2xl border text-left transition-all duration-150"
+                  style={{
+                    borderColor: guideStatus === key ? 'rgba(184,146,74,0.6)' : 'rgba(61,43,74,0.15)',
+                    backgroundColor: guideStatus === key ? 'rgba(184,146,74,0.07)' : 'transparent',
+                  }}
                 >
-                  <option value="">Select…</option>
-                  {WORKING_TOGETHER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="field-label">How often do you meet?</label>
-                <select
-                  value={guideForm.meeting_frequency}
-                  onChange={e => setGuideField('meeting_frequency', e.target.value)}
-                  className="field-input"
-                >
-                  <option value="">Select…</option>
-                  {MEETING_FREQUENCY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
-                </select>
-              </div>
-              <p className="text-xs font-body text-ink/30 dark:text-white/25 italic leading-relaxed pt-1">
-                If you don't have a guide yet, you can still explore — but we encourage you to find
-                one. This work deserves a witness.
-              </p>
+                  <p className="font-display italic text-lg text-ink dark:text-white">{title}</p>
+                  <p className="text-xs font-body text-ink/40 dark:text-white/35 mt-1">{sub}</p>
+                </button>
+              ))}
             </div>
+
+            {/* Guide fields — only shown when 'yes' */}
+            {guideStatus === 'yes' && (
+              <div className="text-left space-y-4 max-w-[520px] mx-auto w-full">
+                <div>
+                  <label className="field-label">Their name</label>
+                  <input
+                    type="text"
+                    value={guideForm.analyst_name}
+                    onChange={e => setGuideField('analyst_name', e.target.value)}
+                    placeholder="Analyst or therapist name"
+                    className="field-input"
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <label className="field-label">
+                    Their email{' '}
+                    <span className="normal-case tracking-normal text-xs text-ink/30 font-body font-normal">
+                      (optional — for the session letter feature)
+                    </span>
+                  </label>
+                  <input
+                    type="email"
+                    value={guideForm.analyst_email}
+                    onChange={e => setGuideField('analyst_email', e.target.value)}
+                    placeholder="therapist@example.com"
+                    className="field-input"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="field-label">How long working together?</label>
+                    <select
+                      value={guideForm.working_together_length}
+                      onChange={e => setGuideField('working_together_length', e.target.value)}
+                      className="field-input"
+                    >
+                      <option value="">Select…</option>
+                      {WORKING_TOGETHER_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="field-label">How often do you meet?</label>
+                    <select
+                      value={guideForm.meeting_frequency}
+                      onChange={e => setGuideField('meeting_frequency', e.target.value)}
+                      className="field-input"
+                    >
+                      <option value="">Select…</option>
+                      {MEETING_FREQUENCY_OPTIONS.map(o => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </div>
+                </div>
+              </div>
+            )}
 
             <button
               onClick={next}
-              className="text-sm font-body font-medium text-gold hover:opacity-70 transition-opacity"
+              disabled={!guideStatus}
+              className="text-sm font-body font-medium text-gold hover:opacity-70 transition-opacity disabled:opacity-25 disabled:cursor-default"
             >
               {guideNameForButton ? `I work with ${guideNameForButton} →` : 'Continue →'}
             </button>

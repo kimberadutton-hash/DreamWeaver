@@ -75,9 +75,17 @@ export default function Settings() {
   const [privacySaving, setPrivacySaving] = useState(null); // key currently being saved
   const [privacySaved, setPrivacySaved] = useState(null);   // key last saved (for flash)
 
+  // Guide status: derived from profile on mount
+  const initialGuideStatus = profile?.solo_practitioner
+    ? 'independent'
+    : Boolean(profile?.analyst_name?.trim())
+      ? 'guide'
+      : 'exploring';
+  const [guideStatus, setGuideStatus] = useState(initialGuideStatus);
+
   const [form, setForm] = useState({
     display_name: profile?.display_name || '',
-    analyst_name: profile?.analyst_name || 'Analyst',
+    analyst_name: profile?.analyst_name || '',
     analyst_email: profile?.analyst_email || '',
     dark_mode: profile?.dark_mode || false,
   });
@@ -93,12 +101,27 @@ export default function Settings() {
     setForm(f => ({ ...f, [key]: val }));
   }
 
+  function handleGuideStatusChange(newStatus) {
+    if (guideStatus === 'guide' && newStatus !== 'guide') {
+      if (!confirm("Remove your guide? Analyst Focus and Session Letter will be hidden. Your data won't be deleted.")) return;
+    }
+    setGuideStatus(newStatus);
+  }
+
   async function handleSaveProfile(e) {
     e.preventDefault();
     setSaving(true);
     setSaved(false);
     setProfileError('');
-    const { error } = await updateProfile(form);
+    const guideFields = guideStatus === 'guide'
+      ? { analyst_name: form.analyst_name.trim() || null, analyst_email: form.analyst_email.trim() || null }
+      : { analyst_name: null, analyst_email: null };
+    const { error } = await updateProfile({
+      display_name: form.display_name,
+      dark_mode: form.dark_mode,
+      solo_practitioner: guideStatus === 'independent',
+      ...guideFields,
+    });
     if (error) setProfileError(error.message);
     else setSaved(true);
     setSaving(false);
@@ -137,22 +160,52 @@ export default function Settings() {
             <input type="text" value={form.display_name} onChange={e => setField('display_name', e.target.value)}
               placeholder="Your name" className="field-input" />
           </div>
+          {/* Guide status selector */}
           <div>
-            <label className="field-label">Analyst Name</label>
-            <input type="text" value={form.analyst_name} onChange={e => setField('analyst_name', e.target.value)}
-              placeholder="Analyst" className="field-input" />
-            <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-1">
-              Renames the "Analyst Session" field throughout the app.
-            </p>
+            <label className="field-label">Guide relationship</label>
+            <div className="flex gap-2 mt-2">
+              {[
+                { key: 'guide', label: 'Works with a guide' },
+                { key: 'exploring', label: 'Exploring' },
+                { key: 'independent', label: 'Independent' },
+              ].map(({ key, label }) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => handleGuideStatusChange(key)}
+                  className="flex-1 py-2 px-2 rounded-lg text-xs font-body border transition-all"
+                  style={{
+                    borderColor: guideStatus === key ? '#b8924a' : 'rgba(0,0,0,0.12)',
+                    backgroundColor: guideStatus === key ? 'rgba(184,146,74,0.08)' : 'transparent',
+                    color: guideStatus === key ? '#b8924a' : undefined,
+                  }}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-          <div>
-            <label className="field-label">Analyst Email</label>
-            <input type="email" value={form.analyst_email} onChange={e => setField('analyst_email', e.target.value)}
-              placeholder="therapist@example.com" className="field-input" />
-            <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-1">
-              Used by the "Email Analyst" button on dream detail pages.
-            </p>
-          </div>
+
+          {/* Guide name/email — only shown when working with a guide */}
+          {guideStatus === 'guide' && (
+            <>
+              <div>
+                <label className="field-label">Their name</label>
+                <input type="text" value={form.analyst_name} onChange={e => setField('analyst_name', e.target.value)}
+                  placeholder="Analyst or therapist name" className="field-input" />
+              </div>
+              <div>
+                <label className="field-label">
+                  Their email{' '}
+                  <span className="normal-case tracking-normal text-xs text-ink/30 font-body font-normal">
+                    (optional — for the session letter feature)
+                  </span>
+                </label>
+                <input type="email" value={form.analyst_email} onChange={e => setField('analyst_email', e.target.value)}
+                  placeholder="therapist@example.com" className="field-input" />
+              </div>
+            </>
+          )}
 
           {/* Dark mode toggle */}
           <div className="flex items-center justify-between py-3 border-t border-b border-black/8 dark:border-white/8">

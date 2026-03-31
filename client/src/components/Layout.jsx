@@ -1,10 +1,59 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Sidebar from './Sidebar';
+import MilestoneModal from './MilestoneModal';
 import { usePauseGate } from '../hooks/usePauseGate';
+import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../lib/supabaseClient';
 
 export default function Layout({ children }) {
   const { showPauseGate, dismissPauseGate } = usePauseGate();
+  const { user, profile, dreamCount } = useAuth();
+  const [activeMilestone, setActiveMilestone] = useState(null);
+  const prevDreamCountRef = useRef(null);
+  const prevAnalystNameRef = useRef(null);
+
+  // ── Milestone trigger ──────────────────────────────────────────────────────
+  // On first load (prev === null) we skip — existing users shouldn't see old modals.
+  // On subsequent changes we check if a threshold was just crossed.
+
+  useEffect(() => {
+    if (!profile || !user) return;
+
+    const prevCount = prevDreamCountRef.current;
+    const prevName = prevAnalystNameRef.current;
+    prevDreamCountRef.current = dreamCount;
+    prevAnalystNameRef.current = profile.analyst_name || null;
+
+    if (prevCount === null) return; // First load — skip
+
+    const seen = profile.milestones_seen || [];
+    const hasGuide = Boolean(profile.analyst_name?.trim());
+
+    async function maybeShowMilestone(key) {
+      if (seen.includes(key)) return;
+      await supabase
+        .from('profiles')
+        .update({ milestones_seen: [...seen, key] })
+        .eq('id', user.id);
+      setActiveMilestone(key);
+    }
+
+    // Dream count milestones
+    if (prevCount < 3 && dreamCount >= 3) {
+      maybeShowMilestone('3_dreams');
+    } else if (prevCount < 10 && dreamCount >= 10) {
+      maybeShowMilestone('10_dreams');
+    } else if (prevCount < 20 && dreamCount >= 20) {
+      maybeShowMilestone(hasGuide ? '20_dreams_with_guide' : '20_dreams_no_guide');
+    }
+
+    // Guide added milestone — analyst_name transitions from falsy to truthy
+    const wasGuide = Boolean(prevName?.trim());
+    if (!wasGuide && hasGuide) {
+      maybeShowMilestone('guide_added');
+    }
+  }, [dreamCount, profile, user]);
 
   return (
     <div className="flex h-screen overflow-hidden bg-parchment dark:bg-gray-950">
@@ -13,6 +62,12 @@ export default function Layout({ children }) {
         {showPauseGate && <PauseGate onDismiss={dismissPauseGate} />}
         {children}
       </main>
+      {activeMilestone && (
+        <MilestoneModal
+          milestone={activeMilestone}
+          onDismiss={() => setActiveMilestone(null)}
+        />
+      )}
     </div>
   );
 }
