@@ -18,8 +18,8 @@ git push
 
 ### Save a quick snapshot (before a big change)
 ```
-git add .
-git commit -m "describe what is working"
+
+
 ```
 
 ### Back up to GitHub (do this after committing)
@@ -63,3 +63,12 @@ Then open: http://localhost:5173
 
 ## Prompts I've Used
 *(paste any Claude Code prompts here so you can find them later)*
+Please update docs/DREAMWEAVER_CLAUDE_CONTEXT.md 
+to reflect everything built in this session:
+- Move completed features to the built list
+- Add any new files to the file structure
+- Add any new database columns
+- Update known issues
+- Update "What's Next" priority order
+
+Show me the changes before saving.

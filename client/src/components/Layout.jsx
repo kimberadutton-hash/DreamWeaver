@@ -4,7 +4,7 @@ import Sidebar from './Sidebar';
 import MilestoneModal from './MilestoneModal';
 import { usePauseGate } from '../hooks/usePauseGate';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../lib/supabase';
 
 export default function Layout({ children }) {
   const { showPauseGate, dismissPauseGate } = usePauseGate();
