@@ -131,14 +131,15 @@ File Structure
 │   └── QUESTIONS_FOR_DOUG.md
 ├── server/
 │   └── index.js
-└── supabase-schema.sql
+├── supabase-schema.sql
+└── supabase-migration-archive-threads.sql
 
 Database Schema Summary
 Core tables:
 
 profiles — extends auth.users, includes display_name, analyst_name, analyst_email, dark_mode, privacy_settings (jsonb), onboarding_complete, milestones_seen, solo_practitioner, working_together_length, meeting_frequency
 dreams — core content: body, title, mood (text[]), archetypes, symbols, tags, reflection, invitation, embodiment_prompt, embodiment_response, structure (jsonb), shadow_analysis (jsonb), series_id, is_big_dream, dreamer_associations, incubation_intention, waking_resonances, has_analysis, last_analyzed_at
-archive_queries — saved Ask the Archive Q&A
+archive_queries — saved Ask the Archive conversations: question, answer, messages (jsonb, array of {role, content, timestamp})
 user_themes — AI-generated personal recurring themes
 
 Practice tables:
@@ -182,7 +183,7 @@ Signed URLs for media
 All media in Supabase Storage requires signed URLs for display. getSignedUrl() helper in WakingLife.jsx and DailyPractice.jsx. Extracted to client/src/lib/storage.js if shared.
 
 AI Functions in ai.js
-FunctionModelPurposeanalyzeDream()OpusFull Jungian analysis with structure, archetypes, symbols, embodiment promptgenerateIndividuationNarrative()OpusFirst-time full archive narrativeupdateIndividuationNarrative()OpusProgressive update with new dreams onlygenerateGuideLetter()OpusPre-session letter from selected dreamsreflectOnSession()OpusPost active imagination analyst reflectionsuggestComplexes()OpusIdentify complexes from archive patternsgenerateTitle()Haiku3-6 word poetic dream titlequickTagDream()HaikuBatch tagginggenerateDreamSummary()Haiku2-3 sentence dream summarysuggestAdditionalTags()HaikuMore tags for existing dreamidentifyShadowMaterial()HaikuShadow figures and projected qualitiesprepareImagination()HaikuPre-session figure profile and questionsimaginationEmbodimentPrompt()HaikuPost-session embodiment questiontranscribeImage()OpusHandwritten dream photo to textaskArchive()OpusNatural language question about dream archivegeneratePersonalThemes()Opus3-5 personal themes from full archivebuildDreamContext()—Pure JS helper, no API call
+FunctionModelPurposeanalyzeDream()OpusFull Jungian analysis with structure, archetypes, symbols, embodiment promptgenerateIndividuationNarrative()OpusFirst-time full archive narrativeupdateIndividuationNarrative()OpusProgressive update with new dreams onlygenerateGuideLetter()OpusPre-session letter from selected dreamsreflectOnSession()OpusPost active imagination analyst reflectionsuggestComplexes()OpusIdentify complexes from archive patternsgenerateTitle()Haiku3-6 word poetic dream titlequickTagDream()HaikuBatch tagginggenerateDreamSummary()Haiku2-3 sentence dream summarysuggestAdditionalTags()HaikuMore tags for existing dreamidentifyShadowMaterial()HaikuShadow figures and projected qualitiesprepareImagination()HaikuPre-session figure profile and questionsimaginationEmbodimentPrompt()HaikuPost-session embodiment questiontranscribeImage()OpusHandwritten dream photo to textaskArchive()OpusNatural language Q&A over dream archive with conversation history; signature: (question, dreams, apiKey, priorMessages=[])generatePersonalThemes()Opus3-5 personal themes from full archivebuildDreamContext()—Pure JS helper, no API call
 
 Features Built — Complete List
 
@@ -211,7 +212,7 @@ Features Built — Complete List
 ✅ Privacy controls (notes, session, focus)
 ✅ Dream Archive with search (including archetypes)
 ✅ Timeline
-✅ Ask the Archive
+✅ Ask the Archive with conversation threading — follow-up questions within any saved conversation, full thread stored in messages jsonb column, QueryCard/ArchiveThread/MessageBubble component architecture, old rows backfilled via SQL migration
 ✅ CSV import
 ✅ Synchronicities (in Waking Life)
 ✅ Big Dream flag
@@ -242,6 +243,7 @@ Symbols & Archetypes page still in sidebar — pending replacement by AI Dream S
 Global animation pass not yet done — collapsed sections use conditional rendering
 Duplicate dream detection not yet built
 generateEncounterTitle() removed from ShadowWork but may still exist as dead code in ai.js — verify
+Old archive_queries rows with null/empty messages require SQL backfill (supabase-migration-archive-threads.sql) to display as threads
 WakingLife strip on Daily Practice needs signed URL verification
 EmbodimentCheckIn moved from floating banner to Daily Practice — verify working correctly
 
