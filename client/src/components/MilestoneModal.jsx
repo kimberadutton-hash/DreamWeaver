@@ -1,5 +1,9 @@
 // Full-screen milestone modal — shown once per milestone, tracked in profiles.milestones_seen
 
+import { useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import JungianTerm from './JungianTerm';
+
 const MILESTONE_CONTENT = {
   '3_dreams': {
     heading: 'The practice is taking root.',
@@ -53,10 +57,6 @@ export default function MilestoneModal({ milestone, onDismiss }) {
 }
 
 // Separate inner component so we can use useNavigate cleanly
-import { useNavigate } from 'react-router-dom';
-import { useEffect, useState } from 'react';
-import JungianTerm from './JungianTerm';
-
 function MilestoneModalInner({ content, onDismiss }) {
   const navigate = useNavigate();
   const [visible, setVisible] = useState(false);

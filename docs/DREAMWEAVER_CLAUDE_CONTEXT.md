@@ -235,19 +235,22 @@ Features Built — Complete List
 
 What's Next (Priority Order)
 
-Remove Symbols & Archetypes from sidebar — AI Dream Series is now built; retire the static Symbols page from nav
-Show Doug — Collect input on guide access system and analytical ethics
-Guide access system — After Doug's input
-Psyche Map — After 6 months personal use
+1. Global animation pass — Replace conditional rendering with CSS transitions (in progress)
+2. "About this practice" orientation layer — Collapsible on each page for new users (in progress)
+3. Jungian term tooltips — Dotted gold underline on all Jungian terms, hover definition (in progress)
+4. Repo cleanup — After current three features complete: dead code removal (getStoredApiKey export), Symbols.jsx retirement with ai.js function audit
+5. Show Doug — Collect input on guide access system and analytical ethics
+6. Guide access system — After Doug's input
+7. Psyche Map — After 6 months personal use
 
 
 Known Issues / Technical Debt
 
-Symbols & Archetypes page still in sidebar — AI Dream Series is now built; ready to remove/replace Symbols & Archetypes from nav
-generateEncounterTitle() removed from ShadowWork but may still exist as dead code in ai.js — verify
-Old archive_queries rows with null/empty messages require SQL backfill (supabase-migration-archive-threads.sql) to display as threads
-WakingLife strip on Daily Practice needs signed URL verification
-EmbodimentCheckIn moved from floating banner to Daily Practice — verify working correctly
+Global animation pass not yet complete — some collapsed sections still use conditional rendering instead of CSS transitions (maxHeight + opacity).
+When Symbols.jsx is retired from the nav, audit these two functions in ai.js:
+- generatePersonalThemes() — currently called only from Symbols.jsx. Worth keeping: move call site to Individuation.jsx or DreamSeries.jsx before deleting from Symbols. Personal theme generation belongs in the journey layer, not a reference page.
+- quickTagDream() — currently called only from Symbols.jsx. Check ImportCSV.jsx first — if batch-tagging on import doesn't need it, delete it. If it does, move the call site there.
+Do not delete either function until Symbols.jsx is fully retired and call sites are resolved.
 
 
 Important Constraints

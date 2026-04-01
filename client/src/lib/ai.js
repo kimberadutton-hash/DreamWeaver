@@ -24,7 +24,7 @@ const AI_MODELS = {
   seriesAdditions: 'claude-opus-4-5',
 };
 
-export function getStoredApiKey() {
+function getStoredApiKey() {
   return localStorage.getItem(API_KEY_NAME) || '';
 }
 
