@@ -914,22 +914,33 @@ Respond ONLY with valid JSON:
 //              sharedTags: ['tag1', ...] }]
 
 export async function suggestDreamSeries({ clusters }) {
-  const clusterText = clusters.map((c, i) => {
-    const dreamList = c.dreams.map(d =>
-      `  - ID: ${d.id} | Title: "${d.title || 'Untitled'}" | Date: ${d.dream_date || '—'} | Tags: ${(d.tags || []).join(', ')} | Archetypes: ${(d.archetypes || []).join(', ')} | Symbols: ${(d.symbols || []).join(', ')}`
-    ).join('\n');
-    return `Cluster ${i + 1} (shared tags: ${c.sharedTags.join(', ')}):\n${dreamList}`;
+  // Cap at 12 clusters to keep prompt size bounded; sort largest-first
+  const topClusters = [...clusters]
+    .sort((a, b) => b.dreams.length - a.dreams.length)
+    .slice(0, 12);
+
+  const clusterText = topClusters.map((c, i) => {
+    const dreamList = c.dreams.map(d => {
+      // Keep only the most relevant terms — first 5 of each to limit prompt size
+      const terms = [
+        ...(d.tags || []).slice(0, 5),
+        ...(d.archetypes || []).slice(0, 3),
+        ...(d.symbols || []).slice(0, 3),
+      ].join(', ');
+      return `  - ${d.id} | "${d.title || 'Untitled'}" (${d.dream_date || '—'}) | ${terms}`;
+    }).join('\n');
+    return `Cluster ${i + 1} — shared: ${c.sharedTags.slice(0, 8).join(', ')}\n${dreamList}`;
   }).join('\n\n');
 
-  const userPrompt = `Examine each cluster of dreams below and identify which ones form a genuinely meaningful psychological series — not just coincidental tag overlap, but a real recurring thread in the unconscious.
+  const userPrompt = `Examine each cluster below and identify which form a genuinely meaningful psychological series — a real recurring thread in the unconscious, not just coincidental tag overlap.
 
-For each cluster that coheres psychologically, propose a series. Discard clusters that don't cohere. For borderline cases, include with confidence: "low" rather than discarding.
+Propose a series for each cluster that coheres psychologically. Discard clusters that don't cohere. For borderline cases, include with confidence "low" rather than discarding.
 
-Return ONLY a JSON array, no prose:
+Return ONLY a JSON array, no prose. Keep narrativeThread to 2 sentences max:
 [
   {
-    "name": "evocative 2-5 word series name, poetic and specific",
-    "narrativeThread": "2-3 sentences describing the psychological thread connecting these dreams",
+    "name": "evocative 2-5 word series name",
+    "narrativeThread": "2 sentences on the psychological thread",
     "dreamIds": ["uuid", "uuid"],
     "confidence": "high | medium | low"
   }
@@ -940,8 +951,8 @@ ${clusterText}`;
 
   const text = await call({
     messages: [{ role: 'user', content: userPrompt }],
-    system: 'You are a Jungian analyst identifying recurring themes across a dream archive.',
-    maxTokens: 2048,
+    system: 'You are a Jungian analyst identifying recurring themes across a dream archive. Be concise — keep all narrative text brief.',
+    maxTokens: 4096,
     model: AI_MODELS.series,
   });
 
@@ -953,21 +964,26 @@ ${clusterText}`;
 // candidateDreams: same shape — dreams NOT already in the series
 
 export async function suggestSeriesAdditions({ seriesDreams, candidateDreams }) {
-  const seriesList = seriesDreams.map(d =>
-    `  - ID: ${d.id} | Title: "${d.title || 'Untitled'}" | Date: ${d.dream_date || '—'} | Tags: ${(d.tags || []).join(', ')} | Archetypes: ${(d.archetypes || []).join(', ')} | Symbols: ${(d.symbols || []).join(', ')}`
-  ).join('\n');
+  const formatDream = d => {
+    const terms = [
+      ...(d.tags || []).slice(0, 5),
+      ...(d.archetypes || []).slice(0, 3),
+      ...(d.symbols || []).slice(0, 3),
+    ].join(', ');
+    return `  - ${d.id} | "${d.title || 'Untitled'}" (${d.dream_date || '—'}) | ${terms}`;
+  };
 
-  const candidateList = candidateDreams.map(d =>
-    `  - ID: ${d.id} | Title: "${d.title || 'Untitled'}" | Date: ${d.dream_date || '—'} | Tags: ${(d.tags || []).join(', ')} | Archetypes: ${(d.archetypes || []).join(', ')} | Symbols: ${(d.symbols || []).join(', ')}`
-  ).join('\n');
+  const seriesList = seriesDreams.map(formatDream).join('\n');
+  // Cap candidates at 40 to keep prompt and response size bounded
+  const candidateList = candidateDreams.slice(0, 40).map(formatDream).join('\n');
 
-  const userPrompt = `Given the established series below, identify which candidate dreams genuinely belong to it — through thematic, symbolic, or archetypal connection, not just surface tag overlap.
+  const userPrompt = `Given the established series below, identify which candidate dreams genuinely belong — through thematic, symbolic, or archetypal connection, not just tag overlap.
 
-Return ONLY a JSON array. Return an empty array if nothing fits. No prose:
+Return ONLY a JSON array. Return [] if nothing fits. No prose. Keep reason to one short sentence:
 [
   {
     "dreamId": "uuid",
-    "reason": "one sentence explaining the specific connection",
+    "reason": "one sentence on the specific connection",
     "confidence": "high | medium | low"
   }
 ]
@@ -980,8 +996,8 @@ ${candidateList}`;
 
   const text = await call({
     messages: [{ role: 'user', content: userPrompt }],
-    system: 'You are a Jungian analyst evaluating whether dreams belong to an established series.',
-    maxTokens: 1024,
+    system: 'You are a Jungian analyst evaluating whether dreams belong to an established series. Be concise.',
+    maxTokens: 2048,
     model: AI_MODELS.seriesAdditions,
   });
 
