@@ -1,5 +1,5 @@
 DreamWeaver — Claude Project Context
-Last updated: March 31, 2026 (session: AI Dream Series)
+Last updated: April 1, 2026 (session: JungianTerm tooltips, PracticeOrientation, animation pass)
 
 What This App Is
 DreamWeaver is a depth psychological practice tool built on Jungian principles. It helps people record and analyze dreams, track their individuation journey, and bring the inner work into embodied daily life.
@@ -58,6 +58,7 @@ THE INNER WORK
 ≋  Dream Archive
 ◎  Active Imagination
 ◈  Shadow Work (guide required)
+◎  Complexes Map
 
 THE EMBODIMENT
 ◎  Daily Practice
@@ -102,6 +103,7 @@ File Structure
 │       │   ├── ai.js
 │       │   ├── constants.js
 │       │   ├── jungianTerms.js
+│       │   ├── storage.js
 │       │   └── supabase.js
 │       └── pages/
 │           ├── ActiveImagination.jsx
