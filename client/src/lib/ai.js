@@ -8,18 +8,20 @@ const API_URL = 'https://api.anthropic.com/v1/messages';
 // ── Model configuration ───────────────────────────────────────────────────────
 // To upgrade a model, change it here only.
 const AI_MODELS = {
-  analysis:    'claude-opus-4-5',
-  narrative:   'claude-opus-4-5',
-  transcription:'claude-opus-4-5',
-  reflection:  'claude-opus-4-5',
-  tagging:     'claude-haiku-4-5-20251001',
-  title:       'claude-haiku-4-5-20251001',
-  summary:     'claude-haiku-4-5-20251001',
-  suggestions: 'claude-haiku-4-5-20251001',
-  preparation: 'claude-haiku-4-5-20251001',
-  embodiment:  'claude-haiku-4-5-20251001',
-  shadow:      'claude-haiku-4-5-20251001',
-  complexes:   'claude-opus-4-5',
+  analysis:        'claude-opus-4-5',
+  narrative:       'claude-opus-4-5',
+  transcription:   'claude-opus-4-5',
+  reflection:      'claude-opus-4-5',
+  tagging:         'claude-haiku-4-5-20251001',
+  title:           'claude-haiku-4-5-20251001',
+  summary:         'claude-haiku-4-5-20251001',
+  suggestions:     'claude-haiku-4-5-20251001',
+  preparation:     'claude-haiku-4-5-20251001',
+  embodiment:      'claude-haiku-4-5-20251001',
+  shadow:          'claude-haiku-4-5-20251001',
+  complexes:       'claude-opus-4-5',
+  series:          'claude-opus-4-5',
+  seriesAdditions: 'claude-opus-4-5',
 };
 
 export function getStoredApiKey() {
@@ -905,4 +907,83 @@ Respond ONLY with valid JSON:
   });
 
   return parseNarrativeJSON(text);
+}
+
+// ── Suggest dream series from pre-computed tag-overlap clusters ───────────────
+// clusters: [{ dreams: [{ id, title, dream_date, tags, archetypes, symbols }],
+//              sharedTags: ['tag1', ...] }]
+
+export async function suggestDreamSeries({ clusters }) {
+  const clusterText = clusters.map((c, i) => {
+    const dreamList = c.dreams.map(d =>
+      `  - ID: ${d.id} | Title: "${d.title || 'Untitled'}" | Date: ${d.dream_date || '—'} | Tags: ${(d.tags || []).join(', ')} | Archetypes: ${(d.archetypes || []).join(', ')} | Symbols: ${(d.symbols || []).join(', ')}`
+    ).join('\n');
+    return `Cluster ${i + 1} (shared tags: ${c.sharedTags.join(', ')}):\n${dreamList}`;
+  }).join('\n\n');
+
+  const userPrompt = `Examine each cluster of dreams below and identify which ones form a genuinely meaningful psychological series — not just coincidental tag overlap, but a real recurring thread in the unconscious.
+
+For each cluster that coheres psychologically, propose a series. Discard clusters that don't cohere. For borderline cases, include with confidence: "low" rather than discarding.
+
+Return ONLY a JSON array, no prose:
+[
+  {
+    "name": "evocative 2-5 word series name, poetic and specific",
+    "narrativeThread": "2-3 sentences describing the psychological thread connecting these dreams",
+    "dreamIds": ["uuid", "uuid"],
+    "confidence": "high | medium | low"
+  }
+]
+
+CLUSTERS:
+${clusterText}`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: userPrompt }],
+    system: 'You are a Jungian analyst identifying recurring themes across a dream archive.',
+    maxTokens: 2048,
+    model: AI_MODELS.series,
+  });
+
+  return parseResponseArray(text);
+}
+
+// ── Suggest additions to an existing dream series ────────────────────────────
+// seriesDreams:    [{ id, title, dream_date, tags, archetypes, symbols }]
+// candidateDreams: same shape — dreams NOT already in the series
+
+export async function suggestSeriesAdditions({ seriesDreams, candidateDreams }) {
+  const seriesList = seriesDreams.map(d =>
+    `  - ID: ${d.id} | Title: "${d.title || 'Untitled'}" | Date: ${d.dream_date || '—'} | Tags: ${(d.tags || []).join(', ')} | Archetypes: ${(d.archetypes || []).join(', ')} | Symbols: ${(d.symbols || []).join(', ')}`
+  ).join('\n');
+
+  const candidateList = candidateDreams.map(d =>
+    `  - ID: ${d.id} | Title: "${d.title || 'Untitled'}" | Date: ${d.dream_date || '—'} | Tags: ${(d.tags || []).join(', ')} | Archetypes: ${(d.archetypes || []).join(', ')} | Symbols: ${(d.symbols || []).join(', ')}`
+  ).join('\n');
+
+  const userPrompt = `Given the established series below, identify which candidate dreams genuinely belong to it — through thematic, symbolic, or archetypal connection, not just surface tag overlap.
+
+Return ONLY a JSON array. Return an empty array if nothing fits. No prose:
+[
+  {
+    "dreamId": "uuid",
+    "reason": "one sentence explaining the specific connection",
+    "confidence": "high | medium | low"
+  }
+]
+
+ESTABLISHED SERIES DREAMS:
+${seriesList}
+
+CANDIDATE DREAMS TO EVALUATE:
+${candidateList}`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: userPrompt }],
+    system: 'You are a Jungian analyst evaluating whether dreams belong to an established series.',
+    maxTokens: 1024,
+    model: AI_MODELS.seriesAdditions,
+  });
+
+  return parseResponseArray(text);
 }

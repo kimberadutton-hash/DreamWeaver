@@ -1,5 +1,5 @@
 DreamWeaver — Claude Project Context
-Last updated: March 31, 2026
+Last updated: March 31, 2026 (session: AI Dream Series)
 
 What This App Is
 DreamWeaver is a depth psychological practice tool built on Jungian principles. It helps people record and analyze dreams, track their individuation journey, and bring the inner work into embodied daily life.
@@ -183,7 +183,7 @@ Signed URLs for media
 All media in Supabase Storage requires signed URLs for display. getSignedUrl() helper in WakingLife.jsx and DailyPractice.jsx. Extracted to client/src/lib/storage.js if shared.
 
 AI Functions in ai.js
-FunctionModelPurposeanalyzeDream()OpusFull Jungian analysis with structure, archetypes, symbols, embodiment promptgenerateIndividuationNarrative()OpusFirst-time full archive narrativeupdateIndividuationNarrative()OpusProgressive update with new dreams onlygenerateGuideLetter()OpusPre-session letter from selected dreamsreflectOnSession()OpusPost active imagination analyst reflectionsuggestComplexes()OpusIdentify complexes from archive patternsgenerateTitle()Haiku3-6 word poetic dream titlequickTagDream()HaikuBatch tagginggenerateDreamSummary()Haiku2-3 sentence dream summarysuggestAdditionalTags()HaikuMore tags for existing dreamidentifyShadowMaterial()HaikuShadow figures and projected qualitiesprepareImagination()HaikuPre-session figure profile and questionsimaginationEmbodimentPrompt()HaikuPost-session embodiment questiontranscribeImage()OpusHandwritten dream photo to textaskArchive()OpusNatural language Q&A over dream archive with conversation history; signature: (question, dreams, apiKey, priorMessages=[])generatePersonalThemes()Opus3-5 personal themes from full archivebuildDreamContext()—Pure JS helper, no API call
+FunctionModelPurposeanalyzeDream()OpusFull Jungian analysis with structure, archetypes, symbols, embodiment promptgenerateIndividuationNarrative()OpusFirst-time full archive narrativeupdateIndividuationNarrative()OpusProgressive update with new dreams onlygenerateGuideLetter()OpusPre-session letter from selected dreamsreflectOnSession()OpusPost active imagination analyst reflectionsuggestComplexes()OpusIdentify complexes from archive patternssuggestDreamSeries()OpusIdentify psychologically coherent series from JS-computed tag-overlap clusterssuggestSeriesAdditions()OpusEvaluate candidate dreams for addition to an existing seriesgenerateTitle()Haiku3-6 word poetic dream titlequickTagDream()HaikuBatch tagginggenerateDreamSummary()Haiku2-3 sentence dream summarysuggestAdditionalTags()HaikuMore tags for existing dreamidentifyShadowMaterial()HaikuShadow figures and projected qualitiesprepareImagination()HaikuPre-session figure profile and questionsimaginationEmbodimentPrompt()HaikuPost-session embodiment questiontranscribeImage()OpusHandwritten dream photo to textaskArchive()OpusNatural language Q&A over dream archive with conversation history; signature: (question, dreams, apiKey, priorMessages=[])generatePersonalThemes()Opus3-5 personal themes from full archivebuildDreamContext()—Pure JS helper, no API call
 
 Features Built — Complete List
 
@@ -194,7 +194,7 @@ Features Built — Complete List
 ✅ Editable tags with AI suggestions
 ✅ Shadow Work module with encounter tracking
 ✅ Complexes Map with AI identification
-✅ Dream Series (manual — AI-suggested version in backlog)
+✅ Dream Series — manual create/edit/delete plus AI-powered series detection: JS clustering (union-find, Jaccard ≥ 0.35, ≥ 2 shared tags, 3+ dreams) feeds Opus analysis; "◆ Find series with AI" button on list page; proposal cards with confidence badges, dream pills, Create/Dismiss; "◆ Find more dreams" on detail page with inline suggestion panel per candidate; origin indicator on cards (◆ gold = AI-created/has description, ◌ = manual)
 ✅ Active Imagination writing space (user writes both voices)
 ✅ Waking Life with media uploads (images, audio)
 ✅ Daily Practice page
@@ -229,8 +229,8 @@ Features Built — Complete List
 What's Next (Priority Order)
 
 Global animation pass — Replace conditional rendering with CSS transitions
+Remove Symbols & Archetypes from sidebar — AI Dream Series is now built; retire the static Symbols page from nav
 "About this practice" orientation layer — Collapsible on each page for new users
-AI-suggested Dream Series — Replaces manual Dream Series and eventually Symbols & Archetypes in sidebar
 Jungian term tooltips — Dotted gold underline on all Jungian terms, hover definition
 Show Doug — Collect input on guide access system and analytical ethics
 Guide access system — After Doug's input
@@ -239,7 +239,7 @@ Psyche Map — After 6 months personal use
 
 Known Issues / Technical Debt
 
-Symbols & Archetypes page still in sidebar — pending replacement by AI Dream Series
+Symbols & Archetypes page still in sidebar — AI Dream Series is now built; ready to remove/replace Symbols & Archetypes from nav
 Global animation pass not yet done — collapsed sections use conditional rendering
 generateEncounterTitle() removed from ShadowWork but may still exist as dead code in ai.js — verify
 Old archive_queries rows with null/empty messages require SQL backfill (supabase-migration-archive-threads.sql) to display as threads
