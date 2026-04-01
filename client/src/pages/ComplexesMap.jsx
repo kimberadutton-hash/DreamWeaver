@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { suggestComplexes, hasApiKey, AiError } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
+import JungianTerm from '../components/JungianTerm';
+import PracticeOrientation from '../components/PracticeOrientation';
 
 const toSlug = (name) =>
   name.toLowerCase()
@@ -547,6 +549,9 @@ export default function ComplexesMap() {
         <p className="text-sm font-body text-ink/50 dark:text-white/40 mb-6">
           The autonomous patterns running beneath awareness.
         </p>
+        <PracticeOrientation title="About complexes" storageKey="orient_complexes">
+          A <JungianTerm id="complex">complex</JungianTerm> is an autonomous cluster of charged emotions, memories, and images organized around a core wound or theme. Unlike the ego, complexes operate independently — they can hijack behavior, skew perception, and speak in our voice without our awareness. Naming a complex begins to loosen its grip. This map tracks what you've identified and how the work of <JungianTerm id="individuation">integration</JungianTerm> is progressing.
+        </PracticeOrientation>
         <p className="font-display italic text-[15px] leading-relaxed text-gold/70 dark:text-gold/50">
           "Everyone knows nowadays that people 'have complexes.' What is not so well known, though far more important theoretically, is that complexes can have us."
         </p>
@@ -574,7 +579,7 @@ export default function ComplexesMap() {
             Still gathering the patterns…
           </p>
           <p className="text-sm font-body text-ink/50 dark:text-white/40 leading-relaxed">
-            Complexes reveal themselves through repetition. Record at least 10 dreams to discover what is running beneath.
+            <JungianTerm id="complex">Complexes</JungianTerm> reveal themselves through repetition. Record at least 10 dreams to discover what is running beneath.
             You have <strong>{dreamCount}</strong> so far.
           </p>
         </div>
@@ -589,7 +594,7 @@ export default function ComplexesMap() {
             </p>
             <p className="text-sm font-body text-ink/50 dark:text-white/40 leading-relaxed mb-4">
               Opus will read the patterns across your dream archive — recurring figures, moods, symbols, themes —
-              and identify the autonomous complexes they point toward.
+              and identify the autonomous <JungianTerm id="complex">complexes</JungianTerm> they point toward.
             </p>
             {suggestError && (
               <div className="mb-4"><AiErrorMessage error={suggestError} /></div>

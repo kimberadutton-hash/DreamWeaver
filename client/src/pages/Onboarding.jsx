@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import JungianTerm from '../components/JungianTerm';
 // Mandala SVG — used in Step 3
 function Mandala() {
   return (
@@ -127,7 +128,7 @@ export default function Onboarding() {
               sends you messages. Not randomly — with intention. With persistence. With a kind of
               loving ruthlessness that will not let you stay small.
               <br /><br />
-              The Jungians call this the individuation process. The process of becoming who you
+              The Jungians call this the <JungianTerm id="individuation">individuation</JungianTerm> process. The process of becoming who you
               actually are.
               <br /><br />
               This is where that work lives.

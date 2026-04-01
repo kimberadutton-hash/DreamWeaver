@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { prepareImagination, reflectOnSession, imaginationEmbodimentPrompt, AiError } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
 import PracticeOrientation from '../components/PracticeOrientation';
+import JungianTerm from '../components/JungianTerm';
 import { formatDate, todayString } from '../lib/constants';
 
 // ── Preparation Panel ──────────────────────────────────────────────────────
@@ -865,7 +866,7 @@ function DialogueView({ session: initialSession, onBack, onNewSession, onSession
           >
             <h3 className="font-display italic text-2xl text-ink mb-3">Returning</h3>
             <p className="text-sm font-body text-ink/55 leading-relaxed mb-5">
-              Jung held that active imagination must end with a deliberate return to ordinary consciousness — a clear moment of closing.
+              Jung held that <JungianTerm id="active-imagination">active imagination</JungianTerm> must end with a deliberate return to ordinary consciousness — a clear moment of closing.
             </p>
             <p className="text-sm font-body text-ink/70 mb-3">Before you close, write a few words about what happened in this exchange.</p>
             <textarea
@@ -996,10 +997,10 @@ export default function ActiveImagination() {
             A space to dialogue with the figures that arise from the deep — in your own words, from your own depths.
           </p>
           <p className="font-display italic text-sm text-ink/30 dark:text-white/22 leading-relaxed">
-            Jung conducted active imagination by writing both sides of the dialogue himself. This is that practice. The figure's voice comes from you — not from outside.
+            Jung conducted <JungianTerm id="active-imagination">active imagination</JungianTerm> by writing both sides of the dialogue himself. This is that practice. The figure's voice comes from you — not from outside.
           </p>
           <PracticeOrientation storageKey="orient_imagination">
-            <p>Active imagination is a disciplined encounter with the figures that arise from the deep. You write both sides of the dialogue — your own voice, and the figure's voice as it comes through you. This is not performance or invention. It is contact.</p>
+            <p><JungianTerm id="active-imagination">Active imagination</JungianTerm> is a disciplined encounter with the figures that arise from the deep. You write both sides of the dialogue — your own voice, and the figure's voice as it comes through you. This is not performance or invention. It is contact.</p>
             <p>Go slowly. Let the figure surprise you. What arrives through your own hand may be more honest than what you expected to write.</p>
           </PracticeOrientation>
         </div>

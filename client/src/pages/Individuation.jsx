@@ -6,6 +6,7 @@ import { generateIndividuationNarrative, updateIndividuationNarrative, hasApiKey
 import AiErrorMessage from '../components/AiErrorMessage';
 import DreamPreviewDrawer from '../components/DreamPreviewDrawer';
 import PracticeOrientation from '../components/PracticeOrientation';
+import JungianTerm from '../components/JungianTerm';
 import { format, parseISO } from 'date-fns';
 
 const MIN_DREAMS = 10;
@@ -316,7 +317,7 @@ export default function Individuation() {
         </div>
 
         <PracticeOrientation storageKey="orient_journey">
-          <p>Individuation is not a destination. It is a direction — the ongoing movement toward becoming more fully who you are, including the parts you would rather not be.</p>
+          <p><JungianTerm id="individuation">Individuation</JungianTerm> is not a destination. It is a direction — the ongoing movement toward becoming more fully who you are, including the parts you would rather not be.</p>
           <p>The narrative here is not a summary of your dreams. It is an interpretation of your psychological journey as the unconscious is actually living it. Read it slowly. It may know things about you that you are still catching up to.</p>
         </PracticeOrientation>
 

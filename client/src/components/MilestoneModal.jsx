@@ -18,14 +18,14 @@ const MILESTONE_CONTENT = {
   '20_dreams_with_guide': {
     heading: 'The work has gone deep enough.',
     body: 'Twenty dreams. You have been at this long enough for the deeper material to trust you with it.',
-    unlocks: 'Active Imagination, Shadow Work, and Dream Series are now open.',
+    unlocks: <><JungianTerm id="active-imagination">Active Imagination</JungianTerm>, <JungianTerm id="shadow">Shadow Work</JungianTerm>, and Dream Series are now open.</>,
     cta: "I'm ready →",
     navigateTo: null,
   },
   '20_dreams_no_guide': {
     heading: 'The work has gone deep enough.',
     body: 'Twenty dreams. You have been at this long enough for the deeper material to trust you with it.',
-    unlocks: 'Active Imagination and Dream Series are now open. Shadow Work unlocks when you add a guide in Settings.',
+    unlocks: <><JungianTerm id="active-imagination">Active Imagination</JungianTerm> and Dream Series are now open. <JungianTerm id="shadow">Shadow Work</JungianTerm> unlocks when you add a guide in Settings.</>,
     cta: 'Continue →',
     navigateTo: null,
   },
@@ -55,6 +55,7 @@ export default function MilestoneModal({ milestone, onDismiss }) {
 // Separate inner component so we can use useNavigate cleanly
 import { useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
+import JungianTerm from './JungianTerm';
 
 function MilestoneModalInner({ content, onDismiss }) {
   const navigate = useNavigate();

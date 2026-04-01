@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { identifyShadowMaterial } from '../lib/ai';
 import PracticeOrientation from '../components/PracticeOrientation';
+import JungianTerm from '../components/JungianTerm';
 import { formatDate, todayString } from '../lib/constants';
 import AiErrorMessage from '../components/AiErrorMessage';
 
@@ -11,7 +12,7 @@ import AiErrorMessage from '../components/AiErrorMessage';
 
 const ENCOUNTER_TYPES = [
   { id: 'dream',       label: 'Dream',       color: '#3d2b4a', desc: 'Shadow appeared in a dream' },
-  { id: 'projection',  label: 'Projection',  color: '#7c4a2a', desc: 'Projecting onto someone else' },
+  { id: 'projection',  label: 'Projection',  labelNode: <JungianTerm id="projection">Projection</JungianTerm>, color: '#7c4a2a', desc: 'Projecting onto someone else' },
   { id: 'reaction',    label: 'Reaction',    color: '#8b2a2a', desc: 'Strong emotional charge' },
   { id: 'fascination', label: 'Fascination', color: '#2a7c74', desc: 'Attraction or obsession' },
   { id: 'integration', label: 'Integration', color: '#b8924a', desc: 'Consciously working with it' },
@@ -638,7 +639,7 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
                     }}
                   >
                     <TypeIcon type={t.id} size={18} color={active ? t.color : 'rgba(42,36,32,0.35)'} />
-                    <span className="text-xs font-body">{t.label}</span>
+                    <span className="text-xs font-body">{t.labelNode || t.label}</span>
                   </button>
                 );
               })}
@@ -1121,7 +1122,7 @@ export default function ShadowWork() {
           including gifts you have not yet claimed."
         </p>
         <PracticeOrientation storageKey="orient_shadow">
-          <p>The shadow shows up in the people you can't stand, the reactions that embarrass you, the qualities you admire too intensely in others. Recording these encounters is the beginning of owning what belongs to you.</p>
+          <p>The <JungianTerm id="shadow">shadow</JungianTerm> shows up in the people you can't stand, the reactions that embarrass you, the qualities you admire too intensely in others. Recording these encounters is the beginning of owning what belongs to you.</p>
           <p>The qualities that disturb you most are often the ones you most need. The shadow is not your enemy — it is the part of you that has been waiting to be included.</p>
         </PracticeOrientation>
       </div>

@@ -6,6 +6,7 @@ import { analyzeDream, buildDreamContext, generateDreamSummary, suggestAdditiona
 import { incrementAnalysisCount } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
+import JungianTerm from '../components/JungianTerm';
 import { formatDateLong } from '../lib/constants';
 import { JUNGIAN_TERMS } from '../lib/jungianTerms';
 
@@ -750,11 +751,11 @@ function WakingResonances({ dream, dreamId, onUpdate }) {
 // ── Dream Structure arc (B: affordance signals) ──────────────────────────────
 
 const STRUCTURE_META = {
-  exposition:   { label: 'Exposition',   desc: 'The opening situation' },
-  development:  { label: 'Development',  desc: 'Rising action and tension' },
-  peripeteia:   { label: 'Peripeteia',   desc: 'The pivotal moment' },
-  lysis:        { label: 'Lysis',        desc: 'How the dream resolves' },
-  catastrophe:  { label: 'Catastrophe',  desc: 'Collapse or destruction' },
+  exposition:   { label: 'Exposition',   labelNode: <>Exposition</>,                                                    desc: 'The opening situation' },
+  development:  { label: 'Development',  labelNode: <>Development</>,                                                   desc: 'Rising action and tension' },
+  peripeteia:   { label: 'Peripeteia',   labelNode: <JungianTerm id="peripeteia">Peripeteia</JungianTerm>,   desc: 'The pivotal moment' },
+  lysis:        { label: 'Lysis',        labelNode: <JungianTerm id="lysis">Lysis</JungianTerm>,             desc: 'How the dream resolves' },
+  catastrophe:  { label: 'Catastrophe',  labelNode: <>Catastrophe</>,                                                   desc: 'Collapse or destruction' },
 };
 
 function DreamStructure({ structure }) {
@@ -874,7 +875,7 @@ function DreamStructure({ structure }) {
       {active && structure[active] && (
         <div className="mt-2 px-5 py-4 rounded-xl bg-gold/5 border border-gold/20">
           <p className="text-xs uppercase tracking-widest font-body text-gold/50 mb-2">
-            {STRUCTURE_META[active].label} — {STRUCTURE_META[active].desc}
+            {STRUCTURE_META[active].labelNode} — {STRUCTURE_META[active].desc}
           </p>
           <p className="text-sm font-body text-ink/70 dark:text-white/60 leading-relaxed">
             {structure[active]}

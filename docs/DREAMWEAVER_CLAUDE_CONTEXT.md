@@ -86,8 +86,10 @@ File Structure
 │       │   ├── AiErrorMessage.jsx
 │       │   ├── DreamPreviewDrawer.jsx
 │       │   ├── EmbodimentCheckIn.jsx
+│       │   ├── JungianTerm.jsx
 │       │   ├── Layout.jsx
 │       │   ├── MilestoneModal.jsx
+│       │   ├── PracticeOrientation.jsx
 │       │   └── Sidebar.jsx
 │       ├── contexts/
 │       │   └── AuthContext.jsx
@@ -224,14 +226,14 @@ Features Built — Complete List
 ✅ Re-analyze Dream button on EditDream — triggers fresh Jungian analysis using correct chronological context (dreams before this dream's date only), replaces AI-generated fields only, leaves all user-authored content untouched
 ✅ 1-hour re-analysis cooldown — last_analyzed_at timestamp written on each re-analysis; button shows remaining time and goes muted until cooldown expires
 ✅ Duplicate dream detection — Settings → Data & Maintenance; Jaccard similarity scan within same-date dream groups, inline confirmation before delete, session-only "Not duplicates" dismissal
+✅ Global animation pass — CollapsibleSection in DreamDetail, ShadowWork EncounterDetailDrawer and EncounterFormPanel; all use CSS transitions (maxHeight + opacity) instead of conditional rendering
+✅ PracticeOrientation component — Collapsible "About this practice" panel on 11 pages (Record, Archive, Active Imagination, Shadow Work, Daily Practice, Waking Life, My Journey, Ask the Archive, Dream Series, Session Letter, Complexes Map); expanded on first visit via localStorage per storageKey, collapsed thereafter
+✅ JungianTerm tooltip component — Gold dotted underline on Jungian terms in static UI copy; 200ms fade tooltip with definition one-liner + "Read more in Reference →" link; flips above trigger when near viewport bottom; definitions sourced from jungianTerms.js; applied to: peripeteia/lysis (DreamDetail), synchronicity (WakingLife), individuation (Individuation, Onboarding), active imagination/shadow (ActiveImagination, ShadowWork, MilestoneModal), complex/projection (ComplexesMap, ShadowWork)
 
 
 What's Next (Priority Order)
 
-Global animation pass — Replace conditional rendering with CSS transitions
 Remove Symbols & Archetypes from sidebar — AI Dream Series is now built; retire the static Symbols page from nav
-"About this practice" orientation layer — Collapsible on each page for new users
-Jungian term tooltips — Dotted gold underline on all Jungian terms, hover definition
 Show Doug — Collect input on guide access system and analytical ethics
 Guide access system — After Doug's input
 Psyche Map — After 6 months personal use
@@ -240,7 +242,6 @@ Psyche Map — After 6 months personal use
 Known Issues / Technical Debt
 
 Symbols & Archetypes page still in sidebar — AI Dream Series is now built; ready to remove/replace Symbols & Archetypes from nav
-Global animation pass not yet done — collapsed sections use conditional rendering
 generateEncounterTitle() removed from ShadowWork but may still exist as dead code in ai.js — verify
 Old archive_queries rows with null/empty messages require SQL backfill (supabase-migration-archive-threads.sql) to display as threads
 WakingLife strip on Daily Practice needs signed URL verification

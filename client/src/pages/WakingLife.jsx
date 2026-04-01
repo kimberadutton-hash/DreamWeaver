@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatDate, todayString } from '../lib/constants';
 import { getStoragePath, hydrateSignedUrls } from '../lib/storage';
 import PracticeOrientation from '../components/PracticeOrientation';
+import JungianTerm from '../components/JungianTerm';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -14,7 +15,7 @@ const ENTRY_TYPES = [
   { id: 'writing',       label: 'Writing',       color: '#7c6b5a' },
   { id: 'milestone',     label: 'Milestone',     color: '#b8924a' },
   { id: 'body',          label: 'Body',          color: '#9a4a6a' },
-  { id: 'synchronicity', label: 'Synchronicity', color: '#3a5a7a' },
+  { id: 'synchronicity', label: 'Synchronicity', labelNode: <JungianTerm id="synchronicity">Synchronicity</JungianTerm>, color: '#3a5a7a' },
 ];
 
 const TYPE_PLACEHOLDERS = {
@@ -506,7 +507,7 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
                     }}
                   >
                     <TypeIcon type={t.id} size={18} color={active ? t.color : 'rgba(42,36,32,0.35)'} />
-                    <span className="text-xs font-body">{t.label}</span>
+                    <span className="text-xs font-body">{t.labelNode || t.label}</span>
                   </button>
                 );
               })}
@@ -844,7 +845,7 @@ export default function WakingLife() {
                   border: '2px solid transparent',
                 }}
               >
-                {t.label}
+                {t.labelNode || t.label}
               </button>
             ))}
           </div>
