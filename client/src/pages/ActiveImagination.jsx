@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { prepareImagination, reflectOnSession, imaginationEmbodimentPrompt, AiError } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
+import PracticeOrientation from '../components/PracticeOrientation';
 import { formatDate, todayString } from '../lib/constants';
 
 // ── Preparation Panel ──────────────────────────────────────────────────────
@@ -997,6 +998,10 @@ export default function ActiveImagination() {
           <p className="font-display italic text-sm text-ink/30 dark:text-white/22 leading-relaxed">
             Jung conducted active imagination by writing both sides of the dialogue himself. This is that practice. The figure's voice comes from you — not from outside.
           </p>
+          <PracticeOrientation storageKey="orient_imagination">
+            <p>Active imagination is a disciplined encounter with the figures that arise from the deep. You write both sides of the dialogue — your own voice, and the figure's voice as it comes through you. This is not performance or invention. It is contact.</p>
+            <p>Go slowly. Let the figure surprise you. What arrives through your own hand may be more honest than what you expected to write.</p>
+          </PracticeOrientation>
         </div>
         <button
           onClick={() => { setNewSessionFigureName(''); setView(v => v === 'setup' ? 'list' : 'setup'); }}

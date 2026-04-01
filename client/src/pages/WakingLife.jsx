@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate, todayString } from '../lib/constants';
 import { getStoragePath, hydrateSignedUrls } from '../lib/storage';
+import PracticeOrientation from '../components/PracticeOrientation';
 
 // ── Constants ──────────────────────────────────────────────────────────────
 
@@ -785,7 +786,7 @@ export default function WakingLife() {
     <div className="max-w-4xl mx-auto px-8 py-10">
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-8">
+      <div className="flex items-start justify-between mb-6">
         <div>
           <p className="font-display italic text-base text-ink/45 dark:text-white/35 leading-relaxed max-w-lg">
             Where the inner work leaves traces — art made, music encountered, milestones reached, synchronicities noticed.
@@ -798,6 +799,11 @@ export default function WakingLife() {
           + New entry
         </button>
       </div>
+
+      <PracticeOrientation storageKey="orient_waking">
+        <p>Not everything that belongs to the inner work takes place in dreams. Art made, music that stopped you, synchronicities that felt too specific to dismiss — these are the residue of the unconscious in waking life.</p>
+        <p>Track them here. Over time, they form a pattern that the dream archive alone cannot show you.</p>
+      </PracticeOrientation>
 
       {/* Controls */}
       {entries.length > 0 && (

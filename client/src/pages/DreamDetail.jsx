@@ -660,11 +660,13 @@ function CollapsibleSection({ title, preview, isOpen, onToggle, children }) {
           {title}
         </span>
         <div className="flex items-center gap-3 min-w-0 ml-4">
-          {!isOpen && preview && (
-            <span className="text-xs font-body text-ink/30 dark:text-white/20 truncate max-w-[180px]">
-              {preview}
-            </span>
-          )}
+          <span
+            className={`text-xs font-body text-ink/30 dark:text-white/20 truncate max-w-[180px] transition-opacity duration-200 ${
+              isOpen ? 'opacity-0' : 'opacity-100'
+            }`}
+          >
+            {preview || ''}
+          </span>
           <span
             className="text-ink/25 dark:text-white/20 text-lg leading-none shrink-0 transition-transform duration-200"
             style={{ display: 'inline-block', transform: isOpen ? 'rotate(90deg)' : 'rotate(0deg)' }}
@@ -673,7 +675,16 @@ function CollapsibleSection({ title, preview, isOpen, onToggle, children }) {
           </span>
         </div>
       </button>
-      {isOpen && <div className="pb-6">{children}</div>}
+      <div
+        style={{
+          maxHeight: isOpen ? '4000px' : '0',
+          overflow: 'hidden',
+          opacity: isOpen ? 1 : 0,
+          transition: 'max-height 0.3s ease, opacity 0.2s ease',
+        }}
+      >
+        <div className="pb-6">{children}</div>
+      </div>
     </div>
   );
 }

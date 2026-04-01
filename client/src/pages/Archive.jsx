@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateTitle } from '../lib/ai';
 import { formatDate } from '../lib/constants';
+import PracticeOrientation from '../components/PracticeOrientation';
 
 export default function Archive() {
   const { user } = useAuth();
@@ -74,7 +75,7 @@ export default function Archive() {
 
   return (
     <div className="max-w-4xl mx-auto px-8 py-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <h1 className="font-display italic text-4xl text-ink dark:text-white">
           Dream Archive
         </h1>
@@ -86,6 +87,11 @@ export default function Archive() {
           + New Dream
         </Link>
       </div>
+
+      <PracticeOrientation storageKey="orient_archive">
+        <p>The archive is not a library — it is a living record of where the unconscious has been. Over time, you will begin to see what the waking mind cannot: the threads that cross months, the figures that return, the territory your psyche keeps coming back to.</p>
+        <p>The patterns emerge slowly. Trust the accumulation.</p>
+      </PracticeOrientation>
 
       {/* Search */}
       <div className="mb-6">

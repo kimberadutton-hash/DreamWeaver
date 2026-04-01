@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { identifyShadowMaterial } from '../lib/ai';
+import PracticeOrientation from '../components/PracticeOrientation';
 import { formatDate, todayString } from '../lib/constants';
 import AiErrorMessage from '../components/AiErrorMessage';
 
@@ -164,6 +165,8 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
   const navigate = useNavigate();
   const [deleting, setDeleting] = useState(false);
   const [updatingStatus, setUpdatingStatus] = useState(false);
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
 
   async function handleDelete() {
     if (!window.confirm('Delete this encounter?')) return;
@@ -186,9 +189,12 @@ function EncounterDetailDrawer({ encounter, onClose, onEdit, onDelete, onStatusC
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
       <div
-        className="fixed top-0 right-0 z-50 h-full w-full sm:w-[480px] flex flex-col shadow-2xl"
+        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        onClick={onClose}
+      />
+      <div
+        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[480px] flex flex-col shadow-2xl transition-transform duration-300 ease-in-out ${visible ? 'translate-x-0' : 'translate-x-full'}`}
         style={{ backgroundColor: '#faf7f2' }}
       >
         {/* Header bar */}
@@ -416,6 +422,8 @@ function formatShadowAnalysis(analysis) {
 
 function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, shadowPrefill, onClose, onSaved, userId }) {
   const isEdit = !!initialEncounter?.id;
+  const [visible, setVisible] = useState(false);
+  useEffect(() => { const t = setTimeout(() => setVisible(true), 10); return () => clearTimeout(t); }, []);
 
   // PATH 1: Format AI content from DreamDetail prefill → goes to ai_reflection, never description
   const prefillAiReflection = shadowPrefill ? formatShadowAnalysis(shadowPrefill) : '';
@@ -590,9 +598,12 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
 
   return (
     <>
-      <div className="fixed inset-0 z-40 bg-black/20" onClick={onClose} />
       <div
-        className="fixed top-0 right-0 z-50 h-full w-full sm:w-[480px] flex flex-col shadow-2xl"
+        className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-300 ${visible ? 'opacity-100' : 'opacity-0'}`}
+        onClick={onClose}
+      />
+      <div
+        className={`fixed top-0 right-0 z-50 h-full w-full sm:w-[480px] flex flex-col shadow-2xl transition-transform duration-300 ease-in-out ${visible ? 'translate-x-0' : 'translate-x-full'}`}
         style={{ backgroundColor: '#faf7f2' }}
       >
         {/* Header */}
@@ -1109,6 +1120,10 @@ export default function ShadowWork() {
           "The shadow is not only darkness. It contains everything you decided was unacceptable —
           including gifts you have not yet claimed."
         </p>
+        <PracticeOrientation storageKey="orient_shadow">
+          <p>The shadow shows up in the people you can't stand, the reactions that embarrass you, the qualities you admire too intensely in others. Recording these encounters is the beginning of owning what belongs to you.</p>
+          <p>The qualities that disturb you most are often the ones you most need. The shadow is not your enemy — it is the part of you that has been waiting to be included.</p>
+        </PracticeOrientation>
       </div>
 
       {/* Tabs + action */}

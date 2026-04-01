@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { generateGuideLetter, hasApiKey } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
+import PracticeOrientation from '../components/PracticeOrientation';
 import { formatDate } from '../lib/constants';
 
 // Renders a multi-paragraph letter field (AI may use \n\n between paragraphs)
@@ -211,7 +212,7 @@ export default function GuideLetter() {
     <div className="max-w-3xl mx-auto px-8 py-10">
 
       {/* ── Header ── */}
-      <div className="mb-10">
+      <div className="mb-6">
         <h1 className="font-display italic text-4xl text-ink dark:text-white mb-2">
           Session Letter
         </h1>
@@ -219,6 +220,11 @@ export default function GuideLetter() {
           A summary of recent inner work for {guideName}
         </p>
       </div>
+
+      <PracticeOrientation storageKey="orient_letter">
+        <p>The session letter is a bridge between the inner work you do alone and the work you do with your guide. It gathers the dreams, the symbols, the questions — and holds them in a form that another person can receive.</p>
+        <p>Write it for your guide, but also for yourself. Sometimes the act of composing it reveals what you most need to bring.</p>
+      </PracticeOrientation>
 
       {/* ── No API key banner ── */}
       {!keyPresent && (

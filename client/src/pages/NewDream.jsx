@@ -6,6 +6,7 @@ import { analyzeDream, buildDreamContext, generateDreamSummary, transcribeImage,
 import { incrementAbandonedCount, resetPauseCounts } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
+import PracticeOrientation from '../components/PracticeOrientation';
 import { MOODS, todayString } from '../lib/constants';
 
 const DAILY_PROMPTS = [
@@ -273,7 +274,12 @@ export default function NewDream() {
         </div>
       )}
 
-      <h1 className="font-display italic text-4xl text-ink dark:text-white mb-8">Record a Dream</h1>
+      <h1 className="font-display italic text-4xl text-ink dark:text-white mb-6">Record a Dream</h1>
+
+      <PracticeOrientation storageKey="orient_record">
+        <p>Each dream is a letter from the unconscious — written in images, not words. This practice asks only that you receive it faithfully: record what arrived, however fragmentary, before the waking mind can explain it away.</p>
+        <p>The analysis comes after. The dream comes first.</p>
+      </PracticeOrientation>
 
       <div className="space-y-6">
         {/* Incubation intention */}

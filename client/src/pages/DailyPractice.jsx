@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { formatDate } from '../lib/constants';
 import { hydrateSignedUrls } from '../lib/storage';
 import EmbodimentCheckIn from '../components/EmbodimentCheckIn';
+import PracticeOrientation from '../components/PracticeOrientation';
 
 const WAKING_COLORS = {
   art: '#3d2b4a', music: '#4a7c74', writing: '#7c6b5a',
@@ -123,7 +124,7 @@ export default function DailyPractice() {
     <div className="max-w-2xl mx-auto px-8 py-10">
 
       {/* Page header */}
-      <div className="mb-10">
+      <div className="mb-6">
         <h1 className="font-display italic text-4xl text-ink dark:text-white mb-2">
           Daily Practice
         </h1>
@@ -131,6 +132,11 @@ export default function DailyPractice() {
           What the psyche is asking of you right now.
         </p>
       </div>
+
+      <PracticeOrientation storageKey="orient_practice">
+        <p>The practice is not a checklist. It is an orientation — a way of arriving at the day with some awareness of what the unconscious is currently asking.</p>
+        <p>The embodiment prompt is not a suggestion. It is an invitation to bring what was discovered in the inner world into actual, lived contact with the outer one. What the psyche tends, it strengthens.</p>
+      </PracticeOrientation>
 
       {/* ── Section F: Embodiment check-in (first if pending) ── */}
       <EmbodimentCheckIn />

@@ -7,6 +7,7 @@ import DreamPreviewDrawer from '../components/DreamPreviewDrawer';
 import { suggestDreamSeries, suggestSeriesAdditions } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { useApiKey } from '../hooks/useApiKey';
+import PracticeOrientation from '../components/PracticeOrientation';
 
 // ── Helpers ────────────────────────────────────────────────
 
@@ -1017,7 +1018,7 @@ export default function DreamSeries() {
   // Otherwise render the list
   return (
     <div className="max-w-4xl mx-auto px-8 py-10">
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-display italic text-4xl text-ink dark:text-white mb-1">Dream Series</h1>
           <p className="text-sm font-body text-ink/40 dark:text-white/35">
@@ -1050,6 +1051,11 @@ export default function DreamSeries() {
           </button>
         </div>
       </div>
+
+      <PracticeOrientation storageKey="orient_series">
+        <p>A series is not a category — it is a thread. It names the recurring movement in your unconscious: the threshold you keep approaching, the figure who keeps returning, the feeling that keeps finding new images to inhabit.</p>
+        <p>A series gives that thread a name. Naming it makes it possible to track where it is going.</p>
+      </PracticeOrientation>
 
       <SeriesList ref={seriesListRef} key={refreshKey} onNew={() => setFormOpen(true)} />
 

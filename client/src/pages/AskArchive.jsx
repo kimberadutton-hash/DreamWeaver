@@ -4,6 +4,7 @@ import { useApiKey } from '../hooks/useApiKey';
 import { supabase } from '../lib/supabase';
 import { askArchive } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
+import PracticeOrientation from '../components/PracticeOrientation';
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -361,6 +362,11 @@ export default function AskArchive() {
           Each conversation is saved — click any past question to continue it.
         </p>
       </header>
+
+      <PracticeOrientation storageKey="orient_ask">
+        <p>The archive is a record of your unconscious across time. Asking it questions is a way of looking at your own depth from a different angle — ask about a recurring figure, what a symbol has meant across different dreams, where a particular feeling goes.</p>
+        <p>The answers draw on everything you have recorded, and sometimes reveal patterns you had not noticed yourself.</p>
+      </PracticeOrientation>
 
       {!hasApiKey && (
         <div className="bg-gold/10 border border-gold/30 rounded-xl px-5 py-4 text-sm text-ink/70 font-sans">

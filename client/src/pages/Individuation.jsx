@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { generateIndividuationNarrative, updateIndividuationNarrative, hasApiKey, AiError } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
 import DreamPreviewDrawer from '../components/DreamPreviewDrawer';
+import PracticeOrientation from '../components/PracticeOrientation';
 import { format, parseISO } from 'date-fns';
 
 const MIN_DREAMS = 10;
@@ -305,7 +306,7 @@ export default function Individuation() {
       <div className="max-w-3xl mx-auto px-6 sm:px-8 py-10 pb-24">
 
         {/* ── Page header ── */}
-        <div className="mb-10">
+        <div className="mb-6">
           <h1 className="font-display italic text-4xl text-ink dark:text-white mb-2">
             My Journey
           </h1>
@@ -313,6 +314,11 @@ export default function Individuation() {
             The long view — where the psyche has been leading you.
           </p>
         </div>
+
+        <PracticeOrientation storageKey="orient_journey">
+          <p>Individuation is not a destination. It is a direction — the ongoing movement toward becoming more fully who you are, including the parts you would rather not be.</p>
+          <p>The narrative here is not a summary of your dreams. It is an interpretation of your psychological journey as the unconscious is actually living it. Read it slowly. It may know things about you that you are still catching up to.</p>
+        </PracticeOrientation>
 
         {/* API key warning */}
         {!hasApiKey() && (
