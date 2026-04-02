@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import PracticeOrientation from '../components/PracticeOrientation';
@@ -26,6 +26,14 @@ export default function GuideLetter() {
   const [userOpening, setUserOpening] = useState('');
   const [userWords, setUserWords] = useState('');
   const [userClosing, setUserClosing] = useState('');
+  // Auto-fill closing once with "Warmly, [name]" when profile loads; user can edit freely after
+  const closingAutoFilled = useRef(false);
+  useEffect(() => {
+    if (!closingAutoFilled.current && signerName) {
+      setUserClosing(`Warmly,\n${signerName}`);
+      closingAutoFilled.current = true;
+    }
+  }, [signerName]);
 
   // ── UI ────────────────────────────────────────────────────────────────────
   const [copied, setCopied] = useState(false);
@@ -203,7 +211,8 @@ export default function GuideLetter() {
     let subject = 'Dreams';
     if (dates.length === 1) subject = `Dreams — ${formatDate(dates[0])}`;
     else if (dates.length > 1) subject = `Dreams — ${formatDate(dates[0])} – ${formatDate(dates[dates.length - 1])}`;
-    window.location.href = `mailto:${profile.analyst_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(letterText)}`;
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&to=${encodeURIComponent(profile.analyst_email)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(letterText)}`;
+    window.open(gmailUrl, '_blank');
   }
 
   // ── Shared textarea style ─────────────────────────────────────────────────
