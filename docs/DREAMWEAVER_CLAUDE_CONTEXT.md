@@ -253,7 +253,7 @@ Sign out
 - `complexes` — `name`, `description`, `origin_story`, `dream_manifestations`, `waking_manifestations`, `what_it_needs`, `integration_status`, `ai_suggested`, `related_archetypes`
 - `dream_series` — `name`, `description` (dreams link via `series_id` FK)
 - `imagination_sessions` — `figure_name`, `messages` (jsonb), `preparation_notes`, `closing_reflection`, `analyst_reflection`, `embodiment_prompt`, `closed_at`
-- `waking_life_entries` — `entry_type`, `title`, `description`, `media_url`, `media_type`, `linked_dream_id`, `linked_focus_id`, `tags`
+- `waking_life_entries` — `entry_type`, `title`, `description`, `entry_date` (date), `media_url`, `media_type`, `linked_dream_id`, `linked_focus_id`, `tags`
 - `analyst_focuses` — `focus_text`, `given_date`, `end_date`, `notes`, `is_active`
 - `guide_letters` — `letter_text`, `letter_json`, `date_range_start`, `date_range_end`, `sent_at`
 - `individuation_narratives` — `narrative` (jsonb v2 or text v1), `narrative_version`, `dream_count`, `last_dream_id`, `is_current`
@@ -334,7 +334,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Individuation narrative with chapter view
 - ✅ Living Questions on Daily Practice
 - ✅ Analyst Focus with running notes
-- ✅ Session Letter with curatorial dream selection
+- ✅ Session Letter — fully redesigned as a user-assembled transmission (no AI generation). Three-section builder: dream selector (collapsible, CSS transitions, no pre-selection), waking life selector (collapsible, loads entries from selected dream date range with inclusive end bound), and "anything you want to say." User-written opening and closing fields flank the selections. Live letter preview assembles as pure JS string. Copy / Email (uses `profile.analyst_email`) / Print-to-PDF buttons. Two-column desktop layout.
 - ✅ Jungian Reference Library (30+ entries, categorized)
 - ✅ Embodiment prompts on every dream analysis
 - ✅ Weekly embodiment check-in
@@ -378,6 +378,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - WakingLife strip on Daily Practice needs signed URL verification
 - EmbodimentCheckIn moved from floating banner to Daily Practice — verify working correctly
 - `Symbols.jsx` page and `/symbols` route still exist in the codebase — not linked from sidebar but not formally retired either
+- `generateGuideLetter()` in `ai.js` is no longer called from `GuideLetter.jsx` (Session Letter redesigned to pure JS assembly) — dead code, safe to remove in a future cleanup pass
 
 ---
 
