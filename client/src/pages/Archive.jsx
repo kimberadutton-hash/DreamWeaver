@@ -5,6 +5,14 @@ import { useAuth } from '../contexts/AuthContext';
 import { generateTitle } from '../lib/ai';
 import { formatDate } from '../lib/constants';
 import PracticeOrientation from '../components/PracticeOrientation';
+import DreamSeries from './DreamSeries';
+import Timeline from './Timeline';
+
+const TABS = [
+  { id: 'dreams', label: 'All Dreams' },
+  { id: 'series', label: 'Series' },
+  { id: 'timeline', label: 'Timeline' },
+];
 
 export default function Archive() {
   const { user } = useAuth();
@@ -14,6 +22,7 @@ export default function Archive() {
   const [search, setSearch] = useState('');
   const [titling, setTitling] = useState(false);
   const [titlingProgress, setTitlingProgress] = useState(null); // { done, total }
+  const [tab, setTab] = useState('dreams');
 
   useEffect(() => {
     fetchDreams();
@@ -74,94 +83,127 @@ export default function Archive() {
   });
 
   return (
-    <div className="max-w-4xl mx-auto px-8 py-10">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="font-display italic text-4xl text-ink dark:text-white">
-          Dream Archive
-        </h1>
-        <Link
-          to="/new"
-          className="px-5 py-2.5 rounded-xl text-sm font-body font-medium text-white transition-opacity hover:opacity-90"
-          style={{ backgroundColor: '#3d2b4a' }}
-        >
-          + New Dream
-        </Link>
-      </div>
-
-      <PracticeOrientation storageKey="orient_archive">
-        <p>The archive is not a library — it is a living record of where the unconscious has been. Over time, you will begin to see what the waking mind cannot: the threads that cross months, the figures that return, the territory your psyche keeps coming back to.</p>
-        <p>The patterns emerge slowly. Trust the accumulation.</p>
-      </PracticeOrientation>
-
-      {/* Search */}
-      <div className="mb-6">
-        <input
-          type="search"
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search dreams, moods, tags…"
-          className="field-input"
-        />
-      </div>
-
-      {/* Untitled dreams banner */}
-      {!loading && untitledDreams.length > 0 && !search && (
-        <div className="mb-6 flex items-center justify-between px-5 py-3 rounded-xl bg-gold/8 border border-gold/20">
-          <p className="text-sm font-body text-ink/70 dark:text-white/60">
-            {untitledDreams.length} dream{untitledDreams.length !== 1 ? 's' : ''} without a title
-            {titlingProgress && (
-              <span className="ml-2 text-gold">
-                — naming {titlingProgress.done}/{titlingProgress.total}…
-              </span>
-            )}
-          </p>
-          <button
-            onClick={generateMissingTitles}
-            disabled={titling}
-            className="text-sm font-body text-gold hover:text-gold-dark disabled:opacity-50 transition-colors ml-4 shrink-0"
+    <div>
+      {/* Header + orientation + search + tabs */}
+      <div className="max-w-4xl mx-auto px-8 pt-10">
+        <div className="flex items-center justify-between mb-6">
+          <h1 className="font-display italic text-4xl text-ink dark:text-white">
+            Dream Archive
+          </h1>
+          <Link
+            to="/new"
+            className="px-5 py-2.5 rounded-xl text-sm font-body font-medium text-white transition-opacity hover:opacity-90"
+            style={{ backgroundColor: '#3d2b4a' }}
           >
-            {titling ? 'Working…' : '✦ Generate titles'}
-          </button>
+            + New Dream
+          </Link>
         </div>
-      )}
 
-      {loading ? (
-        <div className="text-center py-20">
-          <p className="font-display italic text-2xl text-ink/40 dark:text-white/40">
-            Gathering your dreams…
-          </p>
+        <PracticeOrientation storageKey="orient_archive">
+          <p>The archive is not a library — it is a living record of where the unconscious has been. Over time, you will begin to see what the waking mind cannot: the threads that cross months, the figures that return, the territory your psyche keeps coming back to.</p>
+          <p>The patterns emerge slowly. Trust the accumulation.</p>
+        </PracticeOrientation>
+
+        {/* Search — dreams tab only */}
+        {tab === 'dreams' && (
+          <div className="mb-4">
+            <input
+              type="search"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              placeholder="Search dreams, moods, tags…"
+              className="field-input"
+            />
+          </div>
+        )}
+
+        {/* Tab bar */}
+        <div className="flex gap-0 mb-6">
+          {TABS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setTab(t.id)}
+              className="px-4 py-2 text-sm font-body transition-colors border-b-2"
+              style={{
+                color: tab === t.id ? '#3d2b4a' : 'rgba(42,36,32,0.4)',
+                borderBottomColor: tab === t.id ? '#3d2b4a' : 'transparent',
+              }}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-20">
-          {search ? (
-            <p className="font-display italic text-xl text-ink/40">
-              No dreams match "{search}"
-            </p>
-          ) : (
-            <div className="space-y-4">
-              <p className="font-display italic text-2xl text-ink/40">
-                Your archive is empty
+      </div>
+
+      {/* All Dreams tab content */}
+      {tab === 'dreams' && (
+        <div className="max-w-4xl mx-auto px-8 pb-10">
+          {/* Untitled dreams banner */}
+          {!loading && untitledDreams.length > 0 && !search && (
+            <div className="mb-6 flex items-center justify-between px-5 py-3 rounded-xl bg-gold/8 border border-gold/20">
+              <p className="text-sm font-body text-ink/70 dark:text-white/60">
+                {untitledDreams.length} dream{untitledDreams.length !== 1 ? 's' : ''} without a title
+                {titlingProgress && (
+                  <span className="ml-2 text-gold">
+                    — naming {titlingProgress.done}/{titlingProgress.total}…
+                  </span>
+                )}
               </p>
-              <p className="text-ink/40 text-sm font-body">
-                Record your first dream to begin the journey
-              </p>
-              <Link
-                to="/new"
-                className="inline-block mt-2 px-6 py-3 rounded-xl text-sm font-body font-medium text-white"
-                style={{ backgroundColor: '#3d2b4a' }}
+              <button
+                onClick={generateMissingTitles}
+                disabled={titling}
+                className="text-sm font-body text-gold hover:text-gold-dark disabled:opacity-50 transition-colors ml-4 shrink-0"
               >
-                Record a Dream
-              </Link>
+                {titling ? 'Working…' : '✦ Generate titles'}
+              </button>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="text-center py-20">
+              <p className="font-display italic text-2xl text-ink/40 dark:text-white/40">
+                Gathering your dreams…
+              </p>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="text-center py-20">
+              {search ? (
+                <p className="font-display italic text-xl text-ink/40">
+                  No dreams match "{search}"
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  <p className="font-display italic text-2xl text-ink/40">
+                    Your archive is empty
+                  </p>
+                  <p className="text-ink/40 text-sm font-body">
+                    Record your first dream to begin the journey
+                  </p>
+                  <Link
+                    to="/new"
+                    className="inline-block mt-2 px-6 py-3 rounded-xl text-sm font-body font-medium text-white"
+                    style={{ backgroundColor: '#3d2b4a' }}
+                  >
+                    Record a Dream
+                  </Link>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {filtered.map(dream => (
+                <DreamCard key={dream.id} dream={dream} onClick={() => navigate(`/dream/${dream.id}`)} />
+              ))}
             </div>
           )}
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {filtered.map(dream => (
-            <DreamCard key={dream.id} dream={dream} onClick={() => navigate(`/dream/${dream.id}`)} />
-          ))}
-        </div>
       )}
+
+      {/* Series tab content */}
+      {tab === 'series' && <DreamSeries hideHeader />}
+
+      {/* Timeline tab content */}
+      {tab === 'timeline' && <Timeline hideHeader />}
     </div>
   );
 }

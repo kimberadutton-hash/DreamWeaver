@@ -1002,7 +1002,7 @@ function SeriesDetail({ seriesId }) {
 
 // ── Default export ─────────────────────────────────────────
 
-export default function DreamSeries() {
+export default function DreamSeries({ hideHeader = false }) {
   const { id } = useParams();
   const { hasKey } = useApiKey();
 
@@ -1020,7 +1020,7 @@ export default function DreamSeries() {
     <div className="max-w-4xl mx-auto px-8 py-10">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="font-display italic text-4xl text-ink dark:text-white mb-1">Dream Series</h1>
+          {!hideHeader && <h1 className="font-display italic text-4xl text-ink dark:text-white mb-1">Dream Series</h1>}
           <p className="text-sm font-body text-ink/40 dark:text-white/35">
             Group recurring dreams to track patterns across time.
           </p>

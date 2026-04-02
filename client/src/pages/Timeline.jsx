@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { format, parseISO } from 'date-fns';
 
-export default function Timeline() {
+export default function Timeline({ hideHeader = false }) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [byYear, setByYear] = useState([]);
@@ -50,9 +50,11 @@ export default function Timeline() {
 
   return (
     <div className="max-w-3xl mx-auto px-8 py-10">
-      <h1 className="font-display italic text-4xl text-ink dark:text-white mb-8">
-        Timeline
-      </h1>
+      {!hideHeader && (
+        <h1 className="font-display italic text-4xl text-ink dark:text-white mb-8">
+          Timeline
+        </h1>
+      )}
 
       {loading ? (
         <p className="font-display italic text-xl text-ink/40">Tracing the arc of time…</p>

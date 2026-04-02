@@ -2,14 +2,47 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavTier } from '../hooks/useNavTier';
 
+// ── Dot indicator ─────────────────────────────────────────────────────────────
+
+function Dot({ active, locked }) {
+  if (active) {
+    return (
+      <span
+        style={{
+          width: 6,
+          height: 6,
+          borderRadius: '50%',
+          background: '#b8924a',
+          flexShrink: 0,
+          display: 'inline-block',
+        }}
+      />
+    );
+  }
+  return (
+    <span
+      style={{
+        width: 6,
+        height: 6,
+        borderRadius: '50%',
+        border: `1px solid rgba(255,255,255,${locked ? '0.15' : '0.3'})`,
+        background: 'transparent',
+        flexShrink: 0,
+        display: 'inline-block',
+      }}
+    />
+  );
+}
+
 // ── Locked nav item with hover tooltip ────────────────────────────────────────
 
-function LockedItem({ label, icon, requirement }) {
+function LockedItem({ label, requirement }) {
   return (
     <div className="relative group/locked">
-      <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body text-white/60 opacity-35 cursor-default select-none">
-        <span className="text-base opacity-80">{icon}</span>
-        {label}
+      <div className="flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body text-white/25 cursor-default select-none">
+        <Dot locked />
+        <span className="flex-1">{label}</span>
+        <span style={{ fontSize: 9, opacity: 0.4 }}>locked</span>
       </div>
       <div
         className="absolute left-4 bottom-full mb-1.5 z-50 pointer-events-none opacity-0 group-hover/locked:opacity-100 transition-opacity duration-150"
@@ -40,9 +73,9 @@ function LockedItem({ label, icon, requirement }) {
   );
 }
 
-// ── Nav item (active link) ────────────────────────────────────────────────────
+// ── Nav item ──────────────────────────────────────────────────────────────────
 
-function NavItem({ to, label, icon }) {
+function NavItem({ to, label, icon, muted }) {
   return (
     <NavLink
       to={to}
@@ -50,12 +83,25 @@ function NavItem({ to, label, icon }) {
         `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body transition-all duration-150 ${
           isActive
             ? 'bg-white/15 text-gold'
-            : 'text-white/60 hover:text-white/90 hover:bg-white/8'
+            : muted
+              ? 'text-white/40 hover:text-white/70 hover:bg-white/8'
+              : 'text-white/60 hover:text-white/90 hover:bg-white/8'
         }`
       }
     >
-      <span className="text-base opacity-80">{icon}</span>
-      {label}
+      {({ isActive }) =>
+        icon ? (
+          <>
+            <span className="text-base opacity-80">{icon}</span>
+            {label}
+          </>
+        ) : (
+          <>
+            <Dot active={isActive} />
+            {label}
+          </>
+        )
+      }
     </NavLink>
   );
 }
@@ -65,8 +111,8 @@ function NavItem({ to, label, icon }) {
 function NavSectionLabel({ children }) {
   return (
     <p
-      className="px-4 font-body uppercase text-white/30"
-      style={{ fontSize: 9, letterSpacing: '0.18em', marginTop: 20, marginBottom: 6 }}
+      className="px-4 font-display italic"
+      style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginTop: 20, marginBottom: 6 }}
     >
       {children}
     </p>
@@ -77,7 +123,7 @@ function NavSectionLabel({ children }) {
 
 export default function Sidebar() {
   const { profile, signOut } = useAuth();
-  const { unlocked, visibleLocked, unlockRequirement } = useNavTier();
+  const { hasGuide, unlocked, unlockRequirement } = useNavTier();
   const navigate = useNavigate();
 
   async function handleSignOut() {
@@ -105,98 +151,65 @@ export default function Sidebar() {
       {/* Nav */}
       <nav className="flex-1 px-4 py-4 overflow-y-auto scrollbar-thin">
 
-        {/* Record a Dream — always visible, always unlocked */}
+        {/* Record a Dream — standalone, always visible */}
         <div className="mb-1">
           <NavItem to="/new" label="Record a Dream" icon="✦" />
         </div>
 
-        {/* THE EMBODIMENT */}
-        <NavSectionLabel>The Embodiment</NavSectionLabel>
+        {/* THE THREAD */}
+        <NavSectionLabel>The Thread</NavSectionLabel>
         <div className="space-y-0.5">
-          <NavItem to="/practice" label="Daily Practice" icon="◎" />
-          {unlocked.wakingLife
-            ? <NavItem to="/waking-life" label="Waking Life" icon="◉" />
-            : visibleLocked.wakingLife && (
-                <LockedItem label="Waking Life" icon="◉" requirement={unlockRequirement.wakingLife} />
-              )
-          }
+          <NavItem to="/archive" label="Dream Archive" />
         </div>
 
-        {/* THE INNER WORK */}
-        <NavSectionLabel>The Inner Work</NavSectionLabel>
+        {/* THE LOOM */}
+        <NavSectionLabel>The Loom</NavSectionLabel>
         <div className="space-y-0.5">
-          {unlocked.dreamArchive
-            ? <NavItem to="/archive" label="Dream Archive" icon="◎" />
-            : visibleLocked.dreamArchive && (
-                <LockedItem label="Dream Archive" icon="◎" requirement={unlockRequirement.dreamArchive} />
-              )
+          {unlocked.shadowWork
+            ? <NavItem to="/shadow" label="Shadow Work" />
+            : <LockedItem label="Shadow Work" requirement={unlockRequirement.shadowWork} />
           }
           {unlocked.activeImagination
-            ? <NavItem to="/imagination" label="Active Imagination" icon="◎" />
-            : visibleLocked.activeImagination && (
-                <LockedItem label="Active Imagination" icon="◎" requirement={unlockRequirement.activeImagination} />
-              )
+            ? <NavItem to="/imagination" label="Active Imagination" />
+            : <LockedItem label="Active Imagination" requirement={unlockRequirement.activeImagination} />
           }
-          {unlocked.shadowWork
-            ? <NavItem to="/shadow" label="Shadow Work" icon="◈" />
-            : visibleLocked.shadowWork && (
-                <LockedItem label="Shadow Work" icon="◈" requirement={unlockRequirement.shadowWork} />
-              )
+          {unlocked.dailyPractice
+            ? <NavItem to="/practice" label="Daily Practice" />
+            : <LockedItem label="Daily Practice" requirement={unlockRequirement.dailyPractice} />
           }
         </div>
 
-        {/* THE JOURNEY */}
-        <NavSectionLabel>The Journey</NavSectionLabel>
+        {/* THE WEB */}
+        <NavSectionLabel>The Web</NavSectionLabel>
         <div className="space-y-0.5">
-          {unlocked.myJourney
-            ? <NavItem to="/individuation" label="My Journey" icon="⌾" />
-            : visibleLocked.myJourney && (
-                <LockedItem label="My Journey" icon="⌾" requirement={unlockRequirement.myJourney} />
-              )
-          }
-          {unlocked.dreamSeries
-            ? <NavItem to="/series" label="Dream Series" icon="◎" />
-            : visibleLocked.dreamSeries && (
-                <LockedItem label="Dream Series" icon="◎" requirement={unlockRequirement.dreamSeries} />
-              )
-          }
-          {unlocked.timeline
-            ? <NavItem to="/timeline" label="Timeline" icon="◌" />
-            : visibleLocked.timeline && (
-                <LockedItem label="Timeline" icon="◌" requirement={unlockRequirement.timeline} />
-              )
-          }
-        </div>
-
-        {/* THE RELATIONSHIP */}
-        <NavSectionLabel>The Relationship</NavSectionLabel>
-        <div className="space-y-0.5">
-          {unlocked.analystFocus
-            ? <NavItem to="/focus" label="Analyst Focus" icon="◇" />
-            : visibleLocked.analystFocus && (
-                <LockedItem label="Analyst Focus" icon="◇" requirement={unlockRequirement.analystFocus} />
-              )
-          }
-          {unlocked.sessionLetter
-            ? <NavItem to="/letter" label="Session Letter" icon="◎" />
-            : visibleLocked.sessionLetter && (
-                <LockedItem label="Session Letter" icon="◎" requirement={unlockRequirement.sessionLetter} />
-              )
-          }
           {unlocked.askArchive
-            ? <NavItem to="/ask" label="Ask the Archive" icon="◉" />
-            : <LockedItem label="Ask the Archive" icon="◉" requirement={unlockRequirement.askArchive} />
+            ? <NavItem to="/ask" label="Ask the Archive" />
+            : <LockedItem label="Ask the Archive" requirement={unlockRequirement.askArchive} />
+          }
+          {unlocked.myJourney
+            ? <NavItem to="/individuation" label="My Journey" />
+            : <LockedItem label="My Journey" requirement={unlockRequirement.myJourney} />
           }
         </div>
+
+        {/* THE WITNESS — guide users only */}
+        {hasGuide && (
+          <>
+            <NavSectionLabel>The Witness</NavSectionLabel>
+            <div className="space-y-0.5">
+              <NavItem to="/focus" label="Analyst Focus" />
+              <NavItem to="/letter" label="Session Letter" />
+            </div>
+          </>
+        )}
 
         {/* Divider */}
         <div className="border-t border-white/10 my-4 mx-4" />
 
-        {/* Bottom items */}
+        {/* Bottom items — no section label, quieter style */}
         <div className="space-y-0.5">
-          <NavItem to="/reference" label="Reference" icon="◉" />
-          {unlocked.import && <NavItem to="/import" label="Import" icon="⊕" />}
-          <NavItem to="/settings" label="Settings" icon="◦" />
+          <NavItem to="/reference" label="Reference" muted />
+          <NavItem to="/settings" label="Settings" muted />
         </div>
       </nav>
 
