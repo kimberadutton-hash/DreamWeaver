@@ -17,13 +17,114 @@ function formatDate(iso) {
   });
 }
 
-// Renders AI markdown: bold, line breaks. No external libraries needed.
+function formatScopeMonth(dateStr) {
+  if (!dateStr) return null;
+  const d = new Date(dateStr + 'T00:00:00');
+  return d.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+}
+
+function parseScopeBadgeText(queryScope) {
+  if (!queryScope || queryScope === 'all') return null;
+  if (queryScope === 'last_15') return 'Last 15 dreams';
+  if (queryScope === 'last_30') return 'Last 30 dreams';
+  if (queryScope.startsWith('custom:')) {
+    const parts = queryScope.split(':');
+    const from = parts[1] || '';
+    const to = parts[2] || '';
+    const fmtFrom = from ? formatScopeMonth(from) : null;
+    const fmtTo = to ? formatScopeMonth(to) : null;
+    if (fmtFrom && fmtTo) return `${fmtFrom} – ${fmtTo}`;
+    if (fmtFrom) return `From ${fmtFrom}`;
+    if (fmtTo) return `Through ${fmtTo}`;
+  }
+  return null;
+}
+
+function filterDreamsByScope(dreams, scope, customFrom, customTo) {
+  let filtered;
+  const desc = [...dreams].sort((a, b) => (a.dream_date < b.dream_date ? 1 : -1));
+
+  if (scope === 'last_15') {
+    filtered = desc.slice(0, 15);
+  } else if (scope === 'last_30') {
+    filtered = desc.slice(0, 30);
+  } else if (scope === 'custom') {
+    filtered = dreams.filter((d) => {
+      if (customFrom && d.dream_date < customFrom) return false;
+      if (customTo && d.dream_date > customTo) return false;
+      return true;
+    });
+  } else {
+    filtered = [...dreams];
+  }
+
+  return filtered.sort((a, b) => (a.dream_date < b.dream_date ? -1 : 1));
+}
+
+// ─── ScopeFilterBar ──────────────────────────────────────────────────────────
+
+const SCOPE_OPTIONS = [
+  { value: 'all', label: 'All dreams' },
+  { value: 'last_15', label: 'Last 15' },
+  { value: 'last_30', label: 'Last 30' },
+  { value: 'custom', label: 'Date range' },
+];
+
+function ScopeFilterBar({ scope, setScope, customFrom, setCustomFrom, customTo, setCustomTo, showCustomRange }) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1 bg-parchment/80 border border-gold/20 rounded-full p-1 w-fit">
+        {SCOPE_OPTIONS.map((opt) => (
+          <button
+            key={opt.value}
+            type="button"
+            onClick={() => setScope(opt.value)}
+            className={`px-3 py-1 rounded-full text-xs font-sans transition-all ${
+              scope === opt.value
+                ? 'bg-plum text-parchment shadow-sm'
+                : 'text-ink/50 hover:text-plum'
+            }`}
+          >
+            {opt.label}
+          </button>
+        ))}
+      </div>
+
+      {showCustomRange && (
+        <div className="flex items-center gap-3 pl-1">
+          <label className="text-xs font-sans text-ink/50 w-8">From</label>
+          <input
+            type="date"
+            value={customFrom}
+            onChange={(e) => setCustomFrom(e.target.value)}
+            className="rounded-lg border border-gold/20 bg-white/60 px-3 py-1.5
+                       text-sm text-ink font-sans
+                       focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20
+                       transition-colors"
+          />
+          <label className="text-xs font-sans text-ink/50 w-4">To</label>
+          <input
+            type="date"
+            value={customTo}
+            onChange={(e) => setCustomTo(e.target.value)}
+            className="rounded-lg border border-gold/20 bg-white/60 px-3 py-1.5
+                       text-sm text-ink font-sans
+                       focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20
+                       transition-colors"
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── MarkdownText ─────────────────────────────────────────────────────────────
+
 function MarkdownText({ content, className = '' }) {
   const paragraphs = content.split(/\n\n+/);
   return (
     <div className={className}>
       {paragraphs.map((para, i) => {
-        // Convert **bold** to <strong>
         const parts = para.split(/\*\*(.*?)\*\*/g);
         const rendered = parts.map((part, j) =>
           j % 2 === 1 ? <strong key={j}>{part}</strong> : part
@@ -80,7 +181,7 @@ function MessageBubble({ role, content, timestamp }) {
 
 // ─── ArchiveThread ───────────────────────────────────────────────────────────
 
-function ArchiveThread({ queryRecord, dreams, apiKey, onThreadUpdated }) {
+function ArchiveThread({ queryRecord, dreams, apiKey, onThreadUpdated, userId }) {
   const messages = queryRecord.messages || [];
   const [followUp, setFollowUp] = useState('');
   const [loading, setLoading] = useState(false);
@@ -104,37 +205,66 @@ function ArchiveThread({ queryRecord, dreams, apiKey, onThreadUpdated }) {
     const userMsg = { role: 'user', content: q, timestamp: new Date().toISOString() };
     const optimisticMessages = [...messages, userMsg];
 
-    await supabase
+    const { error: optimisticError } = await supabase
       .from('archive_queries')
       .update({ messages: optimisticMessages })
-      .eq('id', queryRecord.id);
+      .eq('id', queryRecord.id)
+      .eq('user_id', userId);
+
+    if (optimisticError) {
+      setError(optimisticError);
+      onThreadUpdated(queryRecord.id, messages);
+      setLoading(false);
+      return;
+    }
     onThreadUpdated(queryRecord.id, optimisticMessages);
 
-    try {
-      const answer = await askArchive(q, dreams, apiKey, messages);
-      const assistantMsg = {
-        role: 'assistant',
-        content: answer,
-        timestamp: new Date().toISOString(),
-      };
-      const finalMessages = [...optimisticMessages, assistantMsg];
+    const qs = queryRecord.query_scope || 'all';
+    let threadScope = qs, threadFrom = '', threadTo = '';
+    if (qs.startsWith('custom:')) {
+      const parts = qs.split(':');
+      threadScope = 'custom';
+      threadFrom = parts[1] || '';
+      threadTo = parts[2] || '';
+    }
+    const scopedDreams = filterDreamsByScope(dreams, threadScope, threadFrom, threadTo);
 
-      await supabase
-        .from('archive_queries')
-        .update({ messages: finalMessages })
-        .eq('id', queryRecord.id);
-      onThreadUpdated(queryRecord.id, finalMessages);
+    let answer;
+    try {
+      answer = await askArchive(q, scopedDreams, apiKey, optimisticMessages.slice(0, -1));
     } catch (err) {
       setError(err);
       await supabase
         .from('archive_queries')
         .update({ messages })
-        .eq('id', queryRecord.id);
+        .eq('id', queryRecord.id)
+        .eq('user_id', userId);
       onThreadUpdated(queryRecord.id, messages);
-    } finally {
       setLoading(false);
-      setTimeout(() => inputRef.current?.focus(), 100);
+      return;
     }
+
+    const assistantMsg = {
+      role: 'assistant',
+      content: answer,
+      timestamp: new Date().toISOString(),
+    };
+    const finalMessages = [...optimisticMessages, assistantMsg];
+    onThreadUpdated(queryRecord.id, finalMessages);
+
+    const { error: dbError } = await supabase
+      .from('archive_queries')
+      .update({ messages: finalMessages })
+      .eq('id', queryRecord.id)
+      .eq('user_id', userId);
+
+    if (dbError) {
+      setError(dbError);
+      // UI already shows the response — don't roll back
+    }
+
+    setLoading(false);
+    setTimeout(() => inputRef.current?.focus(), 100);
   }
 
   return (
@@ -211,10 +341,11 @@ function ArchiveThread({ queryRecord, dreams, apiKey, onThreadUpdated }) {
 
 // ─── QueryCard ───────────────────────────────────────────────────────────────
 
-function QueryCard({ queryRecord, dreams, apiKey, onThreadUpdated, defaultOpen }) {
+function QueryCard({ queryRecord, dreams, apiKey, onThreadUpdated, defaultOpen, userId }) {
   const [open, setOpen] = useState(defaultOpen || false);
   const messages = queryRecord.messages || [];
   const exchangeCount = Math.floor(messages.length / 2);
+  const scopeBadgeText = parseScopeBadgeText(queryRecord.query_scope);
 
   return (
     <div className="bg-white/70 rounded-2xl border border-gold/15 overflow-hidden">
@@ -227,6 +358,11 @@ function QueryCard({ queryRecord, dreams, apiKey, onThreadUpdated, defaultOpen }
           <p className="font-serif italic text-ink text-base leading-snug line-clamp-2 group-hover:text-plum transition-colors">
             {queryRecord.question}
           </p>
+          {scopeBadgeText && (
+            <p className="text-[11px] font-sans italic text-gold/70 mt-1">
+              {scopeBadgeText}
+            </p>
+          )}
           <div className="flex items-center gap-3 mt-2">
             <span className="text-[11px] font-mono text-ink/40">
               {formatDate(queryRecord.created_at)}
@@ -255,6 +391,7 @@ function QueryCard({ queryRecord, dreams, apiKey, onThreadUpdated, defaultOpen }
             dreams={dreams}
             apiKey={apiKey}
             onThreadUpdated={onThreadUpdated}
+            userId={userId}
           />
         </div>
       )}
@@ -276,6 +413,16 @@ export default function AskArchive() {
   const [error, setError] = useState(null);
   const [newestId, setNewestId] = useState(null);
 
+  const [scope, setScope] = useState('all');
+  const [customFrom, setCustomFrom] = useState('');
+  const [customTo, setCustomTo] = useState('');
+  const [showCustomRange, setShowCustomRange] = useState(false);
+
+  function handleScopeChange(value) {
+    setScope(value);
+    setShowCustomRange(value === 'custom');
+  }
+
   useEffect(() => {
     if (!user) return;
     supabase
@@ -291,11 +438,10 @@ export default function AskArchive() {
     setLoadingQueries(true);
     supabase
       .from('archive_queries')
-      .select('id, question, answer, messages, created_at')
+      .select('id, question, answer, messages, query_scope, created_at')
       .eq('user_id', user.id)
       .order('created_at', { ascending: false })
       .then(({ data }) => {
-        // Normalize null messages to empty array
         const normalized = (data || []).map((q) => ({
           ...q,
           messages: q.messages || [],
@@ -320,8 +466,15 @@ export default function AskArchive() {
     setLoading(true);
     setQuestion('');
 
+    const filteredDreams = filterDreamsByScope(dreams, scope, customFrom, customTo);
+
+    let queryScopeStr = scope;
+    if (scope === 'custom') {
+      queryScopeStr = `custom:${customFrom || ''}:${customTo || ''}`;
+    }
+
     try {
-      const answer = await askArchive(q, dreams, apiKey, []);
+      const answer = await askArchive(q, filteredDreams, apiKey, []);
       const now = new Date().toISOString();
       const initialMessages = [
         { role: 'user', content: q, timestamp: now },
@@ -335,6 +488,7 @@ export default function AskArchive() {
           question: q,
           answer,
           messages: initialMessages,
+          query_scope: queryScopeStr,
         })
         .select()
         .single();
@@ -353,6 +507,21 @@ export default function AskArchive() {
   const hasDreams = dreams.length > 0;
   const hasApiKey = !!apiKey;
 
+  const filteredDreams = filterDreamsByScope(dreams, scope, customFrom, customTo);
+
+  function dreamCountLabel() {
+    const count = filteredDreams.length;
+    const base = `Analyzing ${count} dream${count !== 1 ? 's' : ''}`;
+    if (scope === 'custom' && (customFrom || customTo)) {
+      const fmtFrom = customFrom ? formatScopeMonth(customFrom) : null;
+      const fmtTo = customTo ? formatScopeMonth(customTo) : null;
+      if (fmtFrom && fmtTo) return `${base} (${fmtFrom} – ${fmtTo})`;
+      if (fmtFrom) return `${base} (from ${fmtFrom})`;
+      if (fmtTo) return `${base} (through ${fmtTo})`;
+    }
+    return base;
+  }
+
   return (
     <div className="max-w-2xl mx-auto px-4 py-10 space-y-10">
       <header>
@@ -367,6 +536,18 @@ export default function AskArchive() {
         <p>The archive is a record of your unconscious across time. Asking it questions is a way of looking at your own depth from a different angle — ask about a recurring figure, what a symbol has meant across different dreams, where a particular feeling goes.</p>
         <p>The answers draw on everything you have recorded, and sometimes reveal patterns you had not noticed yourself.</p>
       </PracticeOrientation>
+
+      {hasDreams && hasApiKey && (
+        <ScopeFilterBar
+          scope={scope}
+          setScope={handleScopeChange}
+          customFrom={customFrom}
+          setCustomFrom={setCustomFrom}
+          customTo={customTo}
+          setCustomTo={setCustomTo}
+          showCustomRange={showCustomRange}
+        />
+      )}
 
       {!hasApiKey && (
         <div className="bg-gold/10 border border-gold/30 rounded-xl px-5 py-4 text-sm text-ink/70 font-sans">
@@ -415,6 +596,9 @@ export default function AskArchive() {
               {loading ? 'Consulting the archive…' : 'Ask'}
             </button>
           </div>
+          <p className="text-xs font-sans italic text-ink/40 -mt-1">
+            {dreamCountLabel()}
+          </p>
           {error && <AiErrorMessage error={error} />}
         </form>
       )}
@@ -439,6 +623,7 @@ export default function AskArchive() {
                 apiKey={apiKey}
                 onThreadUpdated={handleThreadUpdated}
                 defaultOpen={q.id === newestId}
+                userId={user.id}
               />
             ))}
           </>

@@ -216,7 +216,7 @@ Features Built — Complete List
 ✅ Privacy controls (notes, session, focus)
 ✅ Dream Archive with search (including archetypes)
 ✅ Timeline
-✅ Ask the Archive with conversation threading — follow-up questions within any saved conversation, full thread stored in messages jsonb column, QueryCard/ArchiveThread/MessageBubble component architecture, old rows backfilled via SQL migration
+✅ Ask the Archive with conversation threading — follow-up questions within any saved conversation, full thread stored in messages jsonb column, QueryCard/ArchiveThread/MessageBubble component architecture; scope filter (All/Last 15/Last 30/Date range) controls which dreams are analyzed, scope saved per query and displayed as badge on query cards, dream count indicator shown before submitting; threading persists correctly via RLS update policy
 ✅ CSV import
 ✅ Synchronicities (in Waking Life)
 ✅ Big Dream flag
@@ -246,6 +246,7 @@ What's Next (Priority Order)
 
 Known Issues / Technical Debt
 
+✅ Ask the Archive threading fixed — RLS update policy was missing on archive_queries table. Added "Users can update own queries" policy (USING auth.uid() = user_id). Also fixed: userId now passed through QueryCard → ArchiveThread for all .update() calls; optimistic save now checks for error before calling API.
 Global animation pass not yet complete — some collapsed sections still use conditional rendering instead of CSS transitions (maxHeight + opacity).
 When Symbols.jsx is retired from the nav, audit these two functions in ai.js:
 - generatePersonalThemes() — currently called only from Symbols.jsx. Worth keeping: move call site to Individuation.jsx or DreamSeries.jsx before deleting from Symbols. Personal theme generation belongs in the journey layer, not a reference page.
@@ -261,6 +262,7 @@ Never send notes or analyst_session to AI unless privacy toggle explicitly true
 Shadow Work requires guide — never unlock without hasGuide && tier >= 3
 No manual navigation unlock — tiers unlock only by earning them
 Dream context fetch must use dream_date < not created_at — chronological integrity
+archive_queries RLS requires update policy — any new tables with user-owned rows need SELECT, INSERT, UPDATE, and DELETE policies. Missing UPDATE policy causes silent save failures with no error thrown.
 
 
 Documents in /docs

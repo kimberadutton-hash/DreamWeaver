@@ -309,7 +309,7 @@ ${dreamContext}`;
     { role: 'user', content: question },
   ];
 
-  return call({ messages: conversationMessages, maxTokens: 1500, model: AI_MODELS.analysis, apiKey, system: systemPrompt });
+  return call({ messages: conversationMessages, maxTokens: 4000, model: AI_MODELS.analysis, apiKey, system: systemPrompt });
 }
 
 // ── Generate personal recurring themes from dream archive ────────────────────
