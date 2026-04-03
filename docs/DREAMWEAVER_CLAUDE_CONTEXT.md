@@ -253,7 +253,7 @@ Sign out
 - `complexes` — `name`, `description`, `origin_story`, `dream_manifestations`, `waking_manifestations`, `what_it_needs`, `integration_status`, `ai_suggested`, `related_archetypes`
 - `dream_series` — `name`, `description` (dreams link via `series_id` FK)
 - `imagination_sessions` — `figure_name`, `messages` (jsonb), `preparation_notes`, `closing_reflection`, `analyst_reflection`, `embodiment_prompt`, `closed_at`
-- `waking_life_entries` — `entry_type`, `title`, `description`, `entry_date` (date), `media_url`, `media_type`, `linked_dream_id`, `linked_focus_id`, `tags`
+- `waking_life_entries` — `entry_type`, `title`, `description`, `entry_date` (date), `media_url`, `media_type`, `linked_dream_id`, `linked_focus_id`, `linked_shadow_quality` (text), `tags`
 - `analyst_focuses` — `focus_text`, `given_date`, `end_date`, `notes`, `is_active`
 - `guide_letters` — `letter_text`, `letter_json`, `date_range_start`, `date_range_end`, `sent_at`
 - `individuation_narratives` — `narrative` (jsonb v2 or text v1), `narrative_version`, `dream_count`, `last_dream_id`, `is_current`
@@ -325,7 +325,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Jungian dream structure arc (exposition, development, peripeteia, lysis)
 - ✅ Three-phase tagging (dreamer associations → guide → AI)
 - ✅ Editable tags with AI suggestions
-- ✅ Shadow Work module with encounter tracking
+- ✅ Shadow Work module — redesigned as pattern-first: quality constellation surfaced from both dreams.shadow_analysis and shadow_encounters.projected_qualities, sorted by frequency; receptive prompt; recorded encounters below as secondary entry point; IntegrationStatusTab removed
 - ✅ Complexes Map with AI identification
 - ✅ Dream Series — manual create/edit/delete plus AI-powered series detection: JS clustering (union-find, Jaccard ≥ 0.35, ≥ 2 shared tags, 3+ dreams) feeds Opus analysis; proposal cards with confidence badges, dream pills, Create/Dismiss; "◆ Find more dreams" on detail page with inline suggestion panel per candidate; origin indicator on cards
 - ✅ Active Imagination writing space (user writes both voices — AI does not voice dream figures)
@@ -361,6 +361,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ PracticeOrientation component — Collapsible "About this practice" panel on 11 pages; expanded on first visit via localStorage per storageKey, collapsed thereafter
 - ✅ JungianTerm tooltip component — Gold dotted underline on Jungian terms in static UI copy; 200ms fade tooltip with definition one-liner + "Read more in Reference →" link; flips above trigger when near viewport bottom; applied to: peripeteia/lysis (DreamDetail), synchronicity (WakingLife), individuation (Individuation, Onboarding), active imagination/shadow (ActiveImagination, ShadowWork, MilestoneModal), complex/projection (ComplexesMap, ShadowWork)
 - ✅ Sidebar redesign — navigation restructured into The Thread / The Loom / The Web / The Witness; section labels in Cormorant Garamond italic; dot indicators (filled gold = active, unfilled = inactive); locked sections dimmed with tooltip; The Witness hidden entirely when no guide
+- ✅ Waking Life + Shadow Work integration — when recording/editing a waking life entry, recurring shadow qualities (appearing ≥2× across shadow_encounters and dreams.shadow_analysis) appear as selectable chips; selected quality stored in `linked_shadow_quality` column and displayed in EntryDetailDrawer; shadow constellation on ShadowWork.jsx now counts waking life moments per quality; closes the integration arc: quality appears in dreams → recognized in shadow work → claimed in waking life
 
 ---
 

@@ -305,6 +305,20 @@ function EntryDetailDrawer({ entry, onClose, onEdit, onDelete }) {
             </div>
           )}
 
+          {entry.linked_shadow_quality && (
+            <div className="rounded-xl border border-black/8 bg-white/50 px-4 py-3 mb-5">
+              <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-1">
+                Shadow Quality
+              </p>
+              <p
+                className="text-sm font-body leading-relaxed"
+                style={{ color: '#9a4a6a' }}
+              >
+                {entry.linked_shadow_quality}
+              </p>
+            </div>
+          )}
+
           {entry.tags?.length > 0 && (
             <div className="flex flex-wrap gap-1.5 mb-6">
               {entry.tags.map(tag => (
@@ -361,6 +375,8 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
   );
   const [focuses, setFocuses] = useState([]);
   const [linkedFocusId, setLinkedFocusId] = useState(initialEntry?.linked_focus_id || '');
+  const [recurringQualities, setRecurringQualities] = useState([]);
+  const [linkedShadowQuality, setLinkedShadowQuality] = useState(initialEntry?.linked_shadow_quality || '');
   const [tagsRaw, setTagsRaw] = useState(initialEntry?.tags?.join(', ') || '');
   const [dragOver, setDragOver] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -371,12 +387,15 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
 
   useEffect(() => {
     async function load() {
-      const [{ data: dreams }, { data: focs }] = await Promise.all([
+      const [{ data: dreams }, { data: focs }, { data: encounters }, { data: dreamShadows }] = await Promise.all([
         supabase.from('dreams').select('id, title, dream_date').order('dream_date', { ascending: false }),
         supabase.from('analyst_focuses').select('id, focus_text').order('created_at', { ascending: false }),
+        supabase.from('shadow_encounters').select('projected_quality, projected_qualities').eq('user_id', userId),
+        supabase.from('dreams').select('shadow_analysis').eq('user_id', userId).not('shadow_analysis', 'is', null),
       ]);
       setAllDreams(dreams || []);
       setFocuses(focs || []);
+      setRecurringQualities(buildRecurringQualities(encounters || [], dreamShadows || []));
     }
     load();
   }, []);
@@ -439,6 +458,7 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
         media_filename: mediaFilename,
         linked_dream_id: linkedDream?.id || null,
         linked_focus_id: linkedFocusId || null,
+        linked_shadow_quality: linkedShadowQuality || null,
         tags,
       };
 
@@ -662,6 +682,38 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
             </div>
           )}
 
+          {/* Shadow quality */}
+          {recurringQualities.length > 0 && (
+            <div>
+              <label className="block text-xs font-body text-ink/40 uppercase tracking-widest mb-2" style={{ fontSize: 9 }}>
+                Shadow Quality (optional)
+              </label>
+              <p className="text-xs font-body text-ink/35 italic mb-3 leading-relaxed">
+                Is this moment connected to a quality that keeps appearing in your dreams?
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {recurringQualities.map(q => {
+                  const active = linkedShadowQuality === q.label;
+                  return (
+                    <button
+                      key={q.label}
+                      type="button"
+                      onClick={() => setLinkedShadowQuality(active ? '' : q.label)}
+                      className="px-3 py-1.5 rounded-full text-xs font-body transition-all duration-150"
+                      style={{
+                        backgroundColor: active ? '#9a4a6a18' : 'rgba(0,0,0,0.04)',
+                        color: active ? '#9a4a6a' : 'rgba(42,36,32,0.5)',
+                        border: active ? '1px solid #9a4a6a40' : '1px solid transparent',
+                      }}
+                    >
+                      {q.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Tags */}
           <div>
             <label className="block text-xs font-body text-ink/40 uppercase tracking-widest mb-1.5" style={{ fontSize: 9 }}>Tags (comma-separated)</label>
@@ -693,6 +745,40 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
       </div>
     </>
   );
+}
+
+// ── Recurring Shadow Qualities ─────────────────────────────────────────────
+
+function buildRecurringQualities(encounters, dreamShadowData, minCount = 2) {
+  const map = {};
+
+  encounters.forEach(enc => {
+    const qualities = Array.isArray(enc.projected_qualities) && enc.projected_qualities.length
+      ? enc.projected_qualities
+      : (enc.projected_quality ? [enc.projected_quality] : []);
+    qualities.forEach(q => {
+      const key = q.toLowerCase().trim();
+      if (!key) return;
+      if (!map[key]) map[key] = { label: q, count: 0 };
+      map[key].count++;
+    });
+  });
+
+  dreamShadowData.forEach(dream => {
+    const analysis = dream.shadow_analysis;
+    if (!analysis) return;
+    const qualities = Array.isArray(analysis.projectedQualities) ? analysis.projectedQualities : [];
+    qualities.forEach(q => {
+      const key = q.toLowerCase().trim();
+      if (!key) return;
+      if (!map[key]) map[key] = { label: q, count: 0 };
+      map[key].count++;
+    });
+  });
+
+  return Object.values(map)
+    .filter(q => q.count >= minCount)
+    .sort((a, b) => b.count - a.count);
 }
 
 // ── Flatten Supabase join result ───────────────────────────────────────────

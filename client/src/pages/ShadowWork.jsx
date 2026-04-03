@@ -969,54 +969,46 @@ function EncounterFormPanel({ initialEncounter, prefillDreamId, prefillQuality, 
   );
 }
 
-// ── Integration Status Tab ──────────────────────────────────────────────────
+// ── Quality Constellation Builder ──────────────────────────────────────────
 
-function IntegrationStatusTab({ encounters, onEncounterClick }) {
-  const groups = INTEGRATION_STATUSES.map(s => ({
-    ...s,
-    items: encounters.filter(e => e.integration_status === s.id),
-  })).filter(g => g.items.length > 0);
+function buildQualityConstellation(encounters, dreamShadowData, wakingLinkData = []) {
+  const map = {};
 
-  if (groups.length === 0) {
-    return (
-      <div className="text-center py-16">
-        <p className="font-display italic text-xl text-ink/30 dark:text-white/25">No encounters recorded yet.</p>
-        <p className="text-sm font-body text-ink/25 dark:text-white/20 mt-2">Record your first encounter to begin mapping your shadow.</p>
-      </div>
-    );
-  }
+  encounters.forEach(enc => {
+    const qualities = Array.isArray(enc.projected_qualities) && enc.projected_qualities.length
+      ? enc.projected_qualities
+      : (enc.projected_quality ? [enc.projected_quality] : []);
+    qualities.forEach(q => {
+      const key = q.toLowerCase().trim();
+      if (!key) return;
+      if (!map[key]) map[key] = { label: q, count: 0, dreamCount: 0, encounterCount: 0, wakingCount: 0 };
+      map[key].count++;
+      map[key].encounterCount++;
+    });
+  });
 
-  return (
-    <div className="space-y-8">
-      {groups.map(group => (
-        <div key={group.id}>
-          <div className="flex items-center gap-2 mb-3">
-            <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: group.color }} />
-            <h3 className="text-xs uppercase tracking-widest font-body" style={{ color: group.color }}>{group.label}</h3>
-            <span className="text-xs font-body text-ink/25 dark:text-white/20">{group.items.length}</span>
-          </div>
-          <div className="space-y-2 pl-4">
-            {group.items.map(enc => (
-              <div
-                key={enc.id}
-                onClick={() => onEncounterClick(enc)}
-                className="flex items-start gap-3 rounded-xl border border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/3 hover:border-black/15 dark:hover:border-white/15 hover:bg-white/60 dark:hover:bg-white/5 transition-all duration-150 cursor-pointer px-4 py-3"
-              >
-                <TypeIcon type={enc.encounter_type} size={14} color={typeInfo(enc.encounter_type).color} />
-                <div className="flex-1 min-w-0">
-                  <p className="font-display italic text-sm text-ink dark:text-white leading-snug">{enc.title}</p>
-                  {enc.projected_quality && (
-                    <p className="text-xs font-body text-ink/40 dark:text-white/30 mt-0.5">{enc.projected_quality}</p>
-                  )}
-                </div>
-                <span className="text-xs font-body text-ink/25 dark:text-white/20 shrink-0">{formatDate(enc.encounter_date)}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  dreamShadowData.forEach(dream => {
+    const analysis = dream.shadow_analysis;
+    if (!analysis) return;
+    const qualities = Array.isArray(analysis.projectedQualities) ? analysis.projectedQualities : [];
+    qualities.forEach(q => {
+      const key = q.toLowerCase().trim();
+      if (!key) return;
+      if (!map[key]) map[key] = { label: q, count: 0, dreamCount: 0, encounterCount: 0, wakingCount: 0 };
+      map[key].count++;
+      map[key].dreamCount++;
+    });
+  });
+
+  wakingLinkData.forEach(entry => {
+    const q = entry.linked_shadow_quality;
+    if (!q) return;
+    const key = q.toLowerCase().trim();
+    if (!map[key]) map[key] = { label: q, count: 0, dreamCount: 0, encounterCount: 0, wakingCount: 0 };
+    map[key].wakingCount++;
+  });
+
+  return Object.values(map).sort((a, b) => b.count - a.count);
 }
 
 // ── Main Page ──────────────────────────────────────────────────────────────
@@ -1030,8 +1022,9 @@ export default function ShadowWork() {
   const prefillQuality = shadowPrefill?.projectedQualities?.[0] || searchParams.get('quality') || '';
 
   const [encounters, setEncounters] = useState([]);
+  const [dreamShadowData, setDreamShadowData] = useState([]);
+  const [wakingLinkData, setWakingLinkData] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [tab, setTab] = useState('encounters');
   const [showForm, setShowForm] = useState(!!searchParams.get('dreamId'));
   const [editingEncounter, setEditingEncounter] = useState(null);
   const [selectedEncounter, setSelectedEncounter] = useState(null);
@@ -1053,16 +1046,30 @@ export default function ShadowWork() {
   useEffect(() => { fetchEncounters(); }, []);
 
   async function fetchEncounters() {
-    const { data } = await supabase
-      .from('shadow_encounters')
-      .select(`
-        *,
-        dreams ( id, title, dream_date )
-      `)
-      .eq('user_id', user.id)
-      .order('encounter_date', { ascending: false });
+    const [{ data }, { data: dreamData }, { data: wakingData }] = await Promise.all([
+      supabase
+        .from('shadow_encounters')
+        .select(`
+          *,
+          dreams ( id, title, dream_date )
+        `)
+        .eq('user_id', user.id)
+        .order('encounter_date', { ascending: false }),
+      supabase
+        .from('dreams')
+        .select('id, title, dream_date, shadow_analysis')
+        .eq('user_id', user.id)
+        .not('shadow_analysis', 'is', null),
+      supabase
+        .from('waking_life_entries')
+        .select('linked_shadow_quality')
+        .eq('user_id', user.id)
+        .not('linked_shadow_quality', 'is', null),
+    ]);
     const list = data || [];
     setEncounters(list);
+    setDreamShadowData(dreamData || []);
+    setWakingLinkData(wakingData || []);
     setLoading(false);
 
     // Open specific encounter drawer if encounterId is in the URL
@@ -1127,59 +1134,86 @@ export default function ShadowWork() {
         </PracticeOrientation>
       </div>
 
-      {/* Tabs + action */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex gap-0">
-          {[{ id: 'encounters', label: 'Encounters' }, { id: 'status', label: 'Integration Status' }].map(t => (
-            <button
-              key={t.id}
-              onClick={() => setTab(t.id)}
-              className="px-4 py-2 text-sm font-body transition-colors border-b-2"
-              style={{
-                color: tab === t.id ? '#3d2b4a' : 'rgba(42,36,32,0.4)',
-                borderBottomColor: tab === t.id ? '#3d2b4a' : 'transparent',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <button
-          onClick={() => { setEditingEncounter(null); setShowForm(true); }}
-          className="text-sm font-body text-plum dark:text-gold hover:opacity-70 transition-opacity"
-        >
-          Record an encounter →
-        </button>
-      </div>
-
-      {/* Content */}
       {loading ? (
         <div className="flex items-center justify-center h-40">
           <p className="font-display italic text-xl text-ink/30 dark:text-white/25">A moment…</p>
         </div>
-      ) : tab === 'encounters' ? (
-        encounters.length === 0 ? (
-          <div className="text-center py-16">
-            <p className="font-display italic text-xl text-ink/30 dark:text-white/25">No encounters recorded yet.</p>
-            <p className="text-sm font-body text-ink/25 dark:text-white/20 mt-2">
-              The shadow reveals itself through strong reactions, projections, and dream figures.
-            </p>
-            <button
-              onClick={() => setShowForm(true)}
-              className="mt-6 px-5 py-2.5 rounded-xl text-sm font-body font-medium text-white bg-plum hover:bg-plum/90 transition-all"
-            >
-              Record your first encounter →
-            </button>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {encounters.map(enc => (
-              <EncounterCard key={enc.id} encounter={enc} onClick={setSelectedEncounter} />
-            ))}
-          </div>
-        )
       ) : (
-        <IntegrationStatusTab encounters={encounters} onEncounterClick={setSelectedEncounter} />
+        <>
+          {/* Pattern Constellation */}
+          <div className="mb-2">
+            <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-4">Shadow Patterns</p>
+            <p className="font-display italic text-base text-ink/55 dark:text-white/45 leading-relaxed max-w-lg mb-6">
+              These qualities have been appearing in your dreams. The shadow speaks through what disturbs,
+              compels, and repeats. Does any of this feel alive in your waking life right now?
+            </p>
+            {(() => {
+              const constellation = buildQualityConstellation(encounters, dreamShadowData, wakingLinkData);
+              if (constellation.length === 0) {
+                return (
+                  <p className="font-display italic text-base text-ink/30 dark:text-white/25">
+                    Shadow material will appear here as your dreams are analyzed.
+                  </p>
+                );
+              }
+              return (
+                <div className="space-y-3">
+                  {constellation.map(q => {
+                    const sourceParts = [
+                      q.dreamCount > 0 && `${q.dreamCount} ${q.dreamCount === 1 ? 'dream' : 'dreams'}`,
+                      q.encounterCount > 0 && `${q.encounterCount} ${q.encounterCount === 1 ? 'encounter' : 'encounters'}`,
+                      q.wakingCount > 0 && `${q.wakingCount} waking life ${q.wakingCount === 1 ? 'moment' : 'moments'}`,
+                    ].filter(Boolean);
+                    return (
+                      <div key={q.label} className="flex items-start gap-3">
+                        <span className="mt-1.5 shrink-0" style={{ display: 'inline-block', width: 6, height: 6, borderRadius: '50%', backgroundColor: '#9a4a6a60' }} />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-display italic text-base text-ink dark:text-white">{q.label}</span>
+                            <span
+                              className="text-xs font-body px-1.5 py-0.5 rounded-full"
+                              style={{ backgroundColor: '#3d2b4a0f', color: '#3d2b4a' }}
+                            >
+                              ×{q.count}
+                            </span>
+                          </div>
+                          {sourceParts.length > 0 && (
+                            <p className="text-xs font-body text-ink/30 dark:text-white/25 mt-0.5">{sourceParts.join(' · ')}</p>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              );
+            })()}
+          </div>
+
+          <hr className="border-black/8 dark:border-white/8 my-8" />
+
+          {/* Recorded Encounters */}
+          <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-4">Recorded Encounters</p>
+          {encounters.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="font-display italic text-xl text-ink/30 dark:text-white/25">No encounters recorded yet.</p>
+              <p className="text-sm font-body text-ink/25 dark:text-white/20 mt-2">
+                The shadow reveals itself through strong reactions, projections, and dream figures.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {encounters.map(enc => (
+                <EncounterCard key={enc.id} encounter={enc} onClick={setSelectedEncounter} />
+              ))}
+            </div>
+          )}
+          <button
+            onClick={() => { setEditingEncounter(null); setShowForm(true); }}
+            className="mt-6 text-sm font-body text-plum dark:text-gold hover:opacity-70 transition-opacity"
+          >
+            Record an encounter →
+          </button>
+        </>
       )}
 
       {/* Encounter Detail Drawer */}

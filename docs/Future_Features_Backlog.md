@@ -34,16 +34,6 @@ set an integration status. This is the wrong entry point. Redesign:
   Does any of this feel alive in your waking life this week?"
 - Shadow encounter recording becomes secondary/optional, not the entry point
 
-⚡ 🔄 **Waking Life + Shadow Work link**
-Milestones currently float disconnected from the shadow material they represent
-integrating. Fix:
-- When recording a waking life milestone, offer active shadow qualities as selectable
-  chips: "Is this connected to something from your shadow work?"
-- Shadow Work page surfaces connected milestone count per quality: "3 waking life
-  moments connected to this quality"
-- This makes integration visible over time — the arc from projection to recognition
-  to embodiment becomes traceable
-
 ⚡ 🔄 **Daily Practice redesign — threshold, not dashboard**
 Current page shows everything simultaneously. Redesign to show one thing, by priority:
 1. Unresponded embodiment prompt from most recent dream
@@ -108,6 +98,8 @@ shadow recognition, to waking life moments where it was owned.
 - Per shadow quality: show originating dream(s), recognition moment, linked waking
   life milestones
 - This is primarily a display/linking task, not new data collection
+- *Waking life moment counting in the shadow constellation is now implemented — the
+  data links exist; what remains is a per-quality detail view*
 
 **Resonance check on AI analysis**
 After any AI analysis is generated, add: "How much does this resonate with you?" 1-5
