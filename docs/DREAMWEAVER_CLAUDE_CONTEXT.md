@@ -326,7 +326,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Dream recording (text, voice dictation, photo upload)
 - ✅ Contextual AI analysis reading dreams chronologically
 - ✅ Jungian dream structure arc (exposition, development, peripeteia, lysis)
-- ✅ Three-phase tagging (dreamer associations → guide → AI)
+- ✅ Three-phase tagging (dreamer associations → guide → AI); manual tag input removed from NewDream form — AI-generated tags on analysis unaffected
 - ✅ Editable tags with AI suggestions
 - ✅ Shadow Work module — redesigned as pattern-first: quality constellation surfaced from both dreams.shadow_analysis and shadow_encounters.projected_qualities, sorted by frequency; receptive prompt; recorded encounters below as secondary entry point; IntegrationStatusTab removed
 - ✅ Complexes Map with AI identification
@@ -352,7 +352,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ CSV import
 - ✅ Synchronicities (in Waking Life)
 - ✅ Big Dream flag
-- ✅ Incubation intention
+- ✅ Incubation intention — DB column (`incubation_intention`) preserved and still written on save (as empty string); UI input removed from NewDream form; value now implicitly captured via "Your Reflections" field
 - ✅ Waking resonances
 - ✅ Dream series linking
 - ✅ Symbols & Archetypes page (route `/symbols` and `Symbols.jsx` exist but removed from sidebar navigation — AI Dream Series replaces it)
@@ -369,6 +369,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Shadow Work — quality frequency filtering — before clustering, qualities filtered to those appearing in 2+ dreams (deduped per dream); fallback to all qualities if fewer than 3 pass, so page never renders empty
 - ✅ Shadow Work — cluster caching — clusters cached in localStorage (`dw_shadow_clusters_${userId}`) alongside dream count at cache time; cache reused on page load when dream count matches; "Refresh ↺" link reruns clustering and updates cache; prevents reshuffling on every load
 - ✅ Shadow Work — shadow type labeling — each ThemeCard shows a soft one-time prompt to classify the cluster as Golden shadow, Dark shadow, or Not sure yet; selection persisted to `dw_shadow_type_${userId}_${clusterName}` in localStorage; golden/dark render as small pills on the card header; watchFor text dynamically adjusts by type: dark → "Watch for: where this pattern acts before you've chosen it," not_sure → "Watch for: where this quality appears — in dreams, in others, in yourself," golden/null → original AI text unchanged
+- ✅ NewDream form cleanup — removed Today's Reflection daily prompt card, Current Analytical Focus banner, mood chips, manual tag input, and the separate "Before Analysis" / "My Notes" / incubation intention textareas; merged into a single **"Your Reflections"** textarea (saves to `dreamer_associations`, shows gold ✦ shared with AI indicator when `share_notes_with_ai` is on); analyst session moved into a slide-in right drawer (400px desktop / full-width mobile, parchment bg, 300ms CSS transition) triggered by quiet "+ Analyst notes" link below action buttons — drawer only renders when `hasGuide` is true; `share_analyst_session_with_ai` privacy logic unchanged; `activeFocus` still fetched and passed to `analyzeDream()`
 
 ---
 

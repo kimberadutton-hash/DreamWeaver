@@ -5,29 +5,16 @@ import { useAuth } from '../contexts/AuthContext';
 import { analyzeDream, buildDreamContext, generateDreamSummary, transcribeImage, hasApiKey, AiError } from '../lib/ai';
 import { incrementAbandonedCount, resetPauseCounts } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
+import { useNavTier } from '../hooks/useNavTier';
 import AiErrorMessage from '../components/AiErrorMessage';
 import PracticeOrientation from '../components/PracticeOrientation';
-import { MOODS, todayString } from '../lib/constants';
-
-const DAILY_PROMPTS = [
-  "What figure appeared that you didn't expect?",
-  "Was there a threshold you were afraid to cross?",
-  "What element of nature spoke to you last night?",
-  "Did a shadow self appear — a part of you you'd rather not know?",
-  "What were you searching for, and did you find it?",
-  "Who came to guide you, and did you follow?",
-  "What was the quality of light in the dream?",
-  "What did the water — or its absence — mean?",
-];
-
-function getDailyPrompt() {
-  return DAILY_PROMPTS[new Date().getDay() % DAILY_PROMPTS.length];
-}
+import { todayString } from '../lib/constants';
 
 export default function NewDream() {
   const navigate = useNavigate();
   const { user, profile, refreshDreamCount } = useAuth();
   const { privacySettings } = usePrivacySettings();
+  const { hasGuide } = useNavTier();
 
   const [form, setForm] = useState({
     dream_date: todayString(),
@@ -44,9 +31,9 @@ export default function NewDream() {
 
   const [loading, setLoading] = useState(false);
   const [aiError, setAiError] = useState(null);
-  const [hasTodayDream, setHasTodayDream] = useState(true);
   const [keyPresent, setKeyPresent] = useState(hasApiKey);
   const [activeFocus, setActiveFocus] = useState(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
@@ -59,7 +46,6 @@ export default function NewDream() {
   const bodyRef = useRef('');
 
   useEffect(() => {
-    checkTodayDream();
     fetchActiveFocus();
     // Re-check key presence each time page mounts (user may have just added it)
     setKeyPresent(hasApiKey());
@@ -75,13 +61,6 @@ export default function NewDream() {
       .maybeSingle();
     if (error && error.code !== 'PGRST116') console.error('fetchActiveFocus:', error);
     if (data) setActiveFocus(data);
-  }
-
-  async function checkTodayDream() {
-    const today = todayString();
-    const { data } = await supabase
-      .from('dreams').select('id').eq('user_id', user.id).eq('dream_date', today).limit(1);
-    setHasTodayDream(data?.length > 0);
   }
 
   function setField(key, val) {
@@ -249,6 +228,9 @@ export default function NewDream() {
   }
 
   const analystLabel = profile?.analyst_name || 'Analyst';
+  const analystNotesLabel = form.analyst_session.trim()
+    ? 'Analyst notes ✓'
+    : '+ Analyst notes';
 
   return (
     <div className="max-w-3xl mx-auto px-8 py-10">
@@ -266,14 +248,6 @@ export default function NewDream() {
         </div>
       )}
 
-      {/* Daily prompt */}
-      {!hasTodayDream && (
-        <div className="mb-8 px-6 py-4 rounded-xl border border-gold/30 bg-gold/5">
-          <p className="text-xs uppercase tracking-widest text-gold/70 font-body mb-1">Today's Reflection</p>
-          <p className="font-display italic text-lg text-ink/70 dark:text-white/70">{getDailyPrompt()}</p>
-        </div>
-      )}
-
       <h1 className="font-display italic text-4xl text-ink dark:text-white mb-6">Record a Dream</h1>
 
       <PracticeOrientation storageKey="orient_record">
@@ -282,32 +256,6 @@ export default function NewDream() {
       </PracticeOrientation>
 
       <div className="space-y-6">
-        {/* Incubation intention */}
-        <div>
-          <p className="font-display italic text-base text-ink/50 dark:text-white/40 mb-2">
-            Was there an intention you set before sleeping?
-          </p>
-          <input
-            type="text"
-            value={form.incubation_intention}
-            onChange={e => setField('incubation_intention', e.target.value)}
-            placeholder="e.g. I asked to understand my fear of change…"
-            className="field-input"
-          />
-        </div>
-
-        {/* Active analyst focus — read-only banner */}
-        {activeFocus && (
-          <div className="px-5 py-4 rounded-xl border border-plum/20 bg-plum/5 dark:bg-plum/10">
-            <p className="text-xs uppercase tracking-widest text-plum/50 dark:text-white/30 font-body mb-1">
-              Current Analytical Focus
-            </p>
-            <p className="text-sm font-body text-ink/70 dark:text-white/60 leading-relaxed italic">
-              {activeFocus.focus_text}
-            </p>
-          </div>
-        )}
-
         {/* Date + Title */}
         <div className="grid grid-cols-2 gap-4">
           <div>
@@ -346,33 +294,21 @@ export default function NewDream() {
             className="w-full px-4 py-4 rounded-xl border border-black/10 dark:border-white/10 bg-white/60 dark:bg-white/5 text-ink dark:text-white/90 font-dream resize-y focus:outline-none focus:ring-2 focus:ring-gold/40" />
         </div>
 
-        {/* Dreamer associations */}
+        {/* Your Reflections */}
         <div>
-          <label className="field-label">Before analysis — what words, images, or feelings stand out to you from this dream?</label>
+          <div className="flex items-center gap-2 mb-1">
+            <label className="field-label mb-0">Your Reflections</label>
+            {privacySettings.share_notes_with_ai && (
+              <span className="text-xs text-gold normal-case tracking-normal font-body">✦ shared with AI</span>
+            )}
+          </div>
           <textarea
             value={form.dreamer_associations}
             onChange={e => setField('dreamer_associations', e.target.value)}
-            rows={3}
-            placeholder="Free associations, first impressions, anything that catches your attention…"
+            rows={4}
+            placeholder="What stood out? Any feelings, images, associations, or intentions you carried into sleep..."
             className="field-input resize-y"
           />
-        </div>
-
-        {/* Mood */}
-        <div>
-          <label className="field-label">Mood <span className="normal-case tracking-normal text-xs text-ink/30">Select all that apply</span></label>
-          <div className="flex flex-wrap gap-2">
-            {MOODS.map(m => {
-              const active = form.moods.includes(m);
-              return (
-                <button key={m} type="button"
-                  onClick={() => setField('moods', active ? form.moods.filter(x => x !== m) : [...form.moods, m])}
-                  className={`px-3 py-1.5 rounded-full text-sm font-body transition-all ${active ? 'bg-plum text-white' : 'bg-black/5 dark:bg-white/10 text-ink/70 dark:text-white/60 hover:bg-black/10'}`}>
-                  {m}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* Big Dream toggle */}
@@ -394,39 +330,6 @@ export default function NewDream() {
           </button>
         </div>
 
-        {/* My Notes */}
-        <div>
-          <label className="field-label">
-            My Notes{' '}
-            {privacySettings.share_notes_with_ai
-              ? <span className="text-xs text-amber-500 normal-case tracking-normal font-body font-normal">◈ shared with AI</span>
-              : <span className="text-xs text-ink/30 dark:text-white/30 normal-case tracking-normal font-body font-normal">◎ private</span>
-            }
-          </label>
-          <textarea value={form.notes} onChange={e => setField('notes', e.target.value)} rows={3}
-            placeholder="Personal associations, life context, what was happening that day…" className="field-input resize-y" />
-        </div>
-
-        {/* Analyst session */}
-        <div>
-          <label className="field-label">
-            {analystLabel} Session{' '}
-            {privacySettings.share_analyst_session_with_ai
-              ? <span className="text-xs text-amber-500 normal-case tracking-normal font-body font-normal">◈ shared with AI</span>
-              : <span className="text-xs text-ink/30 dark:text-white/30 normal-case tracking-normal font-body font-normal">◎ private</span>
-            }
-          </label>
-          <textarea value={form.analyst_session} onChange={e => setField('analyst_session', e.target.value)} rows={3}
-            placeholder={`Notes from your session with ${analystLabel}…`} className="field-input resize-y" />
-        </div>
-
-        {/* Tags */}
-        <div>
-          <label className="field-label">Tags <span className="text-xs text-ink/30 normal-case tracking-normal">Comma-separated (AI will generate these if you analyze)</span></label>
-          <input type="text" value={form.tags} onChange={e => setField('tags', e.target.value)}
-            placeholder="water, shadow, mother, labyrinth" className="field-input" />
-        </div>
-
         {aiError && <AiErrorMessage error={aiError} />}
 
         {/* Actions */}
@@ -440,7 +343,82 @@ export default function NewDream() {
             Save Only
           </button>
         </div>
+
+        {/* Analyst notes trigger */}
+        {hasGuide && (
+          <div className="flex justify-center pt-1">
+            <button
+              type="button"
+              onClick={() => setDrawerOpen(true)}
+              className="text-xs font-body text-gold/70 hover:text-gold transition-colors">
+              {analystNotesLabel}
+            </button>
+          </div>
+        )}
       </div>
+
+      {/* Analyst Notes Drawer */}
+      {hasGuide && (
+        <>
+          {/* Overlay */}
+          <div
+            onClick={() => setDrawerOpen(false)}
+            className={`fixed inset-0 z-40 transition-opacity duration-300 ${drawerOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`}
+            style={{ background: 'rgba(0,0,0,0.3)' }}
+          />
+
+          {/* Drawer panel */}
+          <div
+            className={`fixed top-0 right-0 h-full z-50 flex flex-col shadow-2xl transition-transform duration-300 ease-in-out w-full sm:w-[400px] ${drawerOpen ? 'translate-x-0' : 'translate-x-full'}`}
+            style={{ background: '#faf7f2' }}
+          >
+            {/* Drawer header */}
+            <div className="flex items-start justify-between px-6 pt-6 pb-4">
+              <div>
+                <h2 className="font-display italic text-2xl text-ink">Analyst Notes</h2>
+                <p className="text-xs font-body text-ink/40 mt-1 leading-relaxed">
+                  Notes from your session — included in analysis when sharing is enabled
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                className="text-ink/40 hover:text-ink transition-colors text-xl leading-none mt-0.5 ml-4">
+                ×
+              </button>
+            </div>
+
+            {/* Privacy indicator */}
+            <div className="px-6 pb-2">
+              {privacySettings.share_analyst_session_with_ai
+                ? <span className="text-xs font-body text-gold">✦ shared with AI</span>
+                : <span className="text-xs font-body text-ink/30">◎ private</span>
+              }
+            </div>
+
+            {/* Textarea */}
+            <div className="flex-1 px-6 pb-4 overflow-y-auto">
+              <textarea
+                value={form.analyst_session}
+                onChange={e => setField('analyst_session', e.target.value)}
+                rows={12}
+                placeholder={`Notes from your session with ${analystLabel}…`}
+                className="w-full px-4 py-3 rounded-xl border border-black/10 bg-white/70 text-ink font-body text-sm resize-none focus:outline-none focus:ring-2 focus:ring-gold/40 h-full min-h-[200px]"
+              />
+            </div>
+
+            {/* Done button */}
+            <div className="px-6 pb-6 pt-2">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(false)}
+                className="w-full py-3 rounded-xl font-body text-sm font-medium bg-plum text-white hover:bg-plum/90 transition-colors">
+                Done
+              </button>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
