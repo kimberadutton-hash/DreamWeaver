@@ -1,5 +1,5 @@
 # Dream Weaver — Future Features Backlog
-Last updated: April 2, 2026
+Last updated: April 3, 2026
 
 Items marked ⚡ are immediate priority.
 Items marked 🔄 are redesigns of existing features, not new builds.
@@ -22,17 +22,16 @@ formal deletion is a cleanup task listed below.
 *Corrections to the existing app. Not new features — realignments with core philosophy.
 Complete before showing the app to anyone outside personal use.*
 
-⚡ 🔄 **Shadow Work redesign — pattern-first, not entry-first**
-The current design asks users to do analyst work: title an encounter, assign a quality,
-set an integration status. This is the wrong entry point. Redesign:
-- Page leads with projected qualities already surfaced from dream analysis, displayed
-  as a recurring pattern constellation (grouped list or visual cluster)
-- Remove "Record an encounter" form as primary entry point
-- Remove manual integration status field entirely — integration status emerges from
-  waking life connections, not user categorization
-- Primary prompt becomes receptive: "These qualities are appearing in your dreams.
-  Does any of this feel alive in your waking life this week?"
-- Shadow encounter recording becomes secondary/optional, not the entry point
+✅ 🔄 **Shadow Work redesign — pattern-first, not entry-first** *(completed)*
+Page now leads with AI-grouped quality clusters from dreams.shadow_analysis and
+shadow_encounters. Clusters have evocative names, a descriptor sentence, and a
+"Watch for:" line. Recording space per cluster for waking life observations. Waking
+life moments linked via `linked_shadow_quality` exact match. Integration status
+emerges from waking life connections and notes, not user categorization. Quality
+frequency filtering (2+ dreams) keeps signal-to-noise high. Clusters cached in
+localStorage by dream count to prevent reshuffling. Shadow type labeling
+(golden/dark/not sure) per cluster, persisted to localStorage, with dynamic watchFor
+text and pill indicators.
 
 ⚡ 🔄 **Daily Practice redesign — threshold, not dashboard**
 Current page shows everything simultaneously. Redesign to show one thing, by priority:
@@ -98,8 +97,9 @@ shadow recognition, to waking life moments where it was owned.
 - Per shadow quality: show originating dream(s), recognition moment, linked waking
   life milestones
 - This is primarily a display/linking task, not new data collection
-- *Waking life moment counting in the shadow constellation is now implemented — the
-  data links exist; what remains is a per-quality detail view*
+- *The data links exist and are displayed per ThemeCard (Origins + Waking Life Moments
+  in history). What remains is a standalone per-quality detail/drill-down view if
+  needed — may not be, given current ThemeCard already shows this.*
 
 **Resonance check on AI analysis**
 After any AI analysis is generated, add: "How much does this resonate with you?" 1-5
@@ -138,11 +138,10 @@ Extend /timeline to show two tracks: dreams and significant life events.
 - New table: life_events(id, user_id, event_date, title, category, description)
 
 **Shadow Work recurring qualities view**
-Scan all shadow_encounters for projected_quality values sharing significant words
-or themes. Group under recurring quality themes.
-- "Recurring Qualities" section on Shadow Work page
-- Simple text matching, no AI
-- Build after several months of encounter data exists
+*Largely superseded by the AI clustering redesign.* The current ThemeCard architecture
+groups qualities into named psychological clusters with descriptors, which serves the
+same purpose more meaningfully than text-matching. Revisit only if users need a
+lower-level quality-frequency view that clustering doesn't provide.
 
 ---
 
@@ -232,8 +231,10 @@ approach.
 
 ## On Build Order
 
-**Now:** Phase 1 (design integrity pass) — all items, in order listed.
-Shadow Work redesign and Waking Life link first, since they're structurally connected.
+**Now:** Phase 1 (design integrity pass) — remaining items.
+Shadow Work redesign ✅ complete. Remaining: Daily Practice redesign, Living Questions,
+Ask the Archive embodiment gesture, anima/animus in analysis, Jungian Self touchstone,
+Complexes formal removal.
 
 **Then:** Technical health cleanup.
 

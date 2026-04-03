@@ -2,8 +2,10 @@ import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
+import { useApiKey } from '../hooks/useApiKey';
 import { formatDate, todayString } from '../lib/constants';
 import { getStoragePath, hydrateSignedUrls } from '../lib/storage';
+import { groupShadowQualities } from '../lib/ai';
 import PracticeOrientation from '../components/PracticeOrientation';
 import JungianTerm from '../components/JungianTerm';
 
@@ -358,6 +360,7 @@ function EntryDetailDrawer({ entry, onClose, onEdit, onDelete }) {
 
 function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
   const isEdit = !!initialEntry?.id;
+  const { apiKey } = useApiKey();
 
   const [entryType, setEntryType] = useState(initialEntry?.entry_type || 'art');
   const [entryDate, setEntryDate] = useState(initialEntry?.entry_date || todayString());
@@ -376,6 +379,8 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
   const [focuses, setFocuses] = useState([]);
   const [linkedFocusId, setLinkedFocusId] = useState(initialEntry?.linked_focus_id || '');
   const [recurringQualities, setRecurringQualities] = useState([]);
+  const [shadowClusters, setShadowClusters] = useState(null); // null = not loaded, array = loaded
+  const [shadowLoading, setShadowLoading] = useState(false);
   const [linkedShadowQuality, setLinkedShadowQuality] = useState(initialEntry?.linked_shadow_quality || '');
   const [tagsRaw, setTagsRaw] = useState(initialEntry?.tags?.join(', ') || '');
   const [dragOver, setDragOver] = useState(false);
@@ -395,7 +400,39 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
       ]);
       setAllDreams(dreams || []);
       setFocuses(focs || []);
-      setRecurringQualities(buildRecurringQualities(encounters || [], dreamShadows || []));
+      const recurring = buildRecurringQualities(encounters || [], dreamShadows || []);
+      setRecurringQualities(recurring);
+
+      // Collect all unique qualities (same source as ShadowWork) for clustering
+      const seen = new Set();
+      const allQualityList = [];
+      const addQ = (q) => {
+        if (!q || typeof q !== 'string') return;
+        const key = q.trim().toLowerCase();
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        allQualityList.push(q.trim());
+      };
+      (encounters || []).forEach(enc => {
+        if (enc.projected_quality) addQ(enc.projected_quality);
+        if (Array.isArray(enc.projected_qualities)) enc.projected_qualities.forEach(addQ);
+      });
+      (dreamShadows || []).forEach(dream => {
+        const pq = dream.shadow_analysis?.projectedQualities || dream.shadow_analysis?.projected_qualities;
+        if (Array.isArray(pq)) pq.forEach(addQ);
+      });
+
+      if (apiKey && allQualityList.length > 0) {
+        setShadowLoading(true);
+        try {
+          const clusters = await groupShadowQualities(allQualityList, apiKey);
+          setShadowClusters(clusters?.length ? clusters : null);
+        } catch {
+          setShadowClusters(null);
+        } finally {
+          setShadowLoading(false);
+        }
+      }
     }
     load();
   }, []);
@@ -683,7 +720,7 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
           )}
 
           {/* Shadow quality */}
-          {recurringQualities.length > 0 && (
+          {(shadowLoading || shadowClusters?.length > 0 || recurringQualities.length > 0) && (
             <div>
               <label className="block text-xs font-body text-ink/40 uppercase tracking-widest mb-2" style={{ fontSize: 9 }}>
                 Shadow Quality (optional)
@@ -691,26 +728,51 @@ function EntryFormPanel({ initialEntry, onClose, onSaved, userId }) {
               <p className="text-xs font-body text-ink/35 italic mb-3 leading-relaxed">
                 Is this moment connected to a quality that keeps appearing in your dreams?
               </p>
-              <div className="flex flex-wrap gap-2">
-                {recurringQualities.map(q => {
-                  const active = linkedShadowQuality === q.label;
-                  return (
-                    <button
-                      key={q.label}
-                      type="button"
-                      onClick={() => setLinkedShadowQuality(active ? '' : q.label)}
-                      className="px-3 py-1.5 rounded-full text-xs font-body transition-all duration-150"
-                      style={{
-                        backgroundColor: active ? '#9a4a6a18' : 'rgba(0,0,0,0.04)',
-                        color: active ? '#9a4a6a' : 'rgba(42,36,32,0.5)',
-                        border: active ? '1px solid #9a4a6a40' : '1px solid transparent',
-                      }}
-                    >
-                      {q.label}
-                    </button>
-                  );
-                })}
-              </div>
+              {shadowLoading ? (
+                <p className="text-xs font-body text-ink/35 italic">Loading themes…</p>
+              ) : shadowClusters?.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {shadowClusters.map(cluster => {
+                    const active = linkedShadowQuality === cluster.clusterName;
+                    return (
+                      <button
+                        key={cluster.clusterName}
+                        type="button"
+                        onClick={() => setLinkedShadowQuality(active ? '' : cluster.clusterName)}
+                        className="px-3 py-1.5 rounded-full text-xs font-body transition-all duration-150"
+                        style={{
+                          backgroundColor: active ? '#9a4a6a18' : 'rgba(0,0,0,0.04)',
+                          color: active ? '#9a4a6a' : 'rgba(42,36,32,0.5)',
+                          border: active ? '1px solid #9a4a6a40' : '1px solid transparent',
+                        }}
+                      >
+                        {cluster.clusterName}
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {recurringQualities.map(q => {
+                    const active = linkedShadowQuality === q.label;
+                    return (
+                      <button
+                        key={q.label}
+                        type="button"
+                        onClick={() => setLinkedShadowQuality(active ? '' : q.label)}
+                        className="px-3 py-1.5 rounded-full text-xs font-body transition-all duration-150"
+                        style={{
+                          backgroundColor: active ? '#9a4a6a18' : 'rgba(0,0,0,0.04)',
+                          color: active ? '#9a4a6a' : 'rgba(42,36,32,0.5)',
+                          border: active ? '1px solid #9a4a6a40' : '1px solid transparent',
+                        }}
+                      >
+                        {q.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
 

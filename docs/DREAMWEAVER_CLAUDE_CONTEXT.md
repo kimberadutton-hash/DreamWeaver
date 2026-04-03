@@ -1,6 +1,6 @@
 # DreamWeaver — Claude Project Context
 ### *Built on the spirit of Lantern*
-Last updated: April 2, 2026
+Last updated: April 3, 2026
 
 ---
 
@@ -234,6 +234,7 @@ Sign out
 ├── migration_001.sql
 ├── migration_002.sql
 ├── migration_003.sql
+├── migration_004.sql          ← shadow_theme_notes table + RLS
 ├── supabase-schema.sql
 └── supabase-migration-archive-threads.sql
 ```
@@ -250,6 +251,7 @@ Sign out
 
 **Practice tables:**
 - `shadow_encounters` — `type`, `title`, `projected_quality`, `projected_qualities` (text[]), `owned_quality`, `ai_reflection`, `integration_status`, `linked_dream_id`
+- `shadow_theme_notes` — `user_id`, `theme_name`, `notes` (jsonb array of `{content, created_at}`), `updated_at`; unique on `(user_id, theme_name)`; RLS enabled
 - `complexes` — `name`, `description`, `origin_story`, `dream_manifestations`, `waking_manifestations`, `what_it_needs`, `integration_status`, `ai_suggested`, `related_archetypes`
 - `dream_series` — `name`, `description` (dreams link via `series_id` FK)
 - `imagination_sessions` — `figure_name`, `messages` (jsonb), `preparation_notes`, `closing_reflection`, `analyst_reflection`, `embodiment_prompt`, `closed_at`
@@ -314,6 +316,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 | `transcribeImage()` | Opus | Handwritten dream photo to text |
 | `askArchive()` | Opus | Natural language Q&A over dream archive with conversation history; signature: `(question, dreams, apiKey, priorMessages=[])` |
 | `generatePersonalThemes()` | Opus | 3-5 personal themes from full archive |
+| `groupShadowQualities()` | Haiku | Shadow Work page: organize qualities into psychological theme clusters; returns `clusterName`, `qualities`, `descriptor` (one sentence naming the psyche quality), `watchFor` (one sentence beginning "Watch for:") |
 | `buildDreamContext()` | — | Pure JS helper, no API call |
 
 ---
@@ -362,6 +365,10 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ JungianTerm tooltip component — Gold dotted underline on Jungian terms in static UI copy; 200ms fade tooltip with definition one-liner + "Read more in Reference →" link; flips above trigger when near viewport bottom; applied to: peripeteia/lysis (DreamDetail), synchronicity (WakingLife), individuation (Individuation, Onboarding), active imagination/shadow (ActiveImagination, ShadowWork, MilestoneModal), complex/projection (ComplexesMap, ShadowWork)
 - ✅ Sidebar redesign — navigation restructured into The Thread / The Loom / The Web / The Witness; section labels in Cormorant Garamond italic; dot indicators (filled gold = active, unfilled = inactive); locked sections dimmed with tooltip; The Witness hidden entirely when no guide
 - ✅ Waking Life + Shadow Work integration — when recording/editing a waking life entry, recurring shadow qualities (appearing ≥2× across shadow_encounters and dreams.shadow_analysis) appear as selectable chips; selected quality stored in `linked_shadow_quality` column and displayed in EntryDetailDrawer; shadow constellation on ShadowWork.jsx now counts waking life moments per quality; closes the integration arc: quality appears in dreams → recognized in shadow work → claimed in waking life
+- ✅ Shadow Work — cluster descriptors and watchFor — `groupShadowQualities()` now returns `descriptor` (one sentence naming the quality) and `watchFor` (one sentence beginning "Watch for:") per cluster; displayed on ThemeCard in Cormorant Garamond italic and DM Sans respectively; waking life matching fixed to exact match on `linked_shadow_quality` column (no tag scanning)
+- ✅ Shadow Work — quality frequency filtering — before clustering, qualities filtered to those appearing in 2+ dreams (deduped per dream); fallback to all qualities if fewer than 3 pass, so page never renders empty
+- ✅ Shadow Work — cluster caching — clusters cached in localStorage (`dw_shadow_clusters_${userId}`) alongside dream count at cache time; cache reused on page load when dream count matches; "Refresh ↺" link reruns clustering and updates cache; prevents reshuffling on every load
+- ✅ Shadow Work — shadow type labeling — each ThemeCard shows a soft one-time prompt to classify the cluster as Golden shadow, Dark shadow, or Not sure yet; selection persisted to `dw_shadow_type_${userId}_${clusterName}` in localStorage; golden/dark render as small pills on the card header; watchFor text dynamically adjusts by type: dark → "Watch for: where this pattern acts before you've chosen it," not_sure → "Watch for: where this quality appears — in dreams, in others, in yourself," golden/null → original AI text unchanged
 
 ---
 

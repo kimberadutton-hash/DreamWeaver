@@ -909,6 +909,63 @@ Respond ONLY with valid JSON:
   return parseNarrativeJSON(text);
 }
 
+// ── Group projected shadow qualities into theme clusters ─────────────────────
+// Haiku — fast. Used by the Shadow Work page to organize qualities into
+// meaningful psychological groupings for display.
+
+export async function groupShadowQualities(qualities, apiKey) {
+  if (!qualities?.length || qualities.length < 2) {
+    const clusterName = qualities?.[0] || 'Shadow Patterns';
+    return [{ clusterName, qualities: qualities || [] }];
+  }
+
+  const systemPrompt = `You are a Jungian depth psychology assistant helping to identify recurring shadow themes.
+
+You will receive a list of projected qualities that have appeared in a person's dreams and shadow work. Group them into 3-5 meaningful psychological theme clusters.
+
+Each cluster should have:
+- "clusterName": a short evocative name (2-4 words, title case) that names the underlying psychological theme. Examples: "Permission and Desire", "The Defended Mind", "Belonging Without Apology"
+- "qualities": the specific quality strings that belong to it
+- "descriptor": one sentence, 10-15 words, naming what this quality IS in the psyche. Warm, not clinical. Example: "The part of you that wants without apologizing."
+- "watchFor": one sentence, 10-15 words, beginning with the words "Watch for:" naming where this quality tends to show up in waking life. Example: "Watch for: where you shrink or ask before acting."
+
+Return ONLY a JSON array. No preamble, no explanation, no markdown fences. Example format:
+[
+  {
+    "clusterName": "Permission and Desire",
+    "qualities": ["shameless sexual expression", "desire without permission-seeking"],
+    "descriptor": "The part of you that wants without apologizing.",
+    "watchFor": "Watch for: where you shrink or ask before acting."
+  }
+]
+
+If there are fewer than 4 qualities total, return them all in a single cluster named after the dominant theme.`;
+
+  try {
+    const text = await call({
+      messages: [{ role: 'user', content: JSON.stringify(qualities) }],
+      system: systemPrompt,
+      maxTokens: 1024,
+      model: AI_MODELS.shadow,
+      apiKey,
+    });
+
+    const stripped = text.replace(/^```(?:json)?\s*/i, '').replace(/\s*```\s*$/, '').trim();
+    const start = stripped.indexOf('[');
+    if (start === -1) throw new Error('No array found');
+    let depth = 0;
+    let end = -1;
+    for (let i = start; i < stripped.length; i++) {
+      if (stripped[i] === '[') depth++;
+      else if (stripped[i] === ']') { depth--; if (depth === 0) { end = i; break; } }
+    }
+    if (end === -1) throw new Error('Incomplete array');
+    return JSON.parse(stripped.slice(start, end + 1));
+  } catch {
+    return [{ clusterName: 'Shadow Patterns', qualities, descriptor: '', watchFor: '' }];
+  }
+}
+
 // ── Suggest dream series from pre-computed tag-overlap clusters ───────────────
 // clusters: [{ dreams: [{ id, title, dream_date, tags, archetypes, symbols }],
 //              sharedTags: ['tag1', ...] }]
