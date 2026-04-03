@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { useApiKey } from '../hooks/useApiKey';
@@ -12,21 +12,23 @@ import JungianTerm from '../components/JungianTerm';
 // ── Constants ──────────────────────────────────────────────────────────────
 
 const ENTRY_TYPES = [
-  { id: 'art',           label: 'Art',           color: '#3d2b4a' },
-  { id: 'music',         label: 'Music',         color: '#4a7c74' },
-  { id: 'writing',       label: 'Writing',       color: '#7c6b5a' },
-  { id: 'milestone',     label: 'Milestone',     color: '#b8924a' },
-  { id: 'body',          label: 'Body',          color: '#9a4a6a' },
-  { id: 'synchronicity', label: 'Synchronicity', labelNode: <JungianTerm id="synchronicity">Synchronicity</JungianTerm>, color: '#3a5a7a' },
+  { id: 'art',              label: 'Art',              color: '#3d2b4a' },
+  { id: 'music',            label: 'Music',            color: '#4a7c74' },
+  { id: 'writing',          label: 'Writing',          color: '#7c6b5a' },
+  { id: 'milestone',        label: 'Milestone',        color: '#b8924a' },
+  { id: 'body',             label: 'Body',             color: '#9a4a6a' },
+  { id: 'synchronicity',    label: 'Synchronicity',    labelNode: <JungianTerm id="synchronicity">Synchronicity</JungianTerm>, color: '#3a5a7a' },
+  { id: 'shadow_encounter', label: 'Shadow Encounter', color: '#5c4a7c' },
 ];
 
 const TYPE_PLACEHOLDERS = {
-  art:           'Name this piece…',
-  music:         'What song or piece?',
-  writing:       'Title this writing…',
-  milestone:     'What was reached?',
-  body:          'What did the body know?',
-  synchronicity: 'What coincided?',
+  art:              'Name this piece…',
+  music:            'What song or piece?',
+  writing:          'Title this writing…',
+  milestone:        'What was reached?',
+  body:             'What did the body know?',
+  synchronicity:    'What coincided?',
+  shadow_encounter: 'What did you encounter?',
 };
 
 function typeInfo(id) {
@@ -71,6 +73,12 @@ function TypeIcon({ type, size = 20, color = 'currentColor' }) {
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5">
         <path d="M5 3l14 9-14 9V3z"/>
         <circle cx="19" cy="12" r="3"/>
+      </svg>
+    ),
+    shadow_encounter: (
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="1.5">
+        <circle cx="12" cy="12" r="10"/>
+        <circle cx="12" cy="12" r="5" strokeDasharray="3 2"/>
       </svg>
     ),
   };
@@ -858,6 +866,7 @@ function flattenEntry(raw) {
 
 export default function WakingLife() {
   const { user } = useAuth();
+  const location = useLocation();
   const [entries, setEntries] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('chronicle'); // 'chronicle' | 'gallery'
@@ -865,9 +874,12 @@ export default function WakingLife() {
   const [showForm, setShowForm] = useState(false);
   const [editEntry, setEditEntry] = useState(null);
   const [detailEntry, setDetailEntry] = useState(null);
+  const [livingQuestion, setLivingQuestion] = useState(null);
+
+  const qualityFilter = new URLSearchParams(location.search).get('quality');
 
   useEffect(() => {
-    if (user) loadEntries();
+    if (user) { loadEntries(); loadLivingQuestion(); }
   }, [user]);
 
   useEffect(() => {
@@ -880,6 +892,19 @@ export default function WakingLife() {
       }
     } catch {}
   }, []);
+
+  async function loadLivingQuestion() {
+    const { data } = await supabase
+      .from('dreams')
+      .select('embodiment_prompt')
+      .eq('user_id', user.id)
+      .not('embodiment_prompt', 'is', null)
+      .is('embodiment_checked_at', null)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setLivingQuestion(data?.embodiment_prompt || null);
+  }
 
   async function loadEntries() {
     const { data } = await supabase
@@ -925,14 +950,32 @@ export default function WakingLife() {
   // Types that actually have entries (for filter bar)
   const presentTypes = ENTRY_TYPES.filter(t => entries.some(e => e.entry_type === t.id));
 
-  const filtered = typeFilter
-    ? entries.filter(e => e.entry_type === typeFilter)
-    : entries;
+  const filtered = entries.filter(e => {
+    if (typeFilter && e.entry_type !== typeFilter) return false;
+    if (qualityFilter) {
+      const q = qualityFilter.toLowerCase().trim();
+      const matchesQuality =
+        (e.linked_shadow_quality && e.linked_shadow_quality.toLowerCase().trim() === q) ||
+        (Array.isArray(e.tags) && e.tags.some(t => t && t.toLowerCase().trim() === q));
+      if (!matchesQuality) return false;
+    }
+    return true;
+  });
 
   const galleryEntries = filtered.filter(e => e.media_url && e.media_type === 'image');
 
   return (
     <div className="max-w-4xl mx-auto px-8 py-10">
+
+      {/* Living question prompt */}
+      {livingQuestion && (
+        <p
+          className="font-display italic text-ink/45 dark:text-white/35 mb-6 leading-relaxed"
+          style={{ fontSize: 15 }}
+        >
+          {livingQuestion}
+        </p>
+      )}
 
       {/* Header */}
       <div className="flex items-start justify-between mb-6">
@@ -953,6 +996,16 @@ export default function WakingLife() {
         <p>Not everything that belongs to the inner work takes place in dreams. Art made, music that stopped you, synchronicities that felt too specific to dismiss — these are the residue of the unconscious in waking life.</p>
         <p>Track them here. Over time, they form a pattern that the dream archive alone cannot show you.</p>
       </PracticeOrientation>
+
+      {/* Quality filter indicator */}
+      {qualityFilter && (
+        <div className="flex items-center gap-2 mb-4">
+          <p className="text-xs font-body text-ink/40 dark:text-white/30 italic">
+            Showing entries for: <span style={{ color: '#5c4a7c' }}>{qualityFilter}</span>
+          </p>
+          <a href="/waking-life" className="text-xs font-body text-ink/30 hover:text-ink/50 transition-colors">× clear</a>
+        </div>
+      )}
 
       {/* Controls */}
       {entries.length > 0 && (

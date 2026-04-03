@@ -75,6 +75,17 @@ function matchDreamsToCluster(dreams, clusterQualities) {
   });
 }
 
+function matchEncountersToCluster(encounters, clusterQualities) {
+  const clusterSet = new Set(clusterQualities.map(q => q.toLowerCase().trim()));
+  return encounters.filter(enc => {
+    if (enc.projected_quality && clusterSet.has(enc.projected_quality.toLowerCase().trim())) return true;
+    if (Array.isArray(enc.projected_qualities)) {
+      return enc.projected_qualities.some(q => q && clusterSet.has(q.toLowerCase().trim()));
+    }
+    return false;
+  });
+}
+
 function matchMilestonesToCluster(milestones, clusterName) {
   return milestones.filter(entry =>
     entry.linked_shadow_quality &&
@@ -463,8 +474,53 @@ export default function ShadowWork() {
 
   useEffect(() => {
     if (!user) return;
+    migrateShadowEncounters();
     load();
   }, [user]);
+
+  async function migrateShadowEncounters() {
+    const migKey = `dw_enc_migrated_${user.id}`;
+    if (localStorage.getItem(migKey)) return;
+
+    const { data: encounters } = await supabase
+      .from('shadow_encounters')
+      .select('id, title, projected_quality, projected_qualities, linked_dream_id, created_at')
+      .eq('user_id', user.id);
+
+    if (!encounters?.length) {
+      localStorage.setItem(migKey, '1');
+      return;
+    }
+
+    // Find already-migrated entries to avoid duplicates
+    const { data: existing } = await supabase
+      .from('waking_life_entries')
+      .select('linked_dream_id')
+      .eq('user_id', user.id)
+      .eq('entry_type', 'shadow_encounter');
+
+    const migratedDreamIds = new Set(
+      (existing || []).map(e => e.linked_dream_id).filter(Boolean)
+    );
+
+    const toInsert = encounters
+      .filter(enc => enc.title && (!enc.linked_dream_id || !migratedDreamIds.has(enc.linked_dream_id)))
+      .map(enc => ({
+        user_id: user.id,
+        entry_type: 'shadow_encounter',
+        entry_date: enc.created_at ? enc.created_at.slice(0, 10) : new Date().toISOString().slice(0, 10),
+        title: enc.title,
+        linked_dream_id: enc.linked_dream_id || null,
+        linked_shadow_quality: enc.projected_quality || null,
+        tags: enc.projected_qualities || [],
+      }));
+
+    if (toInsert.length > 0) {
+      await supabase.from('waking_life_entries').insert(toInsert);
+    }
+
+    localStorage.setItem(migKey, '1');
+  }
 
   async function load({ isRefresh = false } = {}) {
     if (!isRefresh) setLoading(true);
@@ -583,6 +639,42 @@ export default function ShadowWork() {
         </PracticeOrientation>
       </div>
 
+      {/* Active shadow quality — most recent cluster with no waking life connection */}
+      {!loading && clusters.length > 0 && (() => {
+        const candidates = clusters
+          .map(c => {
+            const originDreams = matchDreamsToCluster(dreams, c.qualities || []);
+            const wakingMatches = matchMilestonesToCluster(milestones, c.clusterName);
+            const mostRecentDate = originDreams.reduce(
+              (best, d) => (!best || d.dream_date > best ? d.dream_date : best),
+              null
+            );
+            return { c, wakingMatches, mostRecentDate };
+          })
+          .filter(({ wakingMatches }) => wakingMatches.length === 0)
+          .sort((a, b) => (b.mostRecentDate || '').localeCompare(a.mostRecentDate || ''));
+        const active = candidates[0]?.c;
+        if (!active) return null;
+        return (
+          <div className="mb-8 pl-4 border-l-2 border-gold/30">
+            <p
+              className="uppercase font-body text-ink/30 dark:text-white/25 mb-1"
+              style={{ fontSize: 9, letterSpacing: '0.16em' }}
+            >
+              currently with you
+            </p>
+            <p className="font-display italic leading-snug" style={{ fontSize: 17, color: 'rgba(42,36,32,0.75)' }}>
+              {active.clusterName}
+              {active.descriptor && (
+                <span className="not-italic" style={{ fontSize: 14, color: 'rgba(42,36,32,0.42)' }}>
+                  {' '}— {active.descriptor}
+                </span>
+              )}
+            </p>
+          </div>
+        );
+      })()}
+
       {/* Orienting question + refresh */}
       <div className="mb-10">
         <p
@@ -637,19 +729,38 @@ export default function ShadowWork() {
           {clusters.map(cluster => {
             const originDreams = matchDreamsToCluster(dreams, cluster.qualities || []);
             const wakingLifeMatches = matchMilestonesToCluster(milestones, cluster.clusterName);
+            const clusterQualitySet = new Set((cluster.qualities || []).map(q => q.toLowerCase().trim()));
+            const encounterCount = milestones.filter(m =>
+              m.entry_type === 'shadow_encounter' &&
+              m.linked_shadow_quality &&
+              clusterQualitySet.has(m.linked_shadow_quality.toLowerCase().trim())
+            ).length;
+            const qualityParam = (cluster.qualities || [])[0] || cluster.clusterName;
             return (
-              <ThemeCard
-                key={cluster.clusterName}
-                clusterName={cluster.clusterName}
-                descriptor={cluster.descriptor || ''}
-                watchFor={cluster.watchFor || ''}
-                shadowType={cluster.shadowType ?? null}
-                onShadowTypeChange={(value) => handleShadowTypeChange(cluster.clusterName, value)}
-                originDreams={originDreams}
-                wakingLifeMatches={wakingLifeMatches}
-                existingNotes={themeNotes[cluster.clusterName] || []}
-                userId={user.id}
-              />
+              <div key={cluster.clusterName}>
+                <ThemeCard
+                  clusterName={cluster.clusterName}
+                  descriptor={cluster.descriptor || ''}
+                  watchFor={cluster.watchFor || ''}
+                  shadowType={cluster.shadowType ?? null}
+                  onShadowTypeChange={(value) => handleShadowTypeChange(cluster.clusterName, value)}
+                  originDreams={originDreams}
+                  wakingLifeMatches={wakingLifeMatches}
+                  existingNotes={themeNotes[cluster.clusterName] || []}
+                  userId={user.id}
+                />
+                {encounterCount > 0 && (
+                  <a
+                    href={`/waking-life?quality=${encodeURIComponent(qualityParam)}`}
+                    className="block mt-1 font-body transition-colors"
+                    style={{ fontSize: 12, color: 'rgba(92,74,124,0.55)', paddingLeft: 4 }}
+                    onMouseEnter={e => e.currentTarget.style.color = '#5c4a7c'}
+                    onMouseLeave={e => e.currentTarget.style.color = 'rgba(92,74,124,0.55)'}
+                  >
+                    {encounterCount} waking {encounterCount === 1 ? 'encounter' : 'encounters'} →
+                  </a>
+                )}
+              </div>
             );
           })}
         </div>

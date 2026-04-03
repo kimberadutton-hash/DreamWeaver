@@ -7,7 +7,7 @@ import { incrementAnalysisCount } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
 import JungianTerm from '../components/JungianTerm';
-import { formatDateLong } from '../lib/constants';
+import { formatDateLong, todayString } from '../lib/constants';
 import { JUNGIAN_TERMS } from '../lib/jungianTerms';
 
 export default function DreamDetail() {
@@ -32,6 +32,10 @@ export default function DreamDetail() {
   const [shadowLoading, setShadowLoading] = useState(false);
   const [shadowError, setShadowError] = useState(null);
   const [existingEncounter, setExistingEncounter] = useState(null); // encounter already recorded for this dream
+  const [encounterFormOpen, setEncounterFormOpen] = useState(false);
+  const [encounterDescription, setEncounterDescription] = useState('');
+  const [encounterDate, setEncounterDate] = useState(todayString);
+  const [encounterSaving, setEncounterSaving] = useState(false);
 
   // A. Scroll to reflection ref after analysis completes
   const reflectionRef = useRef(null);
@@ -95,12 +99,45 @@ export default function DreamDetail() {
     checkExistingEncounter();
   }
 
+  async function handleSatWith() {
+    await supabase.from('dreams').update({
+      embodiment_checked_at: new Date().toISOString(),
+    }).eq('id', id);
+    setDream(prev => ({ ...prev, embodiment_checked_at: new Date().toISOString() }));
+  }
+
+  async function handleSaveEncounter() {
+    if (!encounterDescription.trim()) return;
+    setEncounterSaving(true);
+    const qualities = shadowAnalysis?.projectedQualities || [];
+    const { error } = await supabase.from('waking_life_entries').insert({
+      user_id: user.id,
+      entry_type: 'shadow_encounter',
+      entry_date: encounterDate,
+      title: encounterDescription.trim(),
+      linked_dream_id: dream.id,
+      linked_shadow_quality: qualities[0] || null,
+      tags: qualities,
+    });
+    setEncounterSaving(false);
+    if (error) {
+      console.error('Failed to save shadow encounter:', error);
+      alert(`Could not save encounter: ${error.message}`);
+      return;
+    }
+    setEncounterFormOpen(false);
+    setEncounterDescription('');
+    setEncounterDate(todayString());
+    checkExistingEncounter();
+  }
+
   async function checkExistingEncounter() {
     const { data: existing } = await supabase
-      .from('shadow_encounters')
-      .select('id, title')
+      .from('waking_life_entries')
+      .select('id, title, linked_shadow_quality')
       .eq('linked_dream_id', id)
       .eq('user_id', user.id)
+      .eq('entry_type', 'shadow_encounter')
       .maybeSingle();
     setExistingEncounter(existing || null);
   }
@@ -369,6 +406,22 @@ export default function DreamDetail() {
         </div>
       )}
 
+      {/* ── Living Question ── */}
+      {dream.embodiment_prompt && !dream.embodiment_checked_at && (
+        <div className="mb-8 pl-4 border-l-2 border-gold/40">
+          <p className="font-display italic text-[15px] text-ink/65 dark:text-white/55 leading-relaxed mb-3">
+            {dream.embodiment_prompt}
+          </p>
+          <button
+            onClick={handleSatWith}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-body text-ink/40 dark:text-white/30 hover:text-ink/70 dark:hover:text-white/55 border border-black/10 dark:border-white/10 hover:border-black/20 dark:hover:border-white/20 transition-colors"
+          >
+            <span className="text-sm leading-none">◎</span>
+            I sat with this
+          </button>
+        </div>
+      )}
+
       {/* ── F. Shadow Material ── */}
       {dream.has_analysis && (
         <div className="mb-8">
@@ -450,25 +503,84 @@ export default function DreamDetail() {
                 <p className="text-xs font-body text-ink/30 dark:text-white/25 italic">
                   Encounter recorded:{' '}
                   <Link
-                    to={`/shadow?encounterId=${existingEncounter.id}`}
+                    to={existingEncounter.linked_shadow_quality
+                      ? `/waking-life?quality=${encodeURIComponent(existingEncounter.linked_shadow_quality)}`
+                      : '/waking-life'}
                     className="not-italic text-ink/50 dark:text-white/40 hover:text-plum dark:hover:text-gold transition-colors"
                   >
                     {existingEncounter.title}
                   </Link>
                 </p>
+              ) : encounterFormOpen ? (
+                <div className="mt-3 rounded-lg border border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/3 px-4 py-4">
+                  {/* Pre-populated: shadow figures */}
+                  {Array.isArray(shadowAnalysis?.shadowFigures) && shadowAnalysis.shadowFigures.length > 0 && (
+                    <div className="mb-3">
+                      <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 dark:text-white/20 mb-1.5">Shadow figures</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {shadowAnalysis.shadowFigures.map((fig, i) => {
+                          const label = typeof fig === 'string' ? fig : (fig?.figure || fig?.quality || '');
+                          return label ? (
+                            <span key={label + i} className="px-2.5 py-0.5 rounded-full text-xs font-body" style={{ backgroundColor: '#3d2b4a1a', color: '#3d2b4a', fontFamily: 'monospace' }}>
+                              {label}
+                            </span>
+                          ) : null;
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {/* Pre-populated: projected qualities */}
+                  {Array.isArray(shadowAnalysis?.projectedQualities) && shadowAnalysis.projectedQualities.length > 0 && (
+                    <div className="mb-3">
+                      <p style={{ fontSize: 9, letterSpacing: '0.12em' }} className="uppercase font-body text-ink/25 dark:text-white/20 mb-1.5">Projected qualities</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {shadowAnalysis.projectedQualities.map(q => (
+                          <span key={q} className="px-2.5 py-0.5 rounded-full text-xs font-body" style={{ backgroundColor: '#9a4a6a1a', color: '#9a4a6a', fontFamily: 'monospace' }}>
+                            {q}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Description */}
+                  <textarea
+                    rows={3}
+                    value={encounterDescription}
+                    onChange={e => setEncounterDescription(e.target.value)}
+                    placeholder="What happened in waking life?"
+                    className="w-full font-body text-sm text-ink dark:text-white/85 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-gold/40 px-3 py-2.5 mb-3"
+                    style={{ backgroundColor: 'rgba(0,0,0,0.03)', border: '1px solid rgba(0,0,0,0.07)', lineHeight: 1.6 }}
+                    autoFocus
+                  />
+                  {/* Date */}
+                  <div className="mb-4">
+                    <input
+                      type="date"
+                      value={encounterDate}
+                      onChange={e => setEncounterDate(e.target.value)}
+                      className="font-body text-xs text-ink/50 dark:text-white/40 bg-transparent border-b border-black/10 dark:border-white/10 focus:outline-none focus:border-gold/40 pb-0.5"
+                    />
+                  </div>
+                  {/* Actions */}
+                  <div className="flex items-center gap-4">
+                    <button
+                      onClick={handleSaveEncounter}
+                      disabled={encounterSaving || !encounterDescription.trim()}
+                      className="text-xs font-body text-ink/50 dark:text-white/40 hover:text-plum dark:hover:text-gold transition-colors disabled:opacity-30"
+                    >
+                      {encounterSaving ? 'Saving…' : 'Save encounter'}
+                    </button>
+                    <button
+                      onClick={() => { setEncounterFormOpen(false); setEncounterDescription(''); setEncounterDate(todayString()); }}
+                      className="text-xs font-body text-ink/30 dark:text-white/25 hover:text-ink/50 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
               ) : (
                 <button
-                  onClick={() => {
-                    sessionStorage.setItem('shadow-encounter-prefill', JSON.stringify({
-                      dreamId: dream.id,
-                      dreamTitle: dream.title,
-                      dreamDate: dream.dream_date,
-                      shadowFigures: shadowAnalysis.shadowFigures,
-                      projectedQualities: shadowAnalysis.projectedQualities,
-                      reflectionPrompt: shadowAnalysis.reflectionPrompt,
-                    }));
-                    navigate('/shadow?fromDream=true');
-                  }}
+                  onClick={() => setEncounterFormOpen(true)}
                   className="text-xs font-body transition-colors"
                   style={{ color: 'rgba(61,43,74,0.4)' }}
                   onMouseEnter={e => e.currentTarget.style.color = '#3d2b4a'}
@@ -488,32 +600,6 @@ export default function DreamDetail() {
         </div>
       )}
 
-      {/* ── 6. This Week — embodiment prompt ── */}
-      {dream.embodiment_prompt && (
-        <div className="mb-10">
-          <div className="border-t border-gold/25 mt-2 mb-8" />
-          <div className="text-center px-4">
-            <p style={{ fontSize: 9, letterSpacing: '0.2em' }} className="uppercase font-body text-ink/30 dark:text-white/25 mb-5">
-              this week
-            </p>
-            <p className="font-display italic text-xl text-ink/70 dark:text-white/60 leading-relaxed max-w-[600px] mx-auto">
-              {dream.embodiment_prompt}
-            </p>
-          </div>
-          {dream.embodiment_response && (
-            <div className="mt-8 mx-auto max-w-[600px] px-4">
-              <div className="pl-4 border-l-2 border-gold/30 py-3">
-                <p style={{ fontSize: 9, letterSpacing: '0.2em' }} className="uppercase font-body text-ink/30 dark:text-white/25 mb-2">
-                  what shifted
-                </p>
-                <p className="text-sm font-body text-ink/55 dark:text-white/45 leading-relaxed">
-                  {dream.embodiment_response}
-                </p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* ── C+D. Collapsible sections ── */}
       <div className="mt-4">

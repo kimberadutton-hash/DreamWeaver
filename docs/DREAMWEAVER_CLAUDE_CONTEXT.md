@@ -1,6 +1,6 @@
 # DreamWeaver — Claude Project Context
 ### *Built on the spirit of Lantern*
-Last updated: April 3, 2026
+Last updated: April 3, 2026 (updated same day)
 
 ---
 
@@ -131,8 +131,8 @@ Tiered — unlocks based on dream count. Guide status controls The Witness secti
 
 ```
 ALWAYS:          Record a Dream (standalone button, above all sections)
-THE THREAD:      Dream Archive (always unlocked)
-THE LOOM (3+):   Shadow Work, Active Imagination, Daily Practice
+THE THREAD:      Dream Archive, Waking Life (always unlocked)
+THE LOOM (3+):   Shadow Work, Active Imagination
 THE WEB (10+):   Ask the Archive, My Journey
 THE WITNESS:     Analyst Focus, Session Letter  [guide only — hidden entirely when no guide]
 ```
@@ -143,11 +143,11 @@ THE WITNESS:     Analyst Focus, Session Letter  [guide only — hidden entirely 
 
 The Thread
 ●  Dream Archive
+●  Waking Life
 
 The Loom
 ●  Shadow Work
 ●  Active Imagination
-●  Daily Practice
 
 The Web
 ●  Ask the Archive
@@ -163,6 +163,8 @@ The Witness  [only visible when hasGuide = true]
 
 Sign out
 ```
+
+**Note:** Daily Practice (/practice, DailyPractice.jsx) has been removed entirely. Its concerns were redistributed: living questions surface on DreamDetail and Waking Life; active shadow quality surfaces on Shadow Work; Waking Life is now a first-class nav item.
 
 **Lock behavior:** Locked sections (The Loom before 3 dreams, The Web before 10 dreams) remain visible in the sidebar but rendered dimmed with a small "locked" label and hover tooltip showing the unlock requirement. The Witness section is absent entirely when `hasGuide` is false — no dimmed state.
 
@@ -206,7 +208,6 @@ Sign out
 │           ├── Archive.jsx
 │           ├── AskArchive.jsx
 │           ├── ComplexesMap.jsx
-│           ├── DailyPractice.jsx
 │           ├── DreamDetail.jsx
 │           ├── DreamSeries.jsx
 │           ├── EditDream.jsx
@@ -250,12 +251,12 @@ Sign out
 - `user_themes` — AI-generated personal recurring themes
 
 **Practice tables:**
-- `shadow_encounters` — `type`, `title`, `projected_quality`, `projected_qualities` (text[]), `owned_quality`, `ai_reflection`, `integration_status`, `linked_dream_id`
+- `shadow_encounters` — `type`, `title`, `projected_quality`, `projected_qualities` (text[]), `owned_quality`, `ai_reflection`, `integration_status`, `linked_dream_id` — **legacy table; no longer written to.** Existing rows were migrated to `waking_life_entries` as type `shadow_encounter` on first ShadowWork load. Table preserved but dormant.
 - `shadow_theme_notes` — `user_id`, `theme_name`, `notes` (jsonb array of `{content, created_at}`), `updated_at`; unique on `(user_id, theme_name)`; RLS enabled
 - `complexes` — `name`, `description`, `origin_story`, `dream_manifestations`, `waking_manifestations`, `what_it_needs`, `integration_status`, `ai_suggested`, `related_archetypes`
 - `dream_series` — `name`, `description` (dreams link via `series_id` FK)
 - `imagination_sessions` — `figure_name`, `messages` (jsonb), `preparation_notes`, `closing_reflection`, `analyst_reflection`, `embodiment_prompt`, `closed_at`
-- `waking_life_entries` — `entry_type`, `title`, `description`, `entry_date` (date), `media_url`, `media_type`, `linked_dream_id`, `linked_focus_id`, `linked_shadow_quality` (text), `tags`
+- `waking_life_entries` — `entry_type`, `title`, `description`, `entry_date` (date), `media_url`, `media_type`, `linked_dream_id`, `linked_focus_id`, `linked_shadow_quality` (text), `tags`; `entry_type` values: `art`, `music`, `writing`, `milestone`, `body`, `synchronicity`, `shadow_encounter`
 - `analyst_focuses` — `focus_text`, `given_date`, `end_date`, `notes`, `is_active`
 - `guide_letters` — `letter_text`, `letter_json`, `date_range_start`, `date_range_end`, `sent_at`
 - `individuation_narratives` — `narrative` (jsonb v2 or text v1), `narrative_version`, `dream_count`, `last_dream_id`, `is_current`
@@ -290,7 +291,7 @@ When analyzing a dream (new or re-analyzed), fetches the 15 most recent dreams w
 v1 narratives: plain text stored in `narrative` column. v2 narratives: JSON with chapters, thesis, closing invitation. `narrative_version` column distinguishes them. v1 shows fallback banner.
 
 **Signed URLs for media**
-All media in Supabase Storage requires signed URLs for display. `getSignedUrl()` helper in `WakingLife.jsx` and `DailyPractice.jsx`. Extracted to `client/src/lib/storage.js` if shared.
+All media in Supabase Storage requires signed URLs for display. `getSignedUrl()` helper in `WakingLife.jsx`. Extracted to `client/src/lib/storage.js` if shared.
 
 ---
 
@@ -329,13 +330,14 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Three-phase tagging (dreamer associations → guide → AI); manual tag input removed from NewDream form — AI-generated tags on analysis unaffected
 - ✅ Editable tags with AI suggestions
 - ✅ Shadow Work module — redesigned as pattern-first: quality constellation surfaced from both dreams.shadow_analysis and shadow_encounters.projected_qualities, sorted by frequency; receptive prompt; recorded encounters below as secondary entry point; IntegrationStatusTab removed
+- ✅ Shadow Work — "currently with you" — most recent quality cluster with no waking life connection surfaces as a single quiet line at the top of the page (quality name + descriptor), above the orienting question
+- ✅ Shadow Work — waking encounter count — each ThemeCard shows "X waking encounters →" count link below the card, linking to Waking Life filtered by that quality; count drawn from waking_life_entries of type shadow_encounter
 - ✅ Complexes Map with AI identification
 - ✅ Dream Series — manual create/edit/delete plus AI-powered series detection: JS clustering (union-find, Jaccard ≥ 0.35, ≥ 2 shared tags, 3+ dreams) feeds Opus analysis; proposal cards with confidence badges, dream pills, Create/Dismiss; "◆ Find more dreams" on detail page with inline suggestion panel per candidate; origin indicator on cards
 - ✅ Active Imagination writing space (user writes both voices — AI does not voice dream figures)
-- ✅ Waking Life with media uploads (images, audio)
-- ✅ Daily Practice page
+- ✅ Waking Life with media uploads (images, audio); now a first-class nav item in The Thread; supports `?quality=` URL param for filtering by linked_shadow_quality; `shadow_encounter` entry type added (color `#5c4a7c`) for encounters logged from dream detail
 - ✅ Individuation narrative with chapter view
-- ✅ Living Questions on Daily Practice
+- ✅ Living Questions — surface inline on DreamDetail (below analysis, with "I sat with this" button; hidden once responded); surface as a quiet italic prompt at the top of Waking Life; Daily Practice page removed
 - ✅ Analyst Focus with running notes
 - ✅ Session Letter — fully redesigned as a user-assembled transmission (no AI generation). Three-section builder: dream selector (collapsible, CSS transitions, no pre-selection), waking life selector (collapsible, loads entries from selected dream date range with inclusive end bound), and "anything you want to say." User-written opening and closing fields flank the selections. Live letter preview assembles as pure JS string. Copy / Email (uses `profile.analyst_email`) / Print-to-PDF buttons. Two-column desktop layout.
 - ✅ Jungian Reference Library (30+ entries, categorized)
@@ -365,6 +367,8 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ JungianTerm tooltip component — Gold dotted underline on Jungian terms in static UI copy; 200ms fade tooltip with definition one-liner + "Read more in Reference →" link; flips above trigger when near viewport bottom; applied to: peripeteia/lysis (DreamDetail), synchronicity (WakingLife), individuation (Individuation, Onboarding), active imagination/shadow (ActiveImagination, ShadowWork, MilestoneModal), complex/projection (ComplexesMap, ShadowWork)
 - ✅ Sidebar redesign — navigation restructured into The Thread / The Loom / The Web / The Witness; section labels in Cormorant Garamond italic; dot indicators (filled gold = active, unfilled = inactive); locked sections dimmed with tooltip; The Witness hidden entirely when no guide
 - ✅ Waking Life + Shadow Work integration — when recording/editing a waking life entry, recurring shadow qualities (appearing ≥2× across shadow_encounters and dreams.shadow_analysis) appear as selectable chips; selected quality stored in `linked_shadow_quality` column and displayed in EntryDetailDrawer; shadow constellation on ShadowWork.jsx now counts waking life moments per quality; closes the integration arc: quality appears in dreams → recognized in shadow work → claimed in waking life
+- ✅ Shadow encounter inline modal on DreamDetail — "Record as shadow encounter →" opens an inline form on the dream page (no navigation); pre-populates shadow figures and projected qualities as read-only chips; description textarea + date field; saves to `waking_life_entries` as type `shadow_encounter` with `linked_dream_id`, `linked_shadow_quality`, and `tags` (qualities); "Encounter recorded: [name]" confirmation links to Waking Life filtered by quality
+- ✅ Shadow encounters migrated from shadow_encounters table — on first ShadowWork load per user, existing shadow_encounters rows are migrated to waking_life_entries (type shadow_encounter); idempotent via localStorage gate; shadow_encounters table preserved but no longer written to
 - ✅ Shadow Work — cluster descriptors and watchFor — `groupShadowQualities()` now returns `descriptor` (one sentence naming the quality) and `watchFor` (one sentence beginning "Watch for:") per cluster; displayed on ThemeCard in Cormorant Garamond italic and DM Sans respectively; waking life matching fixed to exact match on `linked_shadow_quality` column (no tag scanning)
 - ✅ Shadow Work — quality frequency filtering — before clustering, qualities filtered to those appearing in 2+ dreams (deduped per dream); fallback to all qualities if fewer than 3 pass, so page never renders empty
 - ✅ Shadow Work — cluster caching — clusters cached in localStorage (`dw_shadow_clusters_${userId}`) alongside dream count at cache time; cache reused on page load when dream count matches; "Refresh ↺" link reruns clustering and updates cache; prevents reshuffling on every load
@@ -384,10 +388,10 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 ### Known Issues / Technical Debt
 
 - Old `archive_queries` rows with null/empty messages require SQL backfill (`supabase-migration-archive-threads.sql`) to display as threads
-- WakingLife strip on Daily Practice needs signed URL verification
-- EmbodimentCheckIn moved from floating banner to Daily Practice — verify working correctly
 - `Symbols.jsx` page and `/symbols` route still exist in the codebase — not linked from sidebar but not formally retired either
 - `generateGuideLetter()` in `ai.js` is no longer called from `GuideLetter.jsx` (Session Letter redesigned to pure JS assembly) — dead code, safe to remove in a future cleanup pass
+- `ComplexesMap.jsx` and `/complexes` route still exist — scheduled for formal deletion (Phase 1 backlog)
+- `shadow_encounters` table is preserved in Supabase but dormant — no longer written to; existing data migrated to waking_life_entries; table can be dropped after confirming migration ran for all users
 
 ---
 

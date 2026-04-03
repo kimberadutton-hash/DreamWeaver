@@ -160,6 +160,7 @@ export default function Sidebar() {
         <NavSectionLabel>The Thread</NavSectionLabel>
         <div className="space-y-0.5">
           <NavItem to="/archive" label="Dream Archive" />
+          <NavItem to="/waking-life" label="Waking Life" />
         </div>
 
         {/* THE LOOM */}
@@ -173,10 +174,7 @@ export default function Sidebar() {
             ? <NavItem to="/imagination" label="Active Imagination" />
             : <LockedItem label="Active Imagination" requirement={unlockRequirement.activeImagination} />
           }
-          {unlocked.dailyPractice
-            ? <NavItem to="/practice" label="Daily Practice" />
-            : <LockedItem label="Daily Practice" requirement={unlockRequirement.dailyPractice} />
-          }
+
         </div>
 
         {/* THE WEB */}

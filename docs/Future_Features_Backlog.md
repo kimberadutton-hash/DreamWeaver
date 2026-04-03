@@ -1,5 +1,5 @@
 # Dream Weaver — Future Features Backlog
-Last updated: April 3, 2026
+Last updated: April 3, 2026 (updated same day)
 
 Items marked ⚡ are immediate priority.
 Items marked 🔄 are redesigns of existing features, not new builds.
@@ -15,6 +15,12 @@ These were built and then deliberately removed. Do not rebuild.
 Dream Series, and Individuation Narrative. Creates false clinical certainty without a
 clinical container. ComplexesMap.jsx and /complexes route still exist in codebase —
 formal deletion is a cleanup task listed below.
+
+**Daily Practice page** — Removed. The /practice route, DailyPractice.jsx, and "Daily
+Practice" sidebar nav item have all been deleted. Its three concerns were redistributed:
+living questions surface inline on DreamDetail (with "I sat with this" button) and as a
+prompt at the top of Waking Life; the active shadow quality surfaces at the top of Shadow
+Work; Waking Life is now a first-class nav item in The Thread. Do not rebuild this page.
 
 ---
 
@@ -33,17 +39,18 @@ localStorage by dream count to prevent reshuffling. Shadow type labeling
 (golden/dark/not sure) per cluster, persisted to localStorage, with dynamic watchFor
 text and pill indicators.
 
-⚡ 🔄 **Daily Practice redesign — threshold, not dashboard**
-Current page shows everything simultaneously. Redesign to show one thing, by priority:
-1. Unresponded embodiment prompt from most recent dream
-2. Active analyst focus (if exists)
-3. Most recent shadow quality not yet connected to any waking life moment
-Everything else (full living questions library, waking life strip) moves off this
-page entirely.
+✅ 🔄 **Daily Practice redesign — threshold, not dashboard** *(completed — differently)*
+Resolved by removing the Daily Practice page entirely rather than redesigning it.
+Living questions now surface inline on the dream detail page (below analysis, with
+"I sat with this" button) and as a soft prompt at the top of Waking Life. The active
+shadow quality ("currently with you") surfaces at the top of Shadow Work. Waking Life
+promoted to first-class nav item in The Thread. The page itself is gone.
 
-⚡ 🔄 **Living Questions — one at a time, not a library**
-Surface only the single most recent unresponded living question. Volume of accumulated
-questions from every dream becomes overwhelming and feeds analysis over embodiment.
+✅ 🔄 **Living Questions — one at a time, not a library** *(completed)*
+Single most recent unresponded living question surfaces in two places: inline on the
+individual dream's detail page below the analysis section, and as a quiet italic prompt
+at the top of Waking Life above the new entry button. "I sat with this" button marks
+it responded and removes it from both locations.
 
 ⚡ 🔄 **Ask the Archive — add embodiment gesture to every response**
 Every Ask the Archive response should close with an embodiment-oriented prompt, the
@@ -232,9 +239,9 @@ approach.
 ## On Build Order
 
 **Now:** Phase 1 (design integrity pass) — remaining items.
-Shadow Work redesign ✅ complete. Remaining: Daily Practice redesign, Living Questions,
-Ask the Archive embodiment gesture, anima/animus in analysis, Jungian Self touchstone,
-Complexes formal removal.
+Shadow Work redesign ✅ complete. Daily Practice redesign ✅ complete (removed).
+Living Questions ✅ complete. Remaining: Ask the Archive embodiment gesture,
+anima/animus in analysis, Jungian Self touchstone, Complexes formal removal.
 
 **Then:** Technical health cleanup.
 
