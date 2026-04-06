@@ -7,7 +7,6 @@ import Archive from './pages/Archive';
 import NewDream from './pages/NewDream';
 import EditDream from './pages/EditDream';
 import DreamDetail from './pages/DreamDetail';
-import Symbols from './pages/Symbols';
 import Timeline from './pages/Timeline';
 import AskArchive from './pages/AskArchive';
 import AnalystFocus from './pages/AnalystFocus';
@@ -68,7 +67,6 @@ export default function App() {
                     <Route path="/new" element={<NewDream />} />
                     <Route path="/dream/:id" element={<DreamDetail />} />
                     <Route path="/dream/:id/edit" element={<EditDream />} />
-                    <Route path="/symbols" element={<Symbols />} />
                     <Route path="/timeline" element={<Timeline />} />
                     <Route path="/ask" element={<AskArchive />} />
                     <Route path="/focus" element={<AnalystFocus />} />

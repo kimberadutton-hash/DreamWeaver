@@ -220,7 +220,6 @@ Sign out
 │           ├── Reference.jsx
 │           ├── Settings.jsx
 │           ├── ShadowWork.jsx
-│           ├── Symbols.jsx
 │           ├── Timeline.jsx
 │           └── WakingLife.jsx
 ├── docs/
@@ -251,7 +250,6 @@ Sign out
 - `user_themes` — AI-generated personal recurring themes
 
 **Practice tables:**
-- `shadow_encounters` — `type`, `title`, `projected_quality`, `projected_qualities` (text[]), `owned_quality`, `ai_reflection`, `integration_status`, `linked_dream_id` — **legacy table; no longer written to.** Existing rows were migrated to `waking_life_entries` as type `shadow_encounter` on first ShadowWork load. Table preserved but dormant.
 - `shadow_theme_notes` — `user_id`, `theme_name`, `notes` (jsonb array of `{content, created_at}`), `updated_at`; unique on `(user_id, theme_name)`; RLS enabled
 - `complexes` — `name`, `description`, `origin_story`, `dream_manifestations`, `waking_manifestations`, `what_it_needs`, `integration_status`, `ai_suggested`, `related_archetypes`
 - `dream_series` — `name`, `description` (dreams link via `series_id` FK)
@@ -306,7 +304,6 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 | `suggestDreamSeries()` | Opus | Identify psychologically coherent series from JS-computed tag-overlap clusters |
 | `suggestSeriesAdditions()` | Opus | Evaluate candidate dreams for addition to an existing series |
 | `generateTitle()` | Haiku | 3-6 word poetic dream title |
-| `quickTagDream()` | Haiku | Batch tagging |
 | `generateDreamSummary()` | Haiku | 2-3 sentence dream summary |
 | `suggestAdditionalTags()` | Haiku | More tags for existing dream |
 | `identifyShadowMaterial()` | Haiku | Shadow figures and projected qualities |
@@ -314,7 +311,6 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 | `imaginationEmbodimentPrompt()` | Haiku | Post-session embodiment question |
 | `transcribeImage()` | Opus | Handwritten dream photo to text |
 | `askArchive()` | Opus | Natural language Q&A over dream archive with conversation history; every response closes with a ✦ embodiment prompt; signature: `(question, dreams, apiKey, priorMessages=[])` |
-| `generatePersonalThemes()` | Opus | 3-5 personal themes from full archive |
 | `groupShadowQualities()` | Haiku | Shadow Work page: organize qualities into psychological theme clusters; returns `clusterName`, `qualities`, `descriptor` (one sentence naming the psyche quality), `watchFor` (one sentence beginning "Watch for:") |
 | `buildDreamContext()` | — | Pure JS helper, no API call |
 
@@ -345,7 +341,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Tiered navigation unlocking by dream count + guide status
 - ✅ Milestone moments at 3, 10, 20 dreams + guide added
 - ✅ Privacy controls (notes, session, focus)
-- ✅ Dream Archive with search (including archetypes) and embedded Series/Timeline tabs (All Dreams · Series · Timeline tab bar in Archive.jsx; DreamSeries and Timeline rendered inline via `hideHeader` prop)
+- ✅ Dream Archive with search (including archetypes and symbols) and collapsible date range filtering; search and date range combine additively; embedded Series/Timeline tabs (All Dreams · Series · Timeline tab bar in Archive.jsx; DreamSeries and Timeline rendered inline via `hideHeader` prop)
 - ✅ Timeline
 - ✅ Ask the Archive with conversation threading — follow-up questions within any saved conversation, full thread stored in `messages` jsonb column, QueryCard/ArchiveThread/MessageBubble component architecture, old rows backfilled via SQL migration
 - ✅ Ask the Archive — embodiment gesture — every response closes with a ✦ embodiment prompt pointing toward body or waking life (system prompt update to `askArchive()` only — no changes to AskArchive.jsx or function signature)
@@ -355,12 +351,12 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Incubation intention — DB column (`incubation_intention`) preserved and still written on save (as empty string); UI input removed from NewDream form; value now implicitly captured via "Your Reflections" field
 - ✅ Waking resonances
 - ✅ Dream series linking
-- ✅ Symbols & Archetypes page (route `/symbols` and `Symbols.jsx` exist but removed from sidebar navigation — AI Dream Series replaces it)
-- ✅ Personal themes generation
+- ✅ Symbols & Archetypes page — formally retired. `Symbols.jsx`, `/symbols` route, `quickTagDream()`, `generatePersonalThemes()`, and `AI_MODELS.tagging` all removed from codebase.
 - ✅ Re-analyze Dream button on EditDream — triggers fresh Jungian analysis using correct chronological context, replaces AI-generated fields only, leaves all user-authored content untouched
 - ✅ Anima/animus recognition in dream analysis — system prompt addition to analyzeDream() guides recognition of contra-sexual and magnetically compelling figures in plain language, without clinical labeling. Terms anima/animus deliberately avoided unless dreamer uses them first. jungianTerms.js and Reference.jsx already contained complete entries.
 - ✅ 1-hour re-analysis cooldown — `last_analyzed_at` timestamp written on each re-analysis; button shows remaining time and goes muted until cooldown expires
 - ✅ Duplicate dream detection — Settings → Data & Maintenance; Jaccard similarity scan within same-date dream groups, inline confirmation before delete, session-only "Not duplicates" dismissal
+- ✅ Similar tag detection and merge — Settings → Data & Maintenance; Jaccard similarity scan across all unique tags (threshold 0.25), greedy deduplication by confidence, canonical tag selection, batch merge updates all affected dreams via Supabase, session-only dismissal; jaccardSimilarity() extracted to module scope and shared between both scanners
 - ✅ Global animation pass — CollapsibleSection in DreamDetail, ShadowWork EncounterDetailDrawer and EncounterFormPanel; all use CSS transitions (maxHeight + opacity) instead of conditional rendering
 - ✅ PracticeOrientation component — Collapsible "About this practice" panel on 11 pages; expanded on first visit via localStorage per storageKey, collapsed thereafter
 - ✅ JungianTerm tooltip component — Gold dotted underline on Jungian terms in static UI copy; 200ms fade tooltip with definition one-liner + "Read more in Reference →" link; flips above trigger when near viewport bottom; applied to: peripeteia/lysis (DreamDetail), synchronicity (WakingLife), individuation (Individuation, Onboarding), active imagination/shadow (ActiveImagination, ShadowWork, MilestoneModal), complex/projection (ComplexesMap, ShadowWork)
@@ -389,8 +385,6 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 ### Known Issues / Technical Debt
 
 - Old `archive_queries` rows with null/empty messages require SQL backfill (`supabase-migration-archive-threads.sql`) to display as threads
-- `Symbols.jsx` page and `/symbols` route still exist in the codebase — not linked from sidebar but not formally retired either
-- `shadow_encounters` table is preserved in Supabase but dormant — no longer written to; existing data migrated to waking_life_entries; table can be dropped after confirming migration ran for all users
 
 ---
 

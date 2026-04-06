@@ -12,7 +12,6 @@ const AI_MODELS = {
   narrative:       'claude-opus-4-5',
   transcription:   'claude-opus-4-5',
   reflection:      'claude-opus-4-5',
-  tagging:         'claude-haiku-4-5-20251001',
   title:           'claude-haiku-4-5-20251001',
   summary:         'claude-haiku-4-5-20251001',
   suggestions:     'claude-haiku-4-5-20251001',
@@ -243,32 +242,6 @@ ${moodStr ? `Mood: ${moodStr}\n` : ''}Dream: ${body.slice(0, 600)}`;
   return text.trim().replace(/^["']|["']$/g, '');
 }
 
-// ── Quick-tag a dream (Haiku, no reflection) ────────────────────────────────
-// Extracts tags/symbols/archetypes without writing a full Jungian analysis.
-// Used for batch-tagging imported or unanalyzed dreams.
-
-export async function quickTagDream({ body, mood }) {
-  const moodStr = Array.isArray(mood) ? mood.join(', ') : (mood || '');
-  const prompt = `Extract the Jungian symbols, archetypes, and themes from this dream. Be precise and concise.
-
-Dream: ${body.slice(0, 800)}${moodStr ? `\nMood: ${moodStr}` : ''}
-
-Respond ONLY with valid JSON — no other text:
-{
-  "tags": ["5-8 tags. Each must be ONE of: a pure emotion (grief, joy, rage), an animal name (snake, wolf), a place (forest, school, basement), or a concrete symbol (fire, mirror, key). Single words or 2-word phrases MAX. No sentences."],
-  "symbols": ["3-6 objects, places, or figures with symbolic weight. Single words or 2-word phrases only. Examples: snake, old house, dark water, locked door."],
-  "archetypes": ["Jungian archetypes ONLY if clearly present. Use canonical names: Shadow, Anima, Animus, Trickster, Wise Old Man, Wise Woman, Inner Child, Hero, Great Mother. Do not include generic terms."]
-}`;
-
-  const text = await call({
-    messages: [{ role: 'user', content: prompt }],
-    maxTokens: 256,
-    model: AI_MODELS.tagging,
-  });
-
-  return parseNarrativeJSON(text);
-}
-
 // ── Ask the archive a natural-language question ──────────────────────────────
 
 /**
@@ -320,34 +293,6 @@ ${dreamContext}`;
   ];
 
   return call({ messages: conversationMessages, maxTokens: 4000, model: AI_MODELS.analysis, apiKey, system: systemPrompt });
-}
-
-// ── Generate personal recurring themes from dream archive ────────────────────
-
-export async function generatePersonalThemes({ tags, titles, moods, totalDreams }) {
-  const prompt = `You are a Jungian analyst with deep knowledge of depth psychology. Based on the following dream data from a person's personal archive, identify 3-5 deeply personal recurring psychological themes that are unique to THIS dreamer. These should go beyond universal Jungian archetypes and name the specific patterns, tensions, preoccupations, and developmental threads that appear most strongly in their unconscious life. Look for what is personally meaningful and specific to their story — not generic dream content.
-
-For each theme provide:
-- name: A short evocative name (2-5 words, poetic, not clinical)
-- description: One warm, insightful sentence describing what this theme represents in this person's psyche
-- keywords: An array of 5-10 specific words/phrases from their tags that point to this theme
-- color: A warm hex color code that feels emotionally right for this theme
-
-Dream data:
-Tags: ${tags.join(', ')}
-Dream titles: ${titles.join(', ')}
-Moods: ${moods.join(', ')}
-Total dreams: ${totalDreams}
-
-Respond ONLY with a valid JSON array. No preamble, no markdown.`;
-
-  const text = await call({
-    messages: [{ role: 'user', content: prompt }],
-    maxTokens: 1024,
-    model: AI_MODELS.analysis,
-  });
-
-  return parseResponseArray(text);
 }
 
 // ── Generate a 2-3 sentence summary of a dream ──────────────────────────────

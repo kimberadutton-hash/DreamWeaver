@@ -123,11 +123,7 @@ Users annotate symbols in their lexicon with personal meaning.
 - Builds over time into a genuinely personal symbolic vocabulary
 - Schema change required
 
-**Custom mood addition**
-Allow users to add their own mood words beyond the 10 presets.
-- Saved to profiles.user_moods text[] column
-- Available on all future dream entries
-- Schema change required
+
 
 **Life events and psychic material timeline**
 Extend /timeline to show two tracks: dreams and significant life events.
@@ -204,13 +200,11 @@ Remove debug code and console.logs. Review files over 600 lines for splitting. R
 package.json for unused dependencies. Audit for hardcoded values that should be in
 constants.js.
 
-**Archive search improvements**
-Full-text search via Supabase to_tsvector — currently client-side only. Add date
-range filtering.
+**✅ Archive search improvements (completed)**
+Search is client-side, covering title, body, mood, tags, archetypes, and symbols. Date range filtering added — collapsible toggle, combines additively with text search.
 
-**Duplicate tag cleanup**
-Extend existing "scan for bad tags" in Settings to catch semantic duplicates
-("locked door" and "locked doors"). Suggest merges, user confirms.
+**✅ Duplicate tag cleanup (completed)**
+Similar tag scanner in Settings → Data & Maintenance. Jaccard similarity across all unique tags, greedy deduplication, canonical selection, batch merge across all affected dreams.
 
 ✅ **generateGuideLetter() dead code removal** *(completed)*
 Removed from ai.js along with suggestComplexes() and their AI_MODELS entries.

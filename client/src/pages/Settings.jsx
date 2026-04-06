@@ -399,9 +399,24 @@ export default function Settings() {
         <div className="mt-8 pt-8 border-t border-black/8 dark:border-white/8">
           <DuplicateDreamDetector userId={user.id} />
         </div>
+        <div className="mt-8 pt-8 border-t border-black/8 dark:border-white/8">
+          <SimilarTagScanner userId={user.id} />
+        </div>
       </section>
     </div>
   );
+}
+
+// Shared by DuplicateDreamDetector and SimilarTagScanner
+function jaccardSimilarity(textA, textB) {
+  if (!textA || !textB) return 0;
+  const wordsOf = t =>
+    new Set(t.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean));
+  const a = wordsOf(textA);
+  const b = wordsOf(textB);
+  const intersection = [...a].filter(w => b.has(w)).length;
+  const union = new Set([...a, ...b]).size;
+  return union === 0 ? 0 : intersection / union;
 }
 
 function CleanupButton({ userId }) {
@@ -603,17 +618,6 @@ function DuplicateDreamDetector({ userId }) {
   const [confirmDelete, setConfirmDelete] = useState(null); // { keepId, deleteId, deleteTitle }
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
-
-  function jaccardSimilarity(textA, textB) {
-    if (!textA || !textB) return 0;
-    const wordsOf = t =>
-      new Set(t.toLowerCase().replace(/[^a-z0-9\s]/g, '').split(/\s+/).filter(Boolean));
-    const a = wordsOf(textA);
-    const b = wordsOf(textB);
-    const intersection = [...a].filter(w => b.has(w)).length;
-    const union = new Set([...a, ...b]).size;
-    return union === 0 ? 0 : intersection / union;
-  }
 
   async function handleScan() {
     setStatus('scanning');
@@ -819,6 +823,253 @@ function DuplicateDreamDetector({ userId }) {
               Cancel
             </button>
           </div>
+        </div>
+      )}
+
+      {error && <p className="text-red-500 text-sm font-body">{error}</p>}
+    </div>
+  );
+}
+
+function SimilarTagScanner({ userId }) {
+  const [status, setStatus] = useState('idle'); // idle | scanning | results
+  const [pairs, setPairs] = useState([]);        // [{ tagA, tagB, similarity }]
+  const [dismissed, setDismissed] = useState(new Set());
+  const [chosen, setChosen] = useState({});      // pairKey → canonical tag string
+  const [mergeState, setMergeState] = useState({}); // pairKey → { state, message }
+  const [error, setError] = useState('');
+
+  const pairKey = (a, b) => [a, b].sort().join('|||');
+
+  function similarityLabel(sim) {
+    if (sim >= 0.75) return { text: 'Very similar', color: 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30' };
+    if (sim >= 0.50) return { text: 'Possibly similar', color: 'text-ink/50 dark:text-white/40 bg-black/5 dark:bg-white/5' };
+    return { text: 'Might be related', color: 'text-ink/30 dark:text-white/20 bg-black/3 dark:bg-white/3' };
+  }
+
+  async function handleScan() {
+    setStatus('scanning');
+    setError('');
+    setPairs([]);
+    setDismissed(new Set());
+    setChosen({});
+    setMergeState({});
+
+    try {
+      const { data: dreams, error: fetchError } = await supabase
+        .from('dreams')
+        .select('id, tags')
+        .eq('user_id', userId);
+
+      if (fetchError) throw fetchError;
+
+      // Collect all unique tags (lowercased)
+      const allTags = [...new Set(
+        (dreams || []).flatMap(d => d.tags || []).map(t => t.toLowerCase().trim()).filter(Boolean)
+      )];
+
+      // Compare every pair
+      const rawPairs = [];
+      for (let i = 0; i < allTags.length; i++) {
+        for (let j = i + 1; j < allTags.length; j++) {
+          const tagA = allTags[i];
+          const tagB = allTags[j];
+          const sim = jaccardSimilarity(tagA, tagB);
+          if (sim >= 0.25) {
+            rawPairs.push({ tagA, tagB, similarity: sim });
+          }
+        }
+      }
+
+      // Deduplicate: sort by similarity desc, greedily pick pairs where neither tag is already claimed
+      const seen = new Set();
+      const dedupedPairs = [];
+      [...rawPairs].sort((a, b) => b.similarity - a.similarity).forEach(pair => {
+        if (!seen.has(pair.tagA) && !seen.has(pair.tagB)) {
+          dedupedPairs.push(pair);
+          seen.add(pair.tagA);
+          seen.add(pair.tagB);
+        }
+      });
+
+      setPairs(dedupedPairs);
+      setStatus('results');
+    } catch (err) {
+      setError(err.message);
+      setStatus('idle');
+    }
+  }
+
+  async function handleMerge(pair) {
+    const key = pairKey(pair.tagA, pair.tagB);
+    const canonical = chosen[key];
+    const obsolete = canonical === pair.tagA ? pair.tagB : pair.tagA;
+
+    setMergeState(prev => ({ ...prev, [key]: { state: 'merging', message: '' } }));
+
+    try {
+      // Fetch all dreams and filter client-side for reliable case-insensitive matching
+      const { data: allDreams, error: fetchError } = await supabase
+        .from('dreams')
+        .select('id, tags')
+        .eq('user_id', userId);
+
+      if (fetchError) throw fetchError;
+
+      const dreamsToUpdate = (allDreams || []).filter(d =>
+        d.tags?.some(t => t.toLowerCase().trim() === obsolete)
+      );
+
+      const results = await Promise.all(
+        dreamsToUpdate.map(dream => {
+          const newTags = dream.tags.map(t =>
+            t.toLowerCase().trim() === obsolete ? canonical : t
+          );
+          return supabase.from('dreams').update({ tags: newTags }).eq('id', dream.id);
+        })
+      );
+
+      const mergeError = results.find(r => r.error);
+      if (mergeError) throw mergeError.error;
+
+      const count = dreamsToUpdate.length;
+      setMergeState(prev => ({
+        ...prev,
+        [key]: { state: 'done', message: `Merged into "${canonical}" across ${count} dream${count !== 1 ? 's' : ''}.` },
+      }));
+
+      setTimeout(() => {
+        setPairs(prev => prev.filter(p => pairKey(p.tagA, p.tagB) !== key));
+      }, 2000);
+    } catch (err) {
+      setMergeState(prev => ({ ...prev, [key]: { state: 'error', message: err.message } }));
+    }
+  }
+
+  function dismiss(key) {
+    setDismissed(prev => new Set([...prev, key]));
+  }
+
+  const visiblePairs = pairs.filter(p => !dismissed.has(pairKey(p.tagA, p.tagB)));
+
+  return (
+    <div className="space-y-3">
+      <div>
+        <p className="text-sm font-body font-medium text-ink dark:text-white mb-1">
+          Similar Tag Detection
+        </p>
+        <p className="text-sm font-body text-ink/60 dark:text-white/50 leading-relaxed">
+          Find tags across your archive that may refer to the same thing and merge them.
+        </p>
+      </div>
+
+      {status === 'idle' && (
+        <button
+          onClick={handleScan}
+          className="px-5 py-2.5 rounded-xl font-body text-sm border border-black/15 dark:border-white/15 text-ink/70 dark:text-white/60 hover:bg-black/5 dark:hover:bg-white/5 transition-colors"
+        >
+          Scan for similar tags →
+        </button>
+      )}
+
+      {status === 'scanning' && (
+        <p className="text-sm font-body text-ink/40 dark:text-white/30 italic">Scanning your tags…</p>
+      )}
+
+      {status === 'results' && (
+        <div className="space-y-4">
+          {visiblePairs.length === 0 ? (
+            <div className="p-4 rounded-xl bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800">
+              <p className="text-sm font-body text-green-800 dark:text-green-300">
+                ✓ No similar tags found{pairs.length > 0 && ' — all suggestions dismissed'}.
+              </p>
+              <button
+                onClick={() => { setPairs([]); setStatus('idle'); }}
+                className="mt-2 text-xs font-body text-green-700 dark:text-green-400 underline"
+              >
+                Dismiss
+              </button>
+            </div>
+          ) : (
+            <>
+              <p className="text-sm font-body text-ink/50 dark:text-white/40">
+                {visiblePairs.length} possible {visiblePairs.length === 1 ? 'match' : 'matches'} found.
+              </p>
+              {visiblePairs.map(pair => {
+                const key = pairKey(pair.tagA, pair.tagB);
+                const label = similarityLabel(pair.similarity);
+                const ms = mergeState[key];
+                const canonicalChosen = chosen[key];
+
+                return (
+                  <div key={key} className="rounded-xl border border-black/10 dark:border-white/10 overflow-hidden">
+                    {/* Header */}
+                    <div className="flex items-center justify-between px-4 py-2.5 bg-black/3 dark:bg-white/3 border-b border-black/8 dark:border-white/8">
+                      <span className={`text-xs font-body px-2 py-0.5 rounded-full ${label.color}`}>
+                        {label.text}
+                      </span>
+                      <button
+                        onClick={() => dismiss(key)}
+                        className="text-xs font-body text-ink/30 dark:text-white/30 hover:text-ink/60 dark:hover:text-white/60 transition-colors"
+                      >
+                        Dismiss
+                      </button>
+                    </div>
+
+                    {/* Tags side by side */}
+                    <div className="grid grid-cols-2 divide-x divide-black/8 dark:divide-white/8">
+                      {[pair.tagA, pair.tagB].map(tag => (
+                        <div key={tag} className="p-4 space-y-3">
+                          <span className="inline-block px-3 py-1 rounded-full text-sm font-body bg-gold/15 text-gold-dark dark:text-gold border border-gold/20">
+                            {tag}
+                          </span>
+                          <div>
+                            <button
+                              onClick={() => setChosen(prev => ({ ...prev, [key]: tag }))}
+                              className={`text-xs font-body transition-colors ${
+                                canonicalChosen === tag
+                                  ? 'text-plum dark:text-white font-medium'
+                                  : 'text-ink/40 dark:text-white/30 hover:text-ink/60 dark:hover:text-white/50'
+                              }`}
+                            >
+                              {canonicalChosen === tag ? '✓ Keep this one' : 'Keep this one'}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Merge / status row */}
+                    <div className="px-4 py-3 border-t border-black/8 dark:border-white/8 bg-black/1 dark:bg-white/1">
+                      {ms?.state === 'done' ? (
+                        <p className="text-xs font-body text-green-700 dark:text-green-400">{ms.message}</p>
+                      ) : ms?.state === 'error' ? (
+                        <p className="text-xs font-body text-red-500">{ms.message}</p>
+                      ) : canonicalChosen ? (
+                        <button
+                          onClick={() => handleMerge(pair)}
+                          disabled={ms?.state === 'merging'}
+                          className="text-xs font-body text-plum dark:text-white/70 hover:text-plum/70 disabled:opacity-50 transition-colors"
+                        >
+                          {ms?.state === 'merging' ? 'Merging…' : `Merge → "${canonicalChosen}"`}
+                        </button>
+                      ) : (
+                        <p className="text-xs font-body text-ink/30 dark:text-white/20 italic">
+                          Select which tag to keep
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+              <button
+                onClick={() => { setPairs([]); setStatus('idle'); }}
+                className="text-xs font-body text-ink/30 dark:text-white/30 hover:text-ink/60 transition-colors underline"
+              >
+                Start over
+              </button>
+            </>
+          )}
         </div>
       )}
 

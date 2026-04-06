@@ -23,6 +23,9 @@ export default function Archive() {
   const [titling, setTitling] = useState(false);
   const [titlingProgress, setTitlingProgress] = useState(null); // { done, total }
   const [tab, setTab] = useState('dreams');
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
 
   useEffect(() => {
     fetchDreams();
@@ -32,7 +35,7 @@ export default function Archive() {
     setLoading(true);
     const { data, error } = await supabase
       .from('dreams')
-      .select('id, dream_date, title, body, mood, tags, archetypes, has_analysis, is_big_dream, created_at, dream_series ( name )')
+      .select('id, dream_date, title, body, mood, tags, archetypes, symbols, has_analysis, is_big_dream, created_at, dream_series ( name )')
       .eq('user_id', user.id)
       .order('dream_date', { ascending: false });
 
@@ -71,15 +74,21 @@ export default function Archive() {
   }
 
   const filtered = dreams.filter(d => {
-    if (!search) return true;
-    const q = search.toLowerCase();
-    return (
-      d.title?.toLowerCase().includes(q) ||
-      d.body?.toLowerCase().includes(q) ||
-      d.mood?.some(m => m.toLowerCase().includes(q)) ||
-      d.tags?.some(t => t.toLowerCase().includes(q)) ||
-      (d.archetypes || []).some(a => a.toLowerCase().includes(q))
-    );
+    if (search) {
+      const q = search.toLowerCase();
+      const matchesSearch = (
+        d.title?.toLowerCase().includes(q) ||
+        d.body?.toLowerCase().includes(q) ||
+        d.mood?.some(m => m.toLowerCase().includes(q)) ||
+        d.tags?.some(t => t.toLowerCase().includes(q)) ||
+        (d.archetypes || []).some(a => a.toLowerCase().includes(q)) ||
+        d.symbols?.some(s => s.toLowerCase().includes(q))
+      );
+      if (!matchesSearch) return false;
+    }
+    if (dateFrom && d.dream_date < dateFrom) return false;
+    if (dateTo && d.dream_date > dateTo) return false;
+    return true;
   });
 
   return (
@@ -117,6 +126,51 @@ export default function Archive() {
               placeholder="Search dreams, moods, tags…"
               className="field-input"
             />
+            <div className="mt-1.5">
+              <button
+                onClick={() => setShowDateFilter(v => !v)}
+                className="font-body text-xs text-ink/40 hover:text-ink/60 dark:text-white/30 dark:hover:text-white/50 transition-colors"
+              >
+                Filter by date {showDateFilter ? '↑' : '↓'}
+              </button>
+            </div>
+            <div
+              style={{
+                maxHeight: showDateFilter ? '120px' : '0',
+                opacity: showDateFilter ? 1 : 0,
+                overflow: 'hidden',
+                transition: 'max-height 250ms ease, opacity 200ms ease',
+              }}
+            >
+              <div className="pt-3 flex flex-col sm:flex-row gap-3">
+                <div className="flex items-center gap-2 flex-1">
+                  <label className="font-mono text-xs text-ink/40 dark:text-white/30 shrink-0">From</label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={e => setDateFrom(e.target.value)}
+                    className="field-input text-sm"
+                  />
+                </div>
+                <div className="flex items-center gap-2 flex-1">
+                  <label className="font-mono text-xs text-ink/40 dark:text-white/30 shrink-0">To</label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={e => setDateTo(e.target.value)}
+                    className="field-input text-sm"
+                  />
+                </div>
+                {(dateFrom || dateTo) && (
+                  <button
+                    onClick={() => { setDateFrom(''); setDateTo(''); }}
+                    className="font-body text-xs text-ink/40 hover:text-ink/60 dark:text-white/30 dark:hover:text-white/50 transition-colors self-center shrink-0"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
