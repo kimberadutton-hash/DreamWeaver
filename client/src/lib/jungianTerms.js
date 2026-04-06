@@ -33,14 +33,14 @@ Integration does not mean acting out the shadow. It means owning it, claiming it
     id: 'self',
     term: 'The Self',
     category: 'core',
-    oneLiner: "The whole psyche — not just the ego, but everything you are, including what you don't yet know about yourself.",
-    body: `The Self is not the ego. The ego is the part of you that thinks, decides, and identifies itself as "I." The Self is the larger organizing intelligence of the entire psyche — conscious and unconscious together — and it is far more than the ego knows about.
+    oneLiner: "The organizing center of the whole psyche — not something you arrive at, but something you were never separate from.",
+    body: `The Self is not the ego. The ego is the part of you that thinks, decides, and says "I." The Self is the whole — the deeper organizing intelligence of the psyche, conscious and unconscious together, that holds far more than the ego knows about.
 
-The ego thinks it is in charge. The Self actually is. Individuation is the long process of the ego learning to serve the Self rather than override it — learning to listen to what is trying to emerge from below rather than simply executing the programs installed in childhood.
+It is not something you build or achieve. It was there before you knew its name. Individuation is not the journey toward the Self — it is the slow, often difficult recognition that you were never separate from it. What you are moving toward is also what you are returning to. Many traditions have named this differently: the soul, the atman, the ground of being. Jung called it the Self. Your dreams are one of the ways it speaks.
 
-Encounters with the Self have a numinous quality: overwhelming, significant, unlike ordinary experience. They cannot be manufactured or engineered. They arrive. And when they do, the dreamer knows — not intellectually but in the body — that something much larger than the personal self has made contact.`,
-    inYourDreams: 'Mandalas and circular forms, radiant or blinding light, wise figures of great authority and warmth, a sense that this dream is completely unlike others, feelings of profound awe or peace that linger for days.',
-    relatedTerms: ['ego', 'individuation', 'numinous'],
+Encounters with the Self have a numinous quality — overwhelming, significant, unlike ordinary experience. They cannot be manufactured or engineered. They arrive. And when they do, the dreamer knows, not intellectually but in the body, that what has made contact is much larger than the personal self. Not foreign, though. Recognized.`,
+    inYourDreams: 'A figure of great authority or deep peace — a wise elder, a luminous child, a sacred animal, a still center in the midst of chaos. A voice that knows more than you do, or a presence that holds what you cannot yet hold yourself. Mandalas and circular forms. When something in a dream feels numinous — charged with meaning beyond what you can name — that quality often belongs to the Self.',
+    relatedTerms: ['ego', 'individuation', 'numinous', 'shadow'],
   },
   {
     id: 'ego',

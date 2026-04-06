@@ -180,6 +180,8 @@ Analyze the dream below as it stood at the time it occurred. Note what continues
 
 ${contextSection}${title ? `Dream Title: ${title}\n` : ''}${moodStr ? `Dreamer's Mood: ${moodStr}\n` : ''}Dream: ${body}
 
+Pay particular attention to any figure of a different gender than the dreamer, or any figure who carries qualities that feel foreign, magnetic, threatening, or deeply compelling — attraction, fascination, terror, or revulsion. These figures often carry unconscious material the dreamer has not yet integrated. When such a figure appears, name the specific qualities they embody and reflect on what those qualities might represent — what this dreamer does not yet claim in themselves. Speak of the figure and what it carries. You do not need to use the terms "anima" or "animus" unless the dreamer's own notes use them.
+
 Respond ONLY with valid JSON in this exact structure:
 {
   "title": "A short evocative title for this dream if none was given, or improve the given title slightly",
@@ -439,6 +441,8 @@ Symbols: ${(d.symbols || []).join(', ') || '—'}`;
 
   const userPrompt = `You are a Jungian analyst writing a structured analytical report on a dreamer's individuation journey. Based on the dream record below, produce a richly written, chapter-based narrative.
 
+For the closingInvitation: write a single quiet sentence — not a question, not a prompt, not a call to action. A still acknowledgment that what the dreamer is moving toward is also what they are returning to — a center that was always already there. Do not use the words "journey," "destination," "self-improvement," or therapeutic language. Do not use the word "Self" unless it arrives naturally and with weight. The sentence should feel like setting down a lantern, not issuing an invitation.
+
 Respond ONLY with valid JSON matching this exact structure — no prose before or after the JSON:
 {
   "title": "An evocative, poetic title that is specific to this dreamer's journey — not generic",
@@ -536,6 +540,8 @@ NEW DREAMS (chronological):
 ${dreamList}
 
 Produce an updated narrative that incorporates the new material. Maintain continuity with the existing analysis — evolve it, do not restart. Do not reference the update process itself. Write the living, current narrative.
+
+For the closingInvitation: write a single quiet sentence — not a question, not a prompt, not a call to action. A still acknowledgment that what the dreamer is moving toward is also what they are returning to — a center that was always already there. Do not use the words "journey," "destination," "self-improvement," or therapeutic language. Do not use the word "Self" unless it arrives naturally and with weight. The sentence should feel like setting down a lantern, not issuing an invitation.
 
 Respond ONLY with valid JSON matching this exact structure — no prose before or after the JSON:
 {

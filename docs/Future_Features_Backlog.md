@@ -56,24 +56,17 @@ it responded and removes it from both locations.
 Every response now closes with a ✦ embodiment prompt — same somatic/waking-life
 orientation that ends dream analysis. askArchive() system prompt updated only.
 
-⚡ **Anima/animus in dream analysis**
-Stage 2 of individuation is entirely unnamed in the app. Contra-gender dream figures
-carry some of the most significant unconscious material and are not currently recognized
-as a distinct category.
-- Update analyzeDream() system prompt to recognize and name anima/animus figures
-  when they appear
-- Add anima/animus to jungianTerms.js
-- Apply JungianTerm tooltip wherever the term appears in the UI
-This does not require a new module — it belongs in dream analysis and shadow work
-as a recognized pattern category.
+✅ **Anima/animus in dream analysis** *(completed)*
+System prompt refinement only. analyzeDream() now guides recognition of contra-sexual
+and magnetically compelling figures in plain language, without clinical labeling. Terms
+anima/animus deliberately avoided unless dreamer uses them first. No schema change, no
+new UI section. jungianTerms.js and Reference.jsx already contained complete entries.
 
-⚡ **The Jungian Self as explicit touchstone**
-The organizing center of the psyche — the destination of individuation — is never
-named. The individuation narrative should face forward as well as backward.
-- Add closing orientation to individuation narrative: "What is the Self asking of
-  you right now?"
-- The word "Self" (in the Jungian sense) should appear as a touchstone in the
-  individuation narrative and My Journey page
+✅ **The Jungian Self as explicit touchstone** *(completed)*
+closingInvitation field in both generateIndividuationNarrative() and
+updateIndividuationNarrative() now shaped by closing instruction toward
+"What is the Self asking of you right now?" orientation. self entry in
+jungianTerms.js rewritten to carry the soul voice.
 
 ✅ **Complexes formal removal** *(completed)*
 ComplexesMap.jsx deleted. /complexes route, imports, and nav references removed.
@@ -240,8 +233,8 @@ approach.
 **Now:** Phase 1 (design integrity pass) — remaining items.
 Shadow Work redesign ✅ complete. Daily Practice redesign ✅ complete (removed).
 Living Questions ✅ complete. Ask the Archive embodiment gesture ✅ complete.
-Complexes formal removal ✅ complete. Remaining: anima/animus in analysis,
-Jungian Self touchstone.
+Complexes formal removal ✅ complete. Anima/animus in analysis ✅ complete.
+Remaining: Jungian Self touchstone.
 
 **Then:** Technical health cleanup.
 
