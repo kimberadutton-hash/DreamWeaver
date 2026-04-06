@@ -19,7 +19,6 @@ const AI_MODELS = {
   preparation:     'claude-haiku-4-5-20251001',
   embodiment:      'claude-haiku-4-5-20251001',
   shadow:          'claude-haiku-4-5-20251001',
-  complexes:       'claude-opus-4-5',
   series:          'claude-opus-4-5',
   seriesAdditions: 'claude-opus-4-5',
 };
@@ -301,6 +300,15 @@ Speak with warmth and depth. Avoid clinical detachment. Use the language of the 
 
 If this is a follow-up in an ongoing conversation, maintain continuity — you can reference what was said earlier.
 
+At the end of every response, after your reflection on the question, add a single embodiment prompt on its own line. Precede it with a gold diamond marker: ✦
+
+The embodiment prompt should:
+- Be one sentence
+- Begin with a somatic or action-oriented verb (Notice, Sit with, Let, Bring, Place, Carry, Feel, Move with, Return to)
+- Point toward the body or waking life — not more thinking
+- Relate specifically to what was just reflected on
+- Never feel like a homework assignment — more like an invitation to land somewhere
+
 DREAM ARCHIVE:
 ${dreamContext}`;
 
@@ -564,74 +572,6 @@ Write 4-6 chapters. Order: wounding → shadow/voice → numinous (weight ✦ [B
   return parseNarrativeJSON(text);
 }
 
-// ── Generate a session letter for the dreamer's guide/analyst ────────────────
-// ⚠️ Uses Claude Opus — generates a full first-person letter from dream data.
-// Input: guideName, recentDreams (last 5-7), activeAnalystFocus, embodimentResponses
-
-export async function generateGuideLetter({
-  guideName,
-  recentDreams,
-  activeAnalystFocus,
-  embodimentResponses,
-  userNote,
-}) {
-  const dreamList = recentDreams.map((d, i) => {
-    const bigFlag = d.is_big_dream ? ' ✦ [BIG DREAM]' : '';
-    const moodStr = Array.isArray(d.mood) ? d.mood.join(', ') : (d.mood || '');
-    const bodyExcerpt = (d.body || '').slice(0, 300) + (d.body?.length > 300 ? '…' : '');
-    const reflectionExcerpt = d.reflection
-      ? d.reflection.slice(0, 200) + (d.reflection.length > 200 ? '…' : '')
-      : null;
-    return [
-      `Dream ${i + 1} — ${d.date}${bigFlag}: "${d.title || 'Untitled'}"`,
-      moodStr ? `Mood: ${moodStr}` : null,
-      `Body: ${bodyExcerpt}`,
-      reflectionExcerpt ? `Reflection: ${reflectionExcerpt}` : null,
-      d.embodiment_prompt ? `Embodiment question: ${d.embodiment_prompt}` : null,
-      `Archetypes: ${(d.archetypes || []).join(', ') || '—'}`,
-      `Symbols: ${(d.symbols || []).join(', ') || '—'}`,
-    ].filter(Boolean).join('\n');
-  }).join('\n\n---\n\n');
-
-  const focusSection = activeAnalystFocus
-    ? `\nActive analytical focus: ${activeAnalystFocus}\n`
-    : '';
-
-  const embodimentSection = embodimentResponses?.length
-    ? `\nEmbodiment check-ins from this period:\n${embodimentResponses.map(r => `- "${r.dreamTitle}": ${r.response}`).join('\n')}\n`
-    : '';
-
-  const userNoteSection = userNote?.trim()
-    ? `\nWhat the dreamer wants to bring to this session: ${userNote.trim()}\n`
-    : '';
-
-  const systemPrompt = `You are helping a person prepare a session letter for their Jungian analyst or guide. Your role is strictly curatorial: write only about what has been explicitly provided. Do not extrapolate, invent themes, or fill in gaps. If the selected material is sparse, the letter should be shorter — that is correct. Write in the first person as the dreamer, warm and honest. Cite specific dreams by title. Do not use Jungian jargon without explanation. If fewer than 3 dreams are provided, write a shorter, more focused letter about what is actually there.`;
-
-  const userPrompt = `Write a session letter from this dreamer to their guide, ${guideName}. Write only about the material explicitly provided below — nothing else.${focusSection}${embodimentSection}${userNoteSection}
-SELECTED DREAMS (most recent first):
-${dreamList}
-
-Respond ONLY with valid JSON in this exact structure — no text before or after:
-{
-  "greeting": "Dear ${guideName},",
-  "opening": "1-2 sentences — how the dream field has felt overall since we last met, based only on the provided material",
-  "significantDreams": "Paragraphs on the selected dreams only. Cite each by title. Be specific about images. First person. Use \\n\\n between paragraphs. Do not mention dreams not in the list.",
-  "patterns": "1 paragraph on what the psyche seems to be returning to across the selected dreams. First person. Only patterns visible in the provided material.",
-  "embodimentNotes": "ONLY include this field if embodiment check-in responses were provided above. If included: what has shifted in waking life. If no check-ins exist, omit this field entirely.",
-  "questions": "2-3 genuine questions to bring to the session, drawn from the provided material. First person.",
-  "closing": "A brief warm closing sentence"
-}`;
-
-  const text = await call({
-    messages: [{ role: 'user', content: userPrompt }],
-    system: systemPrompt,
-    maxTokens: 2048,
-    model: AI_MODELS.narrative,
-  });
-
-  return parseNarrativeJSON(text);
-}
-
 // ── Prepare for an active imagination session ────────────────────────────────
 // Helps the person arrive at the session with clarity — never voices the figure.
 // Returns JSON: { figureProfile, suggestedOpening, questionsToHold, caution }
@@ -847,63 +787,6 @@ Respond ONLY with valid JSON:
     system: systemPrompt,
     maxTokens: 768,
     model: AI_MODELS.shadow,
-  });
-
-  return parseNarrativeJSON(text);
-}
-
-// ── Suggest active complexes from the full dream archive ─────────────────────
-// Opus — uses full archive pattern data to identify autonomous complexes.
-// Returns JSON with complexes array.
-
-export async function suggestComplexes({ allArchetypes, allSymbols, allMoods, dreamTitles, existingComplexes }) {
-  const systemPrompt = `You are a Jungian analyst reading the pattern of someone's dream archive to identify active psychological complexes — autonomous clusters of emotion, memory, and behavior running beneath awareness.
-
-A complex shows up in dreams through:
-- Recurring figures carrying the same emotional charge
-- Recurring situations and settings
-- Recurring moods attached to specific themes
-- Recurring symbols pointing to the same psychological territory
-
-Suggest only complexes that are clearly evidenced in the material provided. Do not suggest generic textbook complexes — suggest complexes specific to THIS person's pattern. Name each complex as this person would recognize it, not as a clinical label.
-
-Be honest if the material suggests fewer than 5 complexes — do not pad the list.
-
-Never use action notations in asterisks.
-Return JSON only.`;
-
-  const archetypeLines = (allArchetypes || []).slice(0, 20).map(([name, count]) => `${name} (${count}x)`).join(', ');
-  const symbolLines = (allSymbols || []).slice(0, 30).map(([name, count]) => `${name} (${count}x)`).join(', ');
-  const moodLines = (allMoods || []).slice(0, 15).map(([name, count]) => `${name} (${count}x)`).join(', ');
-  const existingNote = existingComplexes?.length
-    ? `\nAlready identified: ${existingComplexes.join(', ')} — do not re-suggest these.`
-    : '';
-
-  const userPrompt = `DREAM ARCHIVE PATTERNS:
-Most frequent archetypes: ${archetypeLines || 'none'}
-Most frequent symbols: ${symbolLines || 'none'}
-Most frequent moods: ${moodLines || 'none'}
-Dream titles (sample): ${(dreamTitles || []).slice(0, 20).join(', ')}
-${existingNote}
-
-Respond ONLY with valid JSON:
-{
-  "complexes": [
-    {
-      "name": "evocative name specific to this person",
-      "description": "1-2 sentences on what this complex seems to be",
-      "dreamEvidence": "specific patterns that suggest this complex",
-      "relatedArchetypes": ["archetype names"],
-      "integrationStatus": "active"
-    }
-  ]
-}`;
-
-  const text = await call({
-    messages: [{ role: 'user', content: userPrompt }],
-    system: systemPrompt,
-    maxTokens: 1536,
-    model: AI_MODELS.complexes,
   });
 
   return parseNarrativeJSON(text);

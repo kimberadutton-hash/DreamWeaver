@@ -19,7 +19,6 @@ import Reference from './pages/Reference';
 import WakingLife from './pages/WakingLife';
 import ActiveImagination from './pages/ActiveImagination';
 import ShadowWork from './pages/ShadowWork';
-import ComplexesMap from './pages/ComplexesMap';
 import DreamSeries from './pages/DreamSeries';
 
 
@@ -80,7 +79,6 @@ export default function App() {
                     <Route path="/waking-life" element={<WakingLife />} />
                     <Route path="/imagination" element={<ActiveImagination />} />
                     <Route path="/shadow" element={<ShadowWork />} />
-                    <Route path="/complexes" element={<ComplexesMap />} />
                     <Route path="/series" element={<DreamSeries />} />
                     <Route path="/series/:id" element={<DreamSeries />} />
                     <Route path="/import" element={<ImportCSV />} />

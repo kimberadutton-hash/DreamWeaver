@@ -75,16 +75,6 @@ function matchDreamsToCluster(dreams, clusterQualities) {
   });
 }
 
-function matchEncountersToCluster(encounters, clusterQualities) {
-  const clusterSet = new Set(clusterQualities.map(q => q.toLowerCase().trim()));
-  return encounters.filter(enc => {
-    if (enc.projected_quality && clusterSet.has(enc.projected_quality.toLowerCase().trim())) return true;
-    if (Array.isArray(enc.projected_qualities)) {
-      return enc.projected_qualities.some(q => q && clusterSet.has(q.toLowerCase().trim()));
-    }
-    return false;
-  });
-}
 
 function matchMilestonesToCluster(milestones, clusterName) {
   return milestones.filter(entry =>
@@ -131,13 +121,7 @@ function ThemeCard({ clusterName, descriptor, watchFor, shadowType, onShadowType
   // History count drives the toggle visibility
   const historyCount = originDreams.length + wakingLifeMatches.length + notes.length;
 
-  // Computed watchFor based on shadowType
-  const displayedWatchFor =
-    shadowType === 'dark'
-      ? 'Watch for: where this pattern acts before you\'ve chosen it.'
-      : shadowType === 'not_sure'
-      ? 'Watch for: where this quality appears — in dreams, in others, in yourself.'
-      : watchFor; // null or 'golden' → original AI text
+  const displayedWatchFor = watchFor;
 
   // Shadow type pill config
   const shadowPill =
@@ -495,16 +479,23 @@ export default function ShadowWork() {
     // Find already-migrated entries to avoid duplicates
     const { data: existing } = await supabase
       .from('waking_life_entries')
-      .select('linked_dream_id')
+      .select('linked_dream_id, title')
       .eq('user_id', user.id)
       .eq('entry_type', 'shadow_encounter');
 
     const migratedDreamIds = new Set(
       (existing || []).map(e => e.linked_dream_id).filter(Boolean)
     );
+    const migratedTitles = new Set(
+      (existing || []).map(e => e.title).filter(Boolean)
+    );
 
     const toInsert = encounters
-      .filter(enc => enc.title && (!enc.linked_dream_id || !migratedDreamIds.has(enc.linked_dream_id)))
+      .filter(enc => {
+        if (!enc.title) return false;
+        if (enc.linked_dream_id) return !migratedDreamIds.has(enc.linked_dream_id);
+        return !migratedTitles.has(enc.title);
+      })
       .map(enc => ({
         user_id: user.id,
         entry_type: 'shadow_encounter',
@@ -621,19 +612,18 @@ export default function ShadowWork() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-8 py-10">
+    <div className="max-w-2xl mx-auto px-4 pt-8">
 
       {/* Header */}
-      <div className="mb-8">
-        <h1 className="font-display italic text-4xl text-ink dark:text-white mb-1">Shadow Work</h1>
-        <p className="text-sm font-body text-ink/45 dark:text-white/35 mb-4">
+      <div className="mb-0">
+        <h1 className="font-display italic text-4xl text-plum mb-1">Shadow Work</h1>
+        <p className="text-base font-body text-ink/60 dark:text-white/45 mb-8">
           The qualities disowned — and waiting to be reclaimed.
         </p>
-        <p className="font-display italic text-base leading-relaxed max-w-lg" style={{ color: '#b8924a', opacity: 0.7 }}>
-          "The shadow is not only darkness. It contains everything you decided was unacceptable —
-          including gifts you have not yet claimed."
-        </p>
         <PracticeOrientation storageKey="orient_shadow">
+          <p className="italic mb-4" style={{ color: '#b8924a', fontFamily: 'Cormorant Garamond, serif' }}>
+            "The shadow is not only darkness. It contains everything you decided was unacceptable — including gifts you have not yet claimed."
+          </p>
           <p>The <JungianTerm id="shadow">shadow</JungianTerm> shows up in the people you can't stand, the reactions that embarrass you, the qualities you admire too intensely in others. Recording these encounters is the beginning of owning what belongs to you.</p>
           <p>The qualities that disturb you most are often the ones you most need. The shadow is not your enemy — it is the part of you that has been waiting to be included.</p>
         </PracticeOrientation>

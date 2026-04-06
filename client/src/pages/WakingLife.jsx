@@ -965,25 +965,11 @@ export default function WakingLife() {
   const galleryEntries = filtered.filter(e => e.media_url && e.media_type === 'image');
 
   return (
-    <div className="max-w-4xl mx-auto px-8 py-10">
-
-      {/* Living question prompt */}
-      {livingQuestion && (
-        <p
-          className="font-display italic text-ink/45 dark:text-white/35 mb-6 leading-relaxed"
-          style={{ fontSize: 15 }}
-        >
-          {livingQuestion}
-        </p>
-      )}
+    <div className="max-w-2xl mx-auto px-4 pt-8">
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div>
-          <p className="font-display italic text-base text-ink/45 dark:text-white/35 leading-relaxed max-w-lg">
-            Where the inner work leaves traces — art made, music encountered, milestones reached, synchronicities noticed.
-          </p>
-        </div>
+      <div className="flex items-start justify-between mb-1">
+        <h1 className="font-display italic text-4xl text-plum">Waking Life</h1>
         <button
           onClick={openNew}
           className="shrink-0 ml-6 px-4 py-2 rounded-xl text-sm font-body transition-all duration-150 border border-gold/30 text-gold/80 hover:bg-gold/8 hover:text-gold"
@@ -991,11 +977,24 @@ export default function WakingLife() {
           + New entry
         </button>
       </div>
+      <p className="text-base font-body text-ink/60 dark:text-white/45 mb-8">
+        Where the inner work leaves traces — in waking moments, encounters, and what arrives between dreams.
+      </p>
 
       <PracticeOrientation storageKey="orient_waking">
         <p>Not everything that belongs to the inner work takes place in dreams. Art made, music that stopped you, synchronicities that felt too specific to dismiss — these are the residue of the unconscious in waking life.</p>
         <p>Track them here. Over time, they form a pattern that the dream archive alone cannot show you.</p>
       </PracticeOrientation>
+
+      {/* Living question prompt */}
+      {livingQuestion && (
+        <p
+          className="font-display italic text-ink/45 dark:text-white/35 mt-6 mb-2 leading-relaxed"
+          style={{ fontSize: 15 }}
+        >
+          {livingQuestion}
+        </p>
+      )}
 
       {/* Quality filter indicator */}
       {qualityFilter && (

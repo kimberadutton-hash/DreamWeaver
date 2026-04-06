@@ -1,6 +1,6 @@
 # DreamWeaver — Claude Project Context
 ### *Built on the spirit of Lantern*
-Last updated: April 3, 2026 (updated same day)
+Last updated: April 6, 2026
 
 ---
 
@@ -302,9 +302,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 | `analyzeDream()` | Opus | Full Jungian analysis with structure, archetypes, symbols, embodiment prompt |
 | `generateIndividuationNarrative()` | Opus | First-time full archive narrative |
 | `updateIndividuationNarrative()` | Opus | Progressive update with new dreams only |
-| `generateGuideLetter()` | Opus | Pre-session letter from selected dreams |
 | `reflectOnSession()` | Opus | Post active imagination analyst reflection |
-| `suggestComplexes()` | Opus | Identify complexes from archive patterns |
 | `suggestDreamSeries()` | Opus | Identify psychologically coherent series from JS-computed tag-overlap clusters |
 | `suggestSeriesAdditions()` | Opus | Evaluate candidate dreams for addition to an existing series |
 | `generateTitle()` | Haiku | 3-6 word poetic dream title |
@@ -315,7 +313,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 | `prepareImagination()` | Haiku | Pre-session figure profile and questions |
 | `imaginationEmbodimentPrompt()` | Haiku | Post-session embodiment question |
 | `transcribeImage()` | Opus | Handwritten dream photo to text |
-| `askArchive()` | Opus | Natural language Q&A over dream archive with conversation history; signature: `(question, dreams, apiKey, priorMessages=[])` |
+| `askArchive()` | Opus | Natural language Q&A over dream archive with conversation history; every response closes with a ✦ embodiment prompt; signature: `(question, dreams, apiKey, priorMessages=[])` |
 | `generatePersonalThemes()` | Opus | 3-5 personal themes from full archive |
 | `groupShadowQualities()` | Haiku | Shadow Work page: organize qualities into psychological theme clusters; returns `clusterName`, `qualities`, `descriptor` (one sentence naming the psyche quality), `watchFor` (one sentence beginning "Watch for:") |
 | `buildDreamContext()` | — | Pure JS helper, no API call |
@@ -332,7 +330,6 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Shadow Work module — redesigned as pattern-first: quality constellation surfaced from both dreams.shadow_analysis and shadow_encounters.projected_qualities, sorted by frequency; receptive prompt; recorded encounters below as secondary entry point; IntegrationStatusTab removed
 - ✅ Shadow Work — "currently with you" — most recent quality cluster with no waking life connection surfaces as a single quiet line at the top of the page (quality name + descriptor), above the orienting question
 - ✅ Shadow Work — waking encounter count — each ThemeCard shows "X waking encounters →" count link below the card, linking to Waking Life filtered by that quality; count drawn from waking_life_entries of type shadow_encounter
-- ✅ Complexes Map with AI identification
 - ✅ Dream Series — manual create/edit/delete plus AI-powered series detection: JS clustering (union-find, Jaccard ≥ 0.35, ≥ 2 shared tags, 3+ dreams) feeds Opus analysis; proposal cards with confidence badges, dream pills, Create/Dismiss; "◆ Find more dreams" on detail page with inline suggestion panel per candidate; origin indicator on cards
 - ✅ Active Imagination writing space (user writes both voices — AI does not voice dream figures)
 - ✅ Waking Life with media uploads (images, audio); now a first-class nav item in The Thread; supports `?quality=` URL param for filtering by linked_shadow_quality; `shadow_encounter` entry type added (color `#5c4a7c`) for encounters logged from dream detail
@@ -351,6 +348,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Dream Archive with search (including archetypes) and embedded Series/Timeline tabs (All Dreams · Series · Timeline tab bar in Archive.jsx; DreamSeries and Timeline rendered inline via `hideHeader` prop)
 - ✅ Timeline
 - ✅ Ask the Archive with conversation threading — follow-up questions within any saved conversation, full thread stored in `messages` jsonb column, QueryCard/ArchiveThread/MessageBubble component architecture, old rows backfilled via SQL migration
+- ✅ Ask the Archive — embodiment gesture — every response closes with a ✦ embodiment prompt pointing toward body or waking life (system prompt update to `askArchive()` only — no changes to AskArchive.jsx or function signature)
 - ✅ CSV import
 - ✅ Synchronicities (in Waking Life)
 - ✅ Big Dream flag
@@ -389,8 +387,6 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 
 - Old `archive_queries` rows with null/empty messages require SQL backfill (`supabase-migration-archive-threads.sql`) to display as threads
 - `Symbols.jsx` page and `/symbols` route still exist in the codebase — not linked from sidebar but not formally retired either
-- `generateGuideLetter()` in `ai.js` is no longer called from `GuideLetter.jsx` (Session Letter redesigned to pure JS assembly) — dead code, safe to remove in a future cleanup pass
-- `ComplexesMap.jsx` and `/complexes` route still exist — scheduled for formal deletion (Phase 1 backlog)
 - `shadow_encounters` table is preserved in Supabase but dormant — no longer written to; existing data migrated to waking_life_entries; table can be dropped after confirming migration ran for all users
 
 ---

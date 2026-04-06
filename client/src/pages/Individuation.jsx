@@ -304,11 +304,11 @@ export default function Individuation() {
         </div>
       )}
 
-      <div className="max-w-3xl mx-auto px-6 sm:px-8 py-10 pb-24">
+      <div className="max-w-2xl mx-auto px-4 pt-8 pb-24">
 
         {/* ── Page header ── */}
         <div className="mb-6">
-          <h1 className="font-display italic text-4xl text-ink dark:text-white mb-2">
+          <h1 className="font-display italic text-4xl text-plum mb-2">
             My Journey
           </h1>
           <p className="text-sm font-body text-ink/50 dark:text-white/40">

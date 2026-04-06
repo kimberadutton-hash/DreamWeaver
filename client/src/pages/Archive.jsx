@@ -85,9 +85,9 @@ export default function Archive() {
   return (
     <div>
       {/* Header + orientation + search + tabs */}
-      <div className="max-w-4xl mx-auto px-8 pt-10">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="font-display italic text-4xl text-ink dark:text-white">
+      <div className="max-w-2xl mx-auto px-4 pt-8">
+        <div className="flex items-center justify-between mb-1">
+          <h1 className="font-display italic text-4xl text-plum">
             Dream Archive
           </h1>
           <Link
@@ -98,6 +98,9 @@ export default function Archive() {
             + New Dream
           </Link>
         </div>
+        <p className="text-base mb-8 font-sans text-ink/60">
+          A living record of where the unconscious has been.
+        </p>
 
         <PracticeOrientation storageKey="orient_archive">
           <p>The archive is not a library — it is a living record of where the unconscious has been. Over time, you will begin to see what the waking mind cannot: the threads that cross months, the figures that return, the territory your psyche keeps coming back to.</p>
@@ -137,7 +140,7 @@ export default function Archive() {
 
       {/* All Dreams tab content */}
       {tab === 'dreams' && (
-        <div className="max-w-4xl mx-auto px-8 pb-10">
+        <div className="max-w-2xl mx-auto px-4 pb-10">
           {/* Untitled dreams banner */}
           {!loading && untitledDreams.length > 0 && !search && (
             <div className="mb-6 flex items-center justify-between px-5 py-3 rounded-xl bg-gold/8 border border-gold/20">

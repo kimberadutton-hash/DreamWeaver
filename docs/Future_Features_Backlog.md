@@ -1,5 +1,5 @@
 # Dream Weaver — Future Features Backlog
-Last updated: April 3, 2026 (updated same day)
+Last updated: April 6, 2026
 
 Items marked ⚡ are immediate priority.
 Items marked 🔄 are redesigns of existing features, not new builds.
@@ -13,8 +13,8 @@ These were built and then deliberately removed. Do not rebuild.
 
 **Complexes Map** — Removed. Diagnostic and redundant with Ask the Archive, Shadow Work,
 Dream Series, and Individuation Narrative. Creates false clinical certainty without a
-clinical container. ComplexesMap.jsx and /complexes route still exist in codebase —
-formal deletion is a cleanup task listed below.
+clinical container. ComplexesMap.jsx, /complexes route, suggestComplexes(), and
+generateGuideLetter() have all been deleted. Feature is fully retired from the codebase.
 
 **Daily Practice page** — Removed. The /practice route, DailyPractice.jsx, and "Daily
 Practice" sidebar nav item have all been deleted. Its three concerns were redistributed:
@@ -52,9 +52,9 @@ individual dream's detail page below the analysis section, and as a quiet italic
 at the top of Waking Life above the new entry button. "I sat with this" button marks
 it responded and removes it from both locations.
 
-⚡ 🔄 **Ask the Archive — add embodiment gesture to every response**
-Every Ask the Archive response should close with an embodiment-oriented prompt, the
-same way dream analysis does. Update askArchive() system prompt accordingly.
+✅ 🔄 **Ask the Archive — add embodiment gesture to every response** *(completed)*
+Every response now closes with a ✦ embodiment prompt — same somatic/waking-life
+orientation that ends dream analysis. askArchive() system prompt updated only.
 
 ⚡ **Anima/animus in dream analysis**
 Stage 2 of individuation is entirely unnamed in the app. Contra-gender dream figures
@@ -75,9 +75,9 @@ named. The individuation narrative should face forward as well as backward.
 - The word "Self" (in the Jungian sense) should appear as a touchstone in the
   individuation narrative and My Journey page
 
-⚡ **Complexes formal removal**
-Delete ComplexesMap.jsx. Remove /complexes route from routing config. Confirm nothing
-else references it before deleting.
+✅ **Complexes formal removal** *(completed)*
+ComplexesMap.jsx deleted. /complexes route, imports, and nav references removed.
+suggestComplexes() and generateGuideLetter() removed from ai.js. Feature fully retired.
 
 ---
 
@@ -219,9 +219,8 @@ range filtering.
 Extend existing "scan for bad tags" in Settings to catch semantic duplicates
 ("locked door" and "locked doors"). Suggest merges, user confirms.
 
-**generateGuideLetter() dead code removal**
-This function in ai.js is no longer called from GuideLetter.jsx (Session Letter was
-redesigned to pure JS assembly). Safe to remove.
+✅ **generateGuideLetter() dead code removal** *(completed)*
+Removed from ai.js along with suggestComplexes() and their AI_MODELS entries.
 
 ---
 
@@ -240,8 +239,9 @@ approach.
 
 **Now:** Phase 1 (design integrity pass) — remaining items.
 Shadow Work redesign ✅ complete. Daily Practice redesign ✅ complete (removed).
-Living Questions ✅ complete. Remaining: Ask the Archive embodiment gesture,
-anima/animus in analysis, Jungian Self touchstone, Complexes formal removal.
+Living Questions ✅ complete. Ask the Archive embodiment gesture ✅ complete.
+Complexes formal removal ✅ complete. Remaining: anima/animus in analysis,
+Jungian Self touchstone.
 
 **Then:** Technical health cleanup.
 

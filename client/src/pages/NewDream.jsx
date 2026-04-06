@@ -233,7 +233,7 @@ export default function NewDream() {
     : '+ Analyst notes';
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-10">
+    <div className="max-w-2xl mx-auto px-4 pt-8">
       {/* No API key banner */}
       {!keyPresent && (
         <div className="mb-6 flex items-start justify-between gap-4 px-5 py-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
@@ -248,7 +248,10 @@ export default function NewDream() {
         </div>
       )}
 
-      <h1 className="font-display italic text-4xl text-ink dark:text-white mb-6">Record a Dream</h1>
+      <h1 className="font-display italic text-4xl text-plum mb-1">Record a Dream</h1>
+      <p className="text-base font-body text-ink/60 dark:text-white/45 mb-8">
+        Receive what arrived in the night before the waking mind can explain it away.
+      </p>
 
       <PracticeOrientation storageKey="orient_record">
         <p>Each dream is a letter from the unconscious — written in images, not words. This practice asks only that you receive it faithfully: record what arrived, however fragmentary, before the waking mind can explain it away.</p>

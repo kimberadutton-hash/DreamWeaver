@@ -179,11 +179,12 @@ export default function Reference() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-8 py-10">
+    <div className="max-w-2xl mx-auto px-4 pt-8">
 
       {/* ── Header ── */}
-      <div className="mb-8">
-        <p className="font-display italic text-base text-ink/45 dark:text-white/35 mb-6 leading-relaxed">
+      <div className="mb-0">
+        <h1 className="font-display italic text-4xl text-plum mb-1">Reference</h1>
+        <p className="text-base font-body text-ink/60 dark:text-white/45 mb-8">
           The vocabulary of the inner life — concepts, archetypes, and methods for those doing the work.
         </p>
 

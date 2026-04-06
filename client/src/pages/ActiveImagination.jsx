@@ -985,25 +985,13 @@ export default function ActiveImagination() {
   }
 
   return (
-    <div className="max-w-3xl mx-auto px-8 py-10">
+    <div className="max-w-2xl mx-auto px-4 pt-8">
 
       {/* Header */}
-      <div className="flex items-start justify-between mb-6">
-        <div className="max-w-xl">
-          <h1 className="font-display italic text-5xl text-ink dark:text-white leading-tight mb-2">
-            Active Imagination
-          </h1>
-          <p className="font-body text-sm text-ink/50 dark:text-white/40 mb-3 leading-relaxed">
-            A space to dialogue with the figures that arise from the deep — in your own words, from your own depths.
-          </p>
-          <p className="font-display italic text-sm text-ink/30 dark:text-white/22 leading-relaxed">
-            Jung conducted <JungianTerm id="active-imagination">active imagination</JungianTerm> by writing both sides of the dialogue himself. This is that practice. The figure's voice comes from you — not from outside.
-          </p>
-          <PracticeOrientation storageKey="orient_imagination">
-            <p><JungianTerm id="active-imagination">Active imagination</JungianTerm> is a disciplined encounter with the figures that arise from the deep. You write both sides of the dialogue — your own voice, and the figure's voice as it comes through you. This is not performance or invention. It is contact.</p>
-            <p>Go slowly. Let the figure surprise you. What arrives through your own hand may be more honest than what you expected to write.</p>
-          </PracticeOrientation>
-        </div>
+      <div className="flex items-start justify-between mb-1">
+        <h1 className="font-display italic text-4xl text-plum">
+          Active Imagination
+        </h1>
         <button
           onClick={() => { setNewSessionFigureName(''); setView(v => v === 'setup' ? 'list' : 'setup'); }}
           className="shrink-0 ml-6 mt-1 text-sm font-body text-gold/70 hover:text-gold transition-colors whitespace-nowrap"
@@ -1011,6 +999,16 @@ export default function ActiveImagination() {
           Begin new session →
         </button>
       </div>
+      <p className="text-base font-body text-ink/60 dark:text-white/45 mb-8">
+        A space to dialogue with the figures that arise from the deep — in your own words, from your own depths.
+      </p>
+      <PracticeOrientation storageKey="orient_imagination">
+        <p className="italic mb-4" style={{ color: '#b8924a', fontFamily: 'Cormorant Garamond, serif' }}>
+          Jung conducted <JungianTerm id="active-imagination">active imagination</JungianTerm> by writing both sides of the dialogue himself. This is that practice. The figure's voice comes from you — not from outside.
+        </p>
+        <p><JungianTerm id="active-imagination">Active imagination</JungianTerm> is a disciplined encounter with the figures that arise from the deep. You write both sides of the dialogue — your own voice, and the figure's voice as it comes through you. This is not performance or invention. It is contact.</p>
+        <p>Go slowly. Let the figure surprise you. What arrives through your own hand may be more honest than what you expected to write.</p>
+      </PracticeOrientation>
 
       {/* Setup flow */}
       {view === 'setup' && (

@@ -93,10 +93,10 @@ export default function AnalystFocus() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto px-8 py-10">
+    <div className="max-w-2xl mx-auto px-4 pt-8">
       <div className="flex items-start justify-between mb-8">
         <div>
-          <h1 className="font-display italic text-4xl text-ink dark:text-white mb-2">
+          <h1 className="font-display italic text-4xl text-plum mb-2">
             Analyst Focus
           </h1>
           <p className="text-sm font-body text-ink/50 dark:text-white/40">
