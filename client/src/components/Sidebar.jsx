@@ -75,10 +75,11 @@ function LockedItem({ label, requirement }) {
 
 // ── Nav item ──────────────────────────────────────────────────────────────────
 
-function NavItem({ to, label, icon, muted }) {
+function NavItem({ to, label, icon, muted, onClick }) {
   return (
     <NavLink
       to={to}
+      onClick={onClick}
       className={({ isActive }) =>
         `flex items-center gap-3 px-4 py-2.5 rounded-lg text-sm font-body transition-all duration-150 ${
           isActive
@@ -121,7 +122,7 @@ function NavSectionLabel({ children }) {
 
 // ── Sidebar ───────────────────────────────────────────────────────────────────
 
-export default function Sidebar() {
+export default function Sidebar({ open, onClose }) {
   const { profile, signOut } = useAuth();
   const { hasGuide, unlocked, unlockRequirement } = useNavTier();
   const navigate = useNavigate();
@@ -133,11 +134,11 @@ export default function Sidebar() {
 
   return (
     <aside
-      className="w-[280px] shrink-0 flex flex-col h-full"
+      className={`fixed inset-y-0 left-0 z-40 w-[280px] flex flex-col h-screen transition-transform duration-300 lg:static lg:h-full lg:shrink-0 lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}
       style={{ backgroundColor: '#3d2b4a' }}
     >
       {/* Header */}
-      <div className="px-7 pt-8 pb-6 border-b border-white/10">
+      <div className="relative px-7 pt-8 pb-6 border-b border-white/10">
         <h1 className="font-display italic text-3xl text-gold tracking-wide">
           Dream Weaver
         </h1>
@@ -146,6 +147,14 @@ export default function Sidebar() {
             {profile.display_name}
           </p>
         )}
+        {/* Close button — mobile only */}
+        <button
+          onClick={onClose}
+          className="lg:hidden absolute top-4 right-4 text-white/50 hover:text-white transition-colors text-2xl leading-none"
+          aria-label="Close menu"
+        >
+          ×
+        </button>
       </div>
 
       {/* Nav */}
@@ -153,25 +162,25 @@ export default function Sidebar() {
 
         {/* Record a Dream — standalone, always visible */}
         <div className="mb-1">
-          <NavItem to="/new" label="Record a Dream" icon="✦" />
+          <NavItem to="/new" label="Record a Dream" icon="✦" onClick={onClose} />
         </div>
 
         {/* THE THREAD */}
         <NavSectionLabel>The Thread</NavSectionLabel>
         <div className="space-y-0.5">
-          <NavItem to="/archive" label="Dream Archive" />
-          <NavItem to="/waking-life" label="Waking Life" />
+          <NavItem to="/archive" label="Dream Archive" onClick={onClose} />
+          <NavItem to="/waking-life" label="Waking Life" onClick={onClose} />
         </div>
 
         {/* THE LOOM */}
         <NavSectionLabel>The Loom</NavSectionLabel>
         <div className="space-y-0.5">
           {unlocked.shadowWork
-            ? <NavItem to="/shadow" label="Shadow Work" />
+            ? <NavItem to="/shadow" label="Shadow Work" onClick={onClose} />
             : <LockedItem label="Shadow Work" requirement={unlockRequirement.shadowWork} />
           }
           {unlocked.activeImagination
-            ? <NavItem to="/imagination" label="Active Imagination" />
+            ? <NavItem to="/imagination" label="Active Imagination" onClick={onClose} />
             : <LockedItem label="Active Imagination" requirement={unlockRequirement.activeImagination} />
           }
 
@@ -181,11 +190,11 @@ export default function Sidebar() {
         <NavSectionLabel>The Web</NavSectionLabel>
         <div className="space-y-0.5">
           {unlocked.askArchive
-            ? <NavItem to="/ask" label="Ask the Archive" />
+            ? <NavItem to="/ask" label="Ask the Archive" onClick={onClose} />
             : <LockedItem label="Ask the Archive" requirement={unlockRequirement.askArchive} />
           }
           {unlocked.myJourney
-            ? <NavItem to="/individuation" label="My Journey" />
+            ? <NavItem to="/individuation" label="My Journey" onClick={onClose} />
             : <LockedItem label="My Journey" requirement={unlockRequirement.myJourney} />
           }
         </div>
@@ -195,8 +204,8 @@ export default function Sidebar() {
           <>
             <NavSectionLabel>The Witness</NavSectionLabel>
             <div className="space-y-0.5">
-              <NavItem to="/focus" label="Analyst Focus" />
-              <NavItem to="/letter" label="Session Letter" />
+              <NavItem to="/focus" label="Analyst Focus" onClick={onClose} />
+              <NavItem to="/letter" label="Session Letter" onClick={onClose} />
             </div>
           </>
         )}
@@ -206,8 +215,8 @@ export default function Sidebar() {
 
         {/* Bottom items — no section label, quieter style */}
         <div className="space-y-0.5">
-          <NavItem to="/reference" label="Reference" muted />
-          <NavItem to="/settings" label="Settings" muted />
+          <NavItem to="/reference" label="Reference" muted onClick={onClose} />
+          <NavItem to="/settings" label="Settings" muted onClick={onClose} />
         </div>
       </nav>
 

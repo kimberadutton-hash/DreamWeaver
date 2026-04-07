@@ -10,6 +10,7 @@ export default function Layout({ children }) {
   const { showPauseGate, dismissPauseGate } = usePauseGate();
   const { user, profile, dreamCount } = useAuth();
   const [activeMilestone, setActiveMilestone] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const prevDreamCountRef = useRef(null);
   const prevAnalystNameRef = useRef(null);
 
@@ -57,8 +58,23 @@ export default function Layout({ children }) {
 
   return (
     <div className="flex h-screen overflow-hidden bg-parchment dark:bg-gray-950">
-      <Sidebar />
+      {/* Mobile backdrop */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="flex-1 overflow-y-auto scrollbar-thin">
+        {/* Hamburger — mobile only */}
+        <button
+          onClick={() => setSidebarOpen(true)}
+          className="lg:hidden fixed top-4 left-4 z-20 p-1 text-ink/60 dark:text-white/60 hover:text-ink dark:hover:text-white transition-colors"
+          aria-label="Open menu"
+        >
+          ☰
+        </button>
         {showPauseGate && <PauseGate onDismiss={dismissPauseGate} />}
         {children}
       </main>
