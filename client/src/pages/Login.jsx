@@ -42,14 +42,14 @@ export default function Login() {
             Dream Weaver
           </h1>
           <p className="text-ink/50 text-sm mt-3 font-body">
-            A journal of the inner life
+            tend the thread of what you're becoming
           </p>
         </div>
 
         {/* Card */}
         <div className="bg-white/70 rounded-2xl shadow-sm border border-black/5 px-8 py-8">
           <h2 className="font-display text-2xl text-ink mb-6">
-            {mode === 'login' ? 'Welcome back' : 'Begin your journal'}
+            {mode === 'login' ? 'The thread continues' : 'Begin your journal'}
           </h2>
 
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -94,7 +94,7 @@ export default function Login() {
               className="w-full py-3 rounded-lg font-body text-sm font-medium text-white transition-opacity disabled:opacity-60"
               style={{ backgroundColor: '#3d2b4a' }}
             >
-              {loading ? 'Please wait…' : mode === 'login' ? 'Enter the Vault' : 'Create Account'}
+              {loading ? 'Please wait…' : mode === 'login' ? 'Cross the Threshold' : 'Create Account'}
             </button>
           </form>
 
@@ -103,7 +103,7 @@ export default function Login() {
               onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setError(''); setMessage(''); }}
               className="text-plum/70 hover:text-plum text-sm font-body transition-colors"
             >
-              {mode === 'login' ? 'New here? Create an account' : 'Already have an account? Sign in'}
+              {mode === 'login' ? 'Beginning? Come in →' : 'Already have an account? Sign in'}
             </button>
           </div>
         </div>

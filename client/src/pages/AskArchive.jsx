@@ -511,15 +511,16 @@ export default function AskArchive() {
 
   function dreamCountLabel() {
     const count = filteredDreams.length;
-    const base = `Analyzing ${count} dream${count !== 1 ? 's' : ''}`;
+    if (scope === 'last_15') return 'Last 15 dreams';
+    if (scope === 'last_30') return 'Last 30 dreams';
     if (scope === 'custom' && (customFrom || customTo)) {
       const fmtFrom = customFrom ? formatScopeMonth(customFrom) : null;
       const fmtTo = customTo ? formatScopeMonth(customTo) : null;
-      if (fmtFrom && fmtTo) return `${base} (${fmtFrom} – ${fmtTo})`;
-      if (fmtFrom) return `${base} (from ${fmtFrom})`;
-      if (fmtTo) return `${base} (through ${fmtTo})`;
+      if (fmtFrom && fmtTo) return `${fmtFrom} – ${fmtTo}`;
+      if (fmtFrom) return `From ${fmtFrom}`;
+      if (fmtTo) return `Through ${fmtTo}`;
     }
-    return base;
+    return `${count} dream${count !== 1 ? 's' : ''} in archive`;
   }
 
   return (
@@ -582,10 +583,7 @@ export default function AskArchive() {
                        focus:outline-none focus:border-gold/50 focus:ring-1 focus:ring-gold/20
                        disabled:opacity-50 transition-colors leading-relaxed"
           />
-          <div className="flex items-center justify-between">
-            <p className="text-[11px] font-mono text-ink/30">
-              {dreams.length} dream{dreams.length !== 1 ? 's' : ''} in archive
-            </p>
+          <div className="flex items-center justify-end">
             <button
               type="submit"
               disabled={!question.trim() || loading}

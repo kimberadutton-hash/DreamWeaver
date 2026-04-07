@@ -271,9 +271,19 @@ export default function Settings() {
               </button>
             </div>
             <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-2 leading-relaxed">
-              Required for AI features. Get a free key at{' '}
-              <span className="text-plum dark:text-gold">console.anthropic.com</span>.
-              Your key is stored only on your device and never sent to our servers.
+              Dream Weaver uses Anthropic's Claude to analyze dreams and hold conversations with your archive.
+              Your key is stored only in your browser — it never touches our servers, and goes directly to Anthropic when you use AI features.
+            </p>
+            <p className="text-xs text-ink/40 dark:text-white/30 font-body mt-1.5 leading-relaxed">
+              $5 of API credit goes a long way for personal dream work.{' '}
+              <a
+                href="https://console.anthropic.com"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-plum dark:text-gold underline hover:opacity-70 transition-opacity"
+              >
+                Get your API key at console.anthropic.com →
+              </a>
             </p>
           </div>
 

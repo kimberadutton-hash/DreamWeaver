@@ -121,7 +121,6 @@ export default function DreamDetail() {
     });
     setEncounterSaving(false);
     if (error) {
-      console.error('Failed to save shadow encounter:', error);
       alert(`Could not save encounter: ${error.message}`);
       return;
     }
@@ -163,8 +162,8 @@ export default function DreamDetail() {
           .lt('dream_date', dream.dream_date)
           .order('dream_date', { ascending: false }).limit(15);
         if (recentDreams?.length) dreamContext = buildDreamContext(recentDreams);
-      } catch (ctxErr) {
-        console.warn('Dream context fetch failed — proceeding without context:', ctxErr);
+      } catch {
+        // context fetch failed — proceeding without it
       }
 
       const [data, summaryText] = await Promise.all([
@@ -254,9 +253,7 @@ export default function DreamDetail() {
           .from('dreams')
           .update({ shadow_analysis: result })
           .eq('id', dream.id);
-        if (saveError) {
-          console.warn('Could not cache shadow analysis:', saveError.message);
-        }
+        // saveError on caching is non-critical — analysis was already shown
         checkExistingEncounter();
       }
     } catch (err) {

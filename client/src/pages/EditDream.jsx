@@ -80,8 +80,8 @@ export default function EditDream() {
         if (priorDreams?.length) {
           dreamContext = buildDreamContext(priorDreams);
         }
-      } catch (ctxErr) {
-        console.warn('Dream context fetch failed — proceeding without context:', ctxErr);
+      } catch {
+        // context fetch failed — proceeding without it
       }
 
       const analysisData = await analyzeDream({

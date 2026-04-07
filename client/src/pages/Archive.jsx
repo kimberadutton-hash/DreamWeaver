@@ -64,7 +64,7 @@ export default function Archive() {
           setDreams(currentDreams);
         }
       } catch (err) {
-        console.error(`Title generation failed for dream ${dream.id}:`, err);
+        // title generation failed — dream keeps existing title
       }
       setTitlingProgress({ done: i + 1, total: toTitle.length });
     }

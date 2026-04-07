@@ -66,6 +66,9 @@ async function call({ messages, maxTokens = 1024, model = AI_MODELS.analysis, ap
     if (res.status === 401) {
       throw new AiError('Invalid API key — check your key in Settings.', 'invalid_key');
     }
+    if (res.status === 429) {
+      throw new AiError('Rate limit reached — please wait a moment before trying again.', 'rate_limit');
+    }
     if (msg.toLowerCase().includes('credit balance') || msg.toLowerCase().includes('insufficient')) {
       throw new AiError(
         'Your API key has insufficient credits. Visit console.anthropic.com/billing to add credits.',

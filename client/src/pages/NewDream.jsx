@@ -59,7 +59,6 @@ export default function NewDream() {
       .eq('is_active', true)
       .limit(1)
       .maybeSingle();
-    if (error && error.code !== 'PGRST116') console.error('fetchActiveFocus:', error);
     if (data) setActiveFocus(data);
   }
 
@@ -172,8 +171,8 @@ export default function NewDream() {
           if (recentDreams?.length) {
             dreamContext = buildDreamContext(recentDreams);
           }
-        } catch (ctxErr) {
-          console.warn('Dream context fetch failed — proceeding without context:', ctxErr);
+        } catch {
+          // context fetch failed — proceeding without it
         }
 
         [analysisData, summaryText] = await Promise.all([

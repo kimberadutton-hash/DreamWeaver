@@ -71,7 +71,7 @@ export default function AnalystFocus() {
       .from('analyst_focuses')
       .update({ notes })
       .eq('id', id);
-    if (error) { console.warn('Save failed:', error.message); return; }
+    if (error) { return; }
     setFocuses(prev => prev.map(f => f.id === id ? { ...f, notes } : f));
   }
 

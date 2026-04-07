@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { useApiKey } from '../hooks/useApiKey';
 import JungianTerm from '../components/JungianTerm';
 // Mandala SVG — used in Step 3
 function Mandala() {
@@ -51,11 +52,14 @@ const MEETING_FREQUENCY_OPTIONS = [
 
 export default function Onboarding() {
   const { updateProfile } = useAuth();
+  const { saveApiKey } = useApiKey();
   const navigate = useNavigate();
 
   const [step, setStep] = useState(1);
   const [visible, setVisible] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [pendingDestination, setPendingDestination] = useState('/archive');
+  const [keyDraft, setKeyDraft] = useState('');
 
   const [guideStatus, setGuideStatus] = useState(null); // 'yes' | 'exploring' | 'independent'
   const [guideForm, setGuideForm] = useState({
@@ -216,9 +220,9 @@ export default function Onboarding() {
             {/* Three-option cards */}
             <div className="grid grid-cols-1 gap-3 max-w-[520px] mx-auto w-full text-left">
               {[
-                { key: 'yes', title: 'Yes, I work with someone', sub: 'An analyst, therapist, or trusted guide' },
+                { key: 'yes', title: 'I have a guide', sub: 'An analyst, therapist, or trusted guide' },
                 { key: 'exploring', title: 'Not yet — I\'m exploring', sub: 'I\'m open to finding one as the work deepens' },
-                { key: 'independent', title: 'I prefer to work independently', sub: 'I take full responsibility for what arises' },
+                { key: 'independent', title: 'I\'m practicing alone', sub: 'I take full responsibility for what arises' },
               ].map(({ key, title, sub }) => (
                 <button
                   key={key}
@@ -319,12 +323,11 @@ export default function Onboarding() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-[520px] mx-auto w-full">
               <button
-                onClick={() => complete('/new')}
-                disabled={saving}
-                className="p-7 rounded-2xl border border-plum/20 bg-plum/5 hover:bg-plum/10 dark:hover:bg-white/8 transition-colors text-left disabled:opacity-50"
+                onClick={() => { setPendingDestination('/new'); next(); }}
+                className="p-7 rounded-2xl border border-plum/20 bg-plum/5 hover:bg-plum/10 dark:hover:bg-white/8 transition-colors text-left"
               >
                 <p className="font-display italic text-xl text-ink dark:text-white mb-2">
-                  Record a dream now
+                  Enter the practice
                 </p>
                 <p className="text-xs font-body text-ink/40 dark:text-white/35 leading-relaxed">
                   Begin with what the Dream Weaver sent last night
@@ -332,9 +335,8 @@ export default function Onboarding() {
               </button>
 
               <button
-                onClick={() => complete('/archive')}
-                disabled={saving}
-                className="p-7 rounded-2xl border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left disabled:opacity-50"
+                onClick={() => { setPendingDestination('/archive'); next(); }}
+                className="p-7 rounded-2xl border border-black/10 dark:border-white/10 hover:bg-black/5 dark:hover:bg-white/5 transition-colors text-left"
               >
                 <p className="font-display italic text-xl text-ink dark:text-white mb-2">
                   I'll begin tomorrow
@@ -346,11 +348,68 @@ export default function Onboarding() {
             </div>
           </div>
         )}
+
+        {/* ── STEP 6 ── */}
+        {step === 6 && (
+          <div className="space-y-8 w-full max-w-[520px] mx-auto">
+            <div>
+              <h1 className="font-display italic text-ink dark:text-white leading-snug mb-4"
+                style={{ fontSize: 42 }}>
+                One last thing.
+              </h1>
+              <p className="font-display text-ink/50 dark:text-white/40 leading-relaxed mx-auto"
+                style={{ fontSize: 16, maxWidth: 480 }}>
+                To unlock AI analysis, add your Anthropic API key — it lives only in your browser and goes directly to Anthropic.
+              </p>
+            </div>
+
+            <div className="text-left space-y-3">
+              <input
+                type="text"
+                value={keyDraft}
+                onChange={e => setKeyDraft(e.target.value)}
+                placeholder="sk-ant-..."
+                className="field-input font-mono text-xs"
+                autoFocus
+                autoComplete="off"
+                spellCheck={false}
+              />
+              <p className="text-xs font-body text-ink/30 dark:text-white/25 leading-relaxed">
+                $5 of credit goes a long way for personal dream work.{' '}
+                <a
+                  href="https://console.anthropic.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-plum/60 dark:text-gold/60 underline hover:opacity-70 transition-opacity"
+                >
+                  Get a key at console.anthropic.com →
+                </a>
+              </p>
+            </div>
+
+            <div className="flex flex-col items-center gap-4">
+              <button
+                onClick={() => { if (keyDraft.trim()) saveApiKey(keyDraft); complete(pendingDestination); }}
+                disabled={saving}
+                className="text-sm font-body font-medium text-gold hover:opacity-70 transition-opacity disabled:opacity-25 disabled:cursor-default"
+              >
+                {saving ? 'Entering…' : 'Save and enter →'}
+              </button>
+              <button
+                onClick={() => complete(pendingDestination)}
+                disabled={saving}
+                className="text-xs font-body text-ink/30 dark:text-white/25 hover:text-ink/60 dark:hover:text-white/50 transition-colors"
+              >
+                I'll do this later in Settings
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Progress dots */}
       <div className="fixed bottom-8 left-0 right-0 flex justify-center gap-2.5">
-        {[1, 2, 3, 4, 5].map(n => (
+        {[1, 2, 3, 4, 5, 6].map(n => (
           <div
             key={n}
             className={`rounded-full transition-all duration-300 ${
@@ -363,7 +422,7 @@ export default function Onboarding() {
       </div>
 
       {/* Back button */}
-      {step > 1 && step < 5 && (
+      {step > 1 && step < 6 && (
         <button
           onClick={back}
           className="fixed bottom-8 left-8 text-xs font-body text-ink/30 dark:text-white/25 hover:text-ink/60 dark:hover:text-white/50 transition-colors"

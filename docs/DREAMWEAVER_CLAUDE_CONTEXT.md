@@ -1,6 +1,6 @@
 # DreamWeaver — Claude Project Context
 ### *Built on the spirit of Lantern*
-Last updated: April 6, 2026
+Last updated: April 7, 2026
 
 ---
 
@@ -167,6 +167,8 @@ Sign out
 **Note:** Daily Practice (/practice, DailyPractice.jsx) has been removed entirely. Its concerns were redistributed: living questions surface on DreamDetail and Waking Life; active shadow quality surfaces on Shadow Work; Waking Life is now a first-class nav item.
 
 **Lock behavior:** Locked sections (The Loom before 3 dreams, The Web before 10 dreams) remain visible in the sidebar but rendered dimmed with a small "locked" label and hover tooltip showing the unlock requirement. The Witness section is absent entirely when `hasGuide` is false — no dimmed state.
+
+**Onboarding flow:** 6 steps. Steps 1–5 cover guide status selection and practice orientation. Step 5 (formerly the final step) now sets `pendingDestination` and advances to Step 6 instead of calling `complete()` directly. Step 6 is API key setup — input field, "Save and enter →" button, and "I'll do this later in Settings" skip link. Both paths call `complete(pendingDestination)`. Progress dots show 6 steps. Back button from Step 6 returns to Step 5.
 
 **Section label styling:** Cormorant Garamond italic, 13px, rgba(255,255,255,0.55) — matching the app name typography.
 
@@ -338,6 +340,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Weekly embodiment check-in
 - ✅ Pause gate for compulsive recording patterns
 - ✅ Onboarding with guide status selection
+- ✅ BYOK onboarding — API key setup added as Step 6 of onboarding (final step before entering app); Settings API key section expanded with plain-language explanation, direct link to console.anthropic.com, $5 credit note, and saved-key indicator; ai.js error handling confirmed solid for no_key, invalid_key, no_credits; explicit 429 handling added with type 'rate_limit' and human-readable message
 - ✅ Tiered navigation unlocking by dream count + guide status
 - ✅ Milestone moments at 3, 10, 20 dreams + guide added
 - ✅ Privacy controls (notes, session, focus)

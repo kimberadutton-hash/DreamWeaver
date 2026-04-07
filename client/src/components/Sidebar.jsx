@@ -65,7 +65,7 @@ function LockedItem({ label, requirement }) {
               whiteSpace: 'nowrap',
             }}
           >
-            Unlocks with {requirement}
+            Opens when you've recorded {requirement}
           </p>
         </div>
       </div>
@@ -217,7 +217,7 @@ export default function Sidebar() {
           onClick={handleSignOut}
           className="text-white/40 text-xs hover:text-white/70 transition-colors font-body"
         >
-          Sign out
+          Step away
         </button>
       </div>
     </aside>

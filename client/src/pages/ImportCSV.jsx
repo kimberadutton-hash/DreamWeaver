@@ -142,7 +142,6 @@ export default function ImportCSV() {
       });
 
       if (dbErr) {
-        console.error('Insert failed:', dbErr, row);
         failed++;
       } else {
         imported++;
