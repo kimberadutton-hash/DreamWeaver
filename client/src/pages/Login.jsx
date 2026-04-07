@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 
 export default function Login() {
   const navigate = useNavigate();
-  const [mode, setMode] = useState('login'); // 'login' | 'signup'
+  const [mode, setMode] = useState('login'); // 'login' | 'signup' | 'reset'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
@@ -21,13 +21,25 @@ export default function Login() {
       const { error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) setError(error.message);
       else navigate('/archive');
-    } else {
+    } else if (mode === 'signup') {
       const { error } = await supabase.auth.signUp({ email, password });
       if (error) setError(error.message);
       else setMessage('Check your email to confirm your account.');
+    } else if (mode === 'reset') {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: 'https://dreamweaver1-xi.vercel.app/reset-password',
+      });
+      if (error) setError(error.message);
+      else setMessage('Check your email for a reset link.');
     }
 
     setLoading(false);
+  }
+
+  function switchMode(next) {
+    setMode(next);
+    setError('');
+    setMessage('');
   }
 
   return (
@@ -63,19 +75,30 @@ export default function Login() {
               />
             </div>
 
-            <div>
-              <label className="block text-xs uppercase tracking-widest text-ink/50 mb-1.5 font-body">
-                Password
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                required
-                className="w-full px-4 py-3 rounded-lg border border-black/10 bg-parchment text-ink text-sm font-body focus:outline-none focus:ring-2 focus:ring-gold/40"
-                placeholder="••••••••"
-              />
-            </div>
+            {mode !== 'reset' && (
+              <div>
+                <label className="block text-xs uppercase tracking-widest text-ink/50 mb-1.5 font-body">
+                  Password
+                </label>
+                <input
+                  type="password"
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  required
+                  className="w-full px-4 py-3 rounded-lg border border-black/10 bg-parchment text-ink text-sm font-body focus:outline-none focus:ring-2 focus:ring-gold/40"
+                  placeholder="••••••••"
+                />
+                {mode === 'login' && (
+                  <button
+                    type="button"
+                    onClick={() => switchMode('reset')}
+                    className="mt-1.5 text-xs font-body text-ink/40 hover:text-ink/70 transition-colors"
+                  >
+                    Forgot password?
+                  </button>
+                )}
+              </div>
+            )}
 
             {error && (
               <p className="text-red-600 text-sm font-body">{error}</p>
@@ -90,17 +113,32 @@ export default function Login() {
               className="w-full py-3 rounded-lg font-body text-sm font-medium text-white transition-opacity disabled:opacity-60"
               style={{ backgroundColor: '#3d2b4a' }}
             >
-              {loading ? 'Please wait…' : mode === 'login' ? 'Cross the Threshold' : 'Create Account'}
+              {loading
+                ? 'Please wait…'
+                : mode === 'login'
+                  ? 'Cross the Threshold'
+                  : mode === 'signup'
+                    ? 'Create Account'
+                    : 'Send reset link'}
             </button>
           </form>
 
           <div className="mt-5 text-center">
-            <button
-              onClick={() => { setMode(m => m === 'login' ? 'signup' : 'login'); setError(''); setMessage(''); }}
-              className="text-plum/70 hover:text-plum text-sm font-body transition-colors"
-            >
-              {mode === 'login' ? 'Beginning? Come in →' : 'Already have an account? Sign in'}
-            </button>
+            {mode === 'reset' ? (
+              <button
+                onClick={() => switchMode('login')}
+                className="text-plum/70 hover:text-plum text-sm font-body transition-colors"
+              >
+                ← Back to sign in
+              </button>
+            ) : (
+              <button
+                onClick={() => switchMode(mode === 'login' ? 'signup' : 'login')}
+                className="text-plum/70 hover:text-plum text-sm font-body transition-colors"
+              >
+                {mode === 'login' ? 'Beginning? Come in →' : 'Already have an account? Sign in'}
+              </button>
+            )}
           </div>
         </div>
       </div>

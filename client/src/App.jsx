@@ -19,6 +19,7 @@ import WakingLife from './pages/WakingLife';
 import ActiveImagination from './pages/ActiveImagination';
 import ShadowWork from './pages/ShadowWork';
 import DreamSeries from './pages/DreamSeries';
+import ResetPassword from './pages/ResetPassword';
 
 
 function LoadingScreen() {
@@ -55,6 +56,7 @@ export default function App() {
       <AuthProvider>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/welcome" element={<WelcomeRoute><Onboarding /></WelcomeRoute>} />
           <Route
             path="/*"
