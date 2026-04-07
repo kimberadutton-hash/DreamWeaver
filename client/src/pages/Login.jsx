@@ -48,10 +48,6 @@ export default function Login() {
 
         {/* Card */}
         <div className="bg-white/70 rounded-2xl shadow-sm border border-black/5 px-8 py-8">
-          <h2 className="font-display text-2xl text-ink mb-6">
-            {mode === 'login' ? 'The thread continues' : 'Begin your journal'}
-          </h2>
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="block text-xs uppercase tracking-widest text-ink/50 mb-1.5 font-body">
