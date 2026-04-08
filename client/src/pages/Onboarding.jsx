@@ -186,15 +186,9 @@ export default function Onboarding() {
             </div>
             <p className="font-display text-ink/70 dark:text-white/70 leading-[1.9] mx-auto"
               style={{ fontSize: 20, maxWidth: 520 }}>
-              Something sends you dreams.
+              Jungians call this intelligence the Self — not the self you perform for the world, but the larger one. The one that has been watching the whole arc of your life.
               <br /><br />
-              Not your brain processing the day's events — or not only that. Something that knows
-              you more completely than your conscious mind does. Something that has been watching
-              the whole arc of your life and knows what you need to encounter next.
-              <br /><br />
-              Jungians call this the Self — the larger organizing intelligence of the whole psyche.
-              <br /><br />
-              This app carries that name as an acknowledgment of what is actually at work here.
+              DreamWeaver is built in service of that intelligence. Not to explain it. Not to analyze it to death. To help you hear it.
             </p>
             <button onClick={next} className="mt-4 text-sm font-body font-medium text-gold hover:opacity-70 transition-opacity">
               I'm listening →
@@ -311,11 +305,11 @@ export default function Onboarding() {
             <div>
               <h1 className="font-display italic text-ink dark:text-white leading-snug mb-4"
                 style={{ fontSize: 42 }}>
-                What did you dream last night?
+                The Dream Weaver has already been speaking. Now it is time to listen.
               </h1>
               <p className="font-display text-ink/50 dark:text-white/40 leading-relaxed mx-auto"
                 style={{ fontSize: 16, maxWidth: 480 }}>
-                Or last week. Or the dream you still remember from years ago that has never left you.
+                What did you dream last night? Or last week. Or the dream you still remember from years ago that has never left you.
                 <br /><br />
                 Start wherever feels true.
               </p>
