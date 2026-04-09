@@ -316,7 +316,10 @@ function EntryDetailDrawer({ entry, onClose, onEdit, onDelete }) {
           )}
 
           {entry.linked_shadow_quality && (
-            <div className="flex flex-wrap gap-1.5 mb-5">
+            <div className="rounded-xl border border-black/10 bg-white/50 px-4 py-3 mb-5">
+              <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-2">
+                Shadow Quality
+              </p>
               <span
                 className="px-2 py-0.5 rounded-full text-xs font-body text-ink/50"
                 style={{ backgroundColor: 'rgba(61,43,74,0.07)', border: '1px solid rgba(61,43,74,0.15)' }}

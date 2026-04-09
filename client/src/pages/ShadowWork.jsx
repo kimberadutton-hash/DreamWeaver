@@ -225,10 +225,12 @@ function ThemeCard({ clusterName, qualities, descriptor, shadowType, onShadowTyp
 
   const displayQualities = qualities || [];
   const [qualitiesExpanded, setQualitiesExpanded] = useState(false);
+  const [qualitiesOpen, setQualitiesOpen] = useState(false);
   const CAP = 7;
   const visibleQualities = qualitiesExpanded ? displayQualities : displayQualities.slice(0, CAP);
   const hiddenCount = displayQualities.length - CAP;
 
+  // State 1: full pill display, capped at 7 with expand
   const qualitiesLine = (
     <div className="flex flex-wrap gap-1.5 mb-3">
       {visibleQualities.map((q, i) => (
@@ -243,7 +245,7 @@ function ThemeCard({ clusterName, qualities, descriptor, shadowType, onShadowTyp
       {!qualitiesExpanded && hiddenCount > 0 && (
         <button
           onClick={() => setQualitiesExpanded(true)}
-          className="px-2 py-0.5 rounded-full text-xs font-body text-ink/30 dark:text-white/25 transition-colors"
+          className="text-xs font-body text-ink/30 dark:text-white/25 transition-colors"
           style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
           onMouseEnter={e => e.currentTarget.style.color = 'rgba(42,36,32,0.55)'}
           onMouseLeave={e => e.currentTarget.style.color = 'rgba(42,36,32,0.30)'}
@@ -251,6 +253,39 @@ function ThemeCard({ clusterName, qualities, descriptor, shadowType, onShadowTyp
           and {hiddenCount} more
         </button>
       )}
+    </div>
+  );
+
+  // States 2 & 3: collapsed count link, expands to full pills
+  const collapsedQualitiesLine = (
+    <div className="mb-3">
+      <div
+        style={{
+          maxHeight: qualitiesOpen ? '300px' : '0',
+          opacity: qualitiesOpen ? 1 : 0,
+          overflow: 'hidden',
+          transition: 'max-height 0.25s ease, opacity 0.2s ease',
+        }}
+      >
+        <div className="flex flex-wrap gap-1.5 mb-1.5">
+          {displayQualities.map((q, i) => (
+            <span
+              key={i}
+              className="px-2 py-0.5 rounded-full text-xs font-body text-ink/50 dark:text-white/40"
+              style={{ backgroundColor: 'rgba(61,43,74,0.07)', border: '1px solid rgba(61,43,74,0.15)' }}
+            >
+              {q}
+            </span>
+          ))}
+        </div>
+      </div>
+      <button
+        onClick={() => setQualitiesOpen(o => !o)}
+        className="text-xs font-body text-ink/35 hover:text-ink/60 transition-colors"
+        style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+      >
+        {qualitiesOpen ? 'hide qualities' : `${displayQualities.length} qualities →`}
+      </button>
     </div>
   );
 
@@ -527,7 +562,7 @@ function ThemeCard({ clusterName, qualities, descriptor, shadowType, onShadowTyp
           {dreamBadge}
         </div>
 
-        {qualitiesLine}
+        {collapsedQualitiesLine}
 
         {shadowTypePrompt}
 
@@ -570,7 +605,7 @@ function ThemeCard({ clusterName, qualities, descriptor, shadowType, onShadowTyp
         {dreamBadge}
       </div>
 
-      {qualitiesLine}
+      {collapsedQualitiesLine}
 
       {shadowTypePrompt}
 
