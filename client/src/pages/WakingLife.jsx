@@ -316,29 +316,13 @@ function EntryDetailDrawer({ entry, onClose, onEdit, onDelete }) {
           )}
 
           {entry.linked_shadow_quality && (
-            <div className="rounded-xl border border-black/8 bg-white/50 px-4 py-3 mb-5">
-              <p style={{ fontSize: 9, letterSpacing: '0.15em' }} className="uppercase font-body text-ink/30 mb-1">
-                Shadow Quality
-              </p>
-              <p
-                className="text-sm font-body leading-relaxed"
-                style={{ color: '#9a4a6a' }}
+            <div className="flex flex-wrap gap-1.5 mb-5">
+              <span
+                className="px-2 py-0.5 rounded-full text-xs font-body text-ink/50"
+                style={{ backgroundColor: 'rgba(61,43,74,0.07)', border: '1px solid rgba(61,43,74,0.15)' }}
               >
                 {entry.linked_shadow_quality}
-              </p>
-            </div>
-          )}
-
-          {entry.tags?.length > 0 && (
-            <div className="flex flex-wrap gap-1.5 mb-6">
-              {entry.tags.map(tag => (
-                <span
-                  key={tag}
-                  className="px-3 py-1 rounded-full text-xs font-body bg-black/5 text-ink/40"
-                >
-                  {tag}
-                </span>
-              ))}
+              </span>
             </div>
           )}
         </div>

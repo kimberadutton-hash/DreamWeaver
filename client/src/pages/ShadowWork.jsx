@@ -223,10 +223,35 @@ function ThemeCard({ clusterName, qualities, descriptor, shadowType, onShadowTyp
 
   // ── Shared sub-components ──────────────────────────────────────────────────
 
+  const displayQualities = qualities || [];
+  const [qualitiesExpanded, setQualitiesExpanded] = useState(false);
+  const CAP = 7;
+  const visibleQualities = qualitiesExpanded ? displayQualities : displayQualities.slice(0, CAP);
+  const hiddenCount = displayQualities.length - CAP;
+
   const qualitiesLine = (
-    <p className="text-xs font-body text-ink/40 dark:text-white/30 leading-relaxed mb-3">
-      {(qualities || []).join(', ')}
-    </p>
+    <div className="flex flex-wrap gap-1.5 mb-3">
+      {visibleQualities.map((q, i) => (
+        <span
+          key={i}
+          className="px-2 py-0.5 rounded-full text-xs font-body text-ink/50 dark:text-white/40"
+          style={{ backgroundColor: 'rgba(61,43,74,0.07)', border: '1px solid rgba(61,43,74,0.15)' }}
+        >
+          {q}
+        </span>
+      ))}
+      {!qualitiesExpanded && hiddenCount > 0 && (
+        <button
+          onClick={() => setQualitiesExpanded(true)}
+          className="px-2 py-0.5 rounded-full text-xs font-body text-ink/30 dark:text-white/25 transition-colors"
+          style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }}
+          onMouseEnter={e => e.currentTarget.style.color = 'rgba(42,36,32,0.55)'}
+          onMouseLeave={e => e.currentTarget.style.color = 'rgba(42,36,32,0.30)'}
+        >
+          and {hiddenCount} more
+        </button>
+      )}
+    </div>
   );
 
   const shadowTypePrompt = shadowType === null && (
@@ -502,12 +527,6 @@ function ThemeCard({ clusterName, qualities, descriptor, shadowType, onShadowTyp
           {dreamBadge}
         </div>
 
-        {statusLabel && (
-          <p className="font-display italic mb-3" style={{ fontSize: 13, color: '#b8924a' }}>
-            {statusLabel}
-          </p>
-        )}
-
         {qualitiesLine}
 
         {shadowTypePrompt}
@@ -550,12 +569,6 @@ function ThemeCard({ clusterName, qualities, descriptor, shadowType, onShadowTyp
         </div>
         {dreamBadge}
       </div>
-
-      {statusLabel && (
-        <p className="font-display italic mb-3" style={{ fontSize: 13, color: '#b8924a' }}>
-          {statusLabel}
-        </p>
-      )}
 
       {qualitiesLine}
 
@@ -777,8 +790,15 @@ export default function ShadowWork() {
       }
     }
 
-    // Filter to qualities appearing in 2+ dreams, then cluster
-    const qualities = filterQualitiesByDreamCount(allQualities, resolvedDreams);
+    // Filter to qualities appearing in 2+ dreams, then deduplicate, then cluster
+    const filteredQualities = filterQualitiesByDreamCount(allQualities, resolvedDreams);
+    const seenKeys = new Set();
+    const qualities = filteredQualities.filter(q => {
+      const key = q.trim().toLowerCase();
+      if (seenKeys.has(key)) return false;
+      seenKeys.add(key);
+      return true;
+    });
 
     try {
       const grouped = await groupShadowQualities(qualities, apiKey);
