@@ -763,7 +763,7 @@ You will receive a list of projected qualities that have appeared in a person's 
 Each cluster should have:
 - "clusterName": a short evocative name (2-4 words, title case) that names the underlying psychological theme. Examples: "Permission and Desire", "The Defended Mind", "Belonging Without Apology"
 - "qualities": the specific quality strings that belong to it
-- "descriptor": one sentence, 10-15 words, naming what this quality IS in the psyche. Warm, not clinical. Example: "The part of you that wants without apologizing."
+- "descriptor": a one sentence that reflects back what this constellation of qualities seems to be reaching toward or protecting against — written as a witness observation, not a definition. It should feel like confirmation of something the dreamer already sensed, not new information being delivered.
 - "watchFor": one sentence, 10-15 words, beginning with the words "Watch for:" naming where this quality tends to show up in waking life. Example: "Watch for: where you shrink or ask before acting."
 
 Return ONLY a JSON array. No preamble, no explanation, no markdown fences. Example format:
