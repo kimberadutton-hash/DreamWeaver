@@ -18,6 +18,7 @@ const AI_MODELS = {
   preparation:     'claude-haiku-4-5-20251001',
   embodiment:      'claude-haiku-4-5-20251001',
   shadow:          'claude-haiku-4-5-20251001',
+  haiku:           'claude-haiku-4-5-20251001',
   series:          'claude-opus-4-5',
   seriesAdditions: 'claude-opus-4-5',
 };
@@ -124,14 +125,39 @@ export function buildDreamContext(dreams) {
   };
 }
 
+// ── Gather key elements for dreamer association before analysis ───────────────
+// Light extraction pass using Haiku. Returns 3-6 elements with open prompts.
+// On any failure, returns a single-element fallback so the caller always gets an array.
+
+export async function gatherAssociations(dreamBody, apiKey) {
+  const fallback = [{ element: 'this dream', prompt: 'What feeling or image stays with you most from this dream?' }];
+  try {
+    const text = await call({
+      messages: [{ role: 'user', content: `Dream:\n${dreamBody}` }],
+      maxTokens: 512,
+      model: AI_MODELS.haiku,
+      apiKey,
+      system: `You are a Jungian-oriented depth psychology assistant preparing for dream analysis. Your task is not to interpret — it is to notice. Read the dream and identify the 3 to 6 elements that carry the most psychological weight: figures (people, creatures, presences), objects or symbols that feel charged, places with strong atmosphere, and moments where the emotional tone shifts. Return only a JSON array of objects. Each object has two fields: 'element' (a short name, 2-5 words) and 'prompt' (a single open question inviting the dreamer's personal association — not an interpretation, just an opening). The question should feel like something a careful analyst would ask: curious, not leading. Do not interpret. Do not explain. Return only valid JSON with no preamble, no markdown, no backticks.`,
+    });
+    try {
+      return parseResponseArray(text);
+    } catch {
+      return fallback;
+    }
+  } catch {
+    return fallback;
+  }
+}
+
 // ── Analyze a dream ──────────────────────────────────────────────────────────
 
 export async function analyzeDream({
   title, body, mood,
   privacySettings, notes, analyst_session,
   analystFocus,
-  dreamContext,   // optional — pass result of buildDreamContext()
-  dreamDate,      // optional — the date of the dream being analyzed
+  dreamContext,    // optional — pass result of buildDreamContext()
+  dreamDate,       // optional — the date of the dream being analyzed
+  associations = null, // optional — [{ element, response }, ...] from gatherAssociations()
 }) {
   const moodStr = Array.isArray(mood) ? mood.join(', ') : (mood || '');
 
@@ -178,9 +204,13 @@ Analyze the dream below as it stood at the time it occurred. Note what continues
 `;
   }
 
+  const associationsSection = associations?.length
+    ? `\n\nDREAMER'S OWN ASSOCIATIONS (provided before analysis):\nThese are the dreamer's personal responses to key elements of the dream. Weight these heavily — they are primary material, not secondary. Let them shape your interpretation of each element they touch.\n\n${associations.map(a => `• ${a.element}: ${a.response}`).join('\n')}\n\nDo not contradict these associations without strong archetypal reason. If an association reveals personal meaning that differs from the archetypal default, the personal meaning takes precedence.`
+    : '';
+
   const prompt = `You are a Jungian analyst working with a patient's dream archive. You are analyzing a specific dream as it existed at the time it was dreamed — not as a recent or current dream. When prior dream history is provided, it represents only what preceded this dream chronologically. Your analysis should reflect the dreamer's psychological state at the moment this dream occurred.
 
-${contextSection}${title ? `Dream Title: ${title}\n` : ''}${moodStr ? `Dreamer's Mood: ${moodStr}\n` : ''}Dream: ${body}
+${contextSection}${title ? `Dream Title: ${title}\n` : ''}${moodStr ? `Dreamer's Mood: ${moodStr}\n` : ''}Dream: ${body}${associationsSection}
 
 Pay particular attention to any figure of a different gender than the dreamer, or any figure who carries qualities that feel foreign, magnetic, threatening, or deeply compelling — attraction, fascination, terror, or revulsion. These figures often carry unconscious material the dreamer has not yet integrated. When such a figure appears, name the specific qualities they embody and reflect on what those qualities might represent — what this dreamer does not yet claim in themselves. Speak of the figure and what it carries. You do not need to use the terms "anima" or "animus" unless the dreamer's own notes use them.
 

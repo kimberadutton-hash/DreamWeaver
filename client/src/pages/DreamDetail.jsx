@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { analyzeDream, buildDreamContext, generateDreamSummary, suggestAdditionalTags, identifyShadowMaterial } from '../lib/ai';
+import { analyzeDream, buildDreamContext, generateDreamSummary, gatherAssociations, suggestAdditionalTags, identifyShadowMaterial } from '../lib/ai';
 import { incrementAnalysisCount } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
+import AssociationsModal from '../components/AssociationsModal';
 import JungianTerm from '../components/JungianTerm';
 import { formatDateLong, todayString } from '../lib/constants';
 import { JUNGIAN_TERMS } from '../lib/jungianTerms';
@@ -26,6 +27,10 @@ export default function DreamDetail() {
   const [suggesting, setSuggesting] = useState(false);
 
   const [dreamSeries, setDreamSeries] = useState(null); // series this dream belongs to
+
+  const [showAssociationsModal, setShowAssociationsModal] = useState(false);
+  const [pendingAssociations, setPendingAssociations] = useState([]);
+  const [associationsLoading, setAssociationsLoading] = useState(false);
 
   // Shadow material panel state
   const [shadowAnalysis, setShadowAnalysis] = useState(null); // loaded from dream.shadow_analysis
@@ -150,6 +155,16 @@ export default function DreamDetail() {
 
   async function handleAnalyzeNow() {
     incrementAnalysisCount(id); // Pattern 1: track repeated analysis of same dream
+    setAiError(null);
+    setAssociationsLoading(true);
+    setShowAssociationsModal(true);
+
+    const assocs = await gatherAssociations(dream.body);
+    setPendingAssociations(assocs);
+    setAssociationsLoading(false);
+  }
+
+  async function runAnalyzeNow(associations) {
     setAnalyzing(true);
     setAiError(null);
     try {
@@ -171,6 +186,7 @@ export default function DreamDetail() {
           title: dream.title, body: dream.body, mood: dream.mood,
           privacySettings, notes: dream.notes, analyst_session: dream.analyst_session,
           dreamContext, dreamDate: dream.dream_date,
+          associations,
         }),
         generateDreamSummary({ title: dream.title, body: dream.body, mood: dream.mood }),
       ]);
@@ -200,6 +216,16 @@ export default function DreamDetail() {
     } finally {
       setAnalyzing(false);
     }
+  }
+
+  function handleAssociationsProceed(responses) {
+    setShowAssociationsModal(false);
+    runAnalyzeNow(responses.length ? responses : null);
+  }
+
+  function handleAssociationsSkip() {
+    setShowAssociationsModal(false);
+    runAnalyzeNow(null);
   }
 
   async function handleSuggestTags() {
@@ -727,6 +753,15 @@ export default function DreamDetail() {
       </div>
 
       <div className="h-8" />
+
+      {showAssociationsModal && (
+        <AssociationsModal
+          associations={pendingAssociations}
+          isLoading={associationsLoading}
+          onProceed={handleAssociationsProceed}
+          onSkip={handleAssociationsSkip}
+        />
+      )}
     </div>
   );
 }

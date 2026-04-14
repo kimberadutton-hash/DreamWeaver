@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { analyzeDream, buildDreamContext, generateDreamSummary, transcribeImage, hasApiKey, AiError } from '../lib/ai';
+import { analyzeDream, buildDreamContext, generateDreamSummary, gatherAssociations, transcribeImage, hasApiKey, AiError } from '../lib/ai';
 import { incrementAbandonedCount, resetPauseCounts } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import { useNavTier } from '../hooks/useNavTier';
 import AiErrorMessage from '../components/AiErrorMessage';
+import AssociationsModal from '../components/AssociationsModal';
 import PracticeOrientation from '../components/PracticeOrientation';
 import { todayString } from '../lib/constants';
 
@@ -35,8 +36,15 @@ export default function NewDream() {
   const [activeFocus, setActiveFocus] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
+  const [showAssociationsModal, setShowAssociationsModal] = useState(false);
+  const [pendingAssociations, setPendingAssociations] = useState([]);
+  const [associationsLoading, setAssociationsLoading] = useState(false);
+  const [savedDreamId, setSavedDreamId] = useState(null);
+  const dreamContextRef = useRef(null);
+
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
+  const isListeningRef = useRef(false);
   const photoInputRef = useRef(null);
   const [transcribing, setTranscribing] = useState(false);
 
@@ -82,7 +90,12 @@ export default function NewDream() {
       alert('Voice input is not supported in this browser. Try Chrome.');
       return;
     }
-    if (listening) { recognitionRef.current?.stop(); setListening(false); return; }
+    if (listening) {
+      isListeningRef.current = false;
+      recognitionRef.current?.stop();
+      setListening(false);
+      return;
+    }
 
     const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
     const recognition = new SR();
@@ -120,8 +133,20 @@ export default function NewDream() {
         return { ...f, body: f.body + (f.body ? ' ' : '') + t };
       });
     };
-    recognition.onerror = () => setListening(false);
-    recognition.onend = () => setListening(false);
+    recognition.onerror = () => {
+      if (!isListeningRef.current) return;
+      // On error, restart if still intentionally listening
+      try { recognition.start(); } catch {}
+    };
+    recognition.onend = () => {
+      if (isListeningRef.current) {
+        // Inactivity timeout — restart automatically
+        try { recognition.start(); } catch {}
+      } else {
+        setListening(false);
+      }
+    };
+    isListeningRef.current = true;
     recognition.start();
     recognitionRef.current = recognition;
     setListening(true);
@@ -156,11 +181,8 @@ export default function NewDream() {
     setLoading(true);
 
     try {
-      let analysisData = {};
-      let summaryText = null;
+      // Fetch dream context up front so it's ready when analyzeDream runs
       if (withAnalysis) {
-        // Fetch recent dream history for contextual analysis — fail silently if unavailable
-        let dreamContext = null;
         try {
           const { data: recentDreams } = await supabase
             .from('dreams')
@@ -168,34 +190,19 @@ export default function NewDream() {
             .eq('user_id', user.id)
             .order('dream_date', { ascending: false })
             .limit(15);
-          if (recentDreams?.length) {
-            dreamContext = buildDreamContext(recentDreams);
-          }
+          dreamContextRef.current = recentDreams?.length ? buildDreamContext(recentDreams) : null;
         } catch {
-          // context fetch failed — proceeding without it
+          dreamContextRef.current = null;
         }
-
-        [analysisData, summaryText] = await Promise.all([
-          analyzeDream({
-            title: form.title,
-            body: form.body,
-            mood: form.moods,
-            privacySettings,
-            notes: form.notes,
-            analyst_session: form.analyst_session,
-            analystFocus: activeFocus?.focus_text,
-            dreamContext,
-          }),
-          generateDreamSummary({ title: form.title, body: form.body, mood: form.moods }),
-        ]);
       }
 
       const tagsFromForm = form.tags ? form.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
 
+      // Phase 1: save the dream record immediately (analysis fields populated in phase 2)
       const { data, error: dbError } = await supabase.from('dreams').insert({
         user_id: user.id,
         dream_date: form.dream_date,
-        title: analysisData.title || form.title || null,
+        title: form.title.trim() || null,
         body: form.body,
         dreamer_associations: form.dreamer_associations.trim() || null,
         mood: form.moods.length > 0 ? form.moods : null,
@@ -203,27 +210,86 @@ export default function NewDream() {
         analyst_session: form.analyst_session || null,
         incubation_intention: form.incubation_intention || null,
         is_big_dream: form.is_big_dream,
-        tags: withAnalysis ? (analysisData.tags || []) : tagsFromForm,
-        archetypes: analysisData.archetypes || [],
-        symbols: analysisData.symbols || [],
-        reflection: analysisData.reflection || null,
-        invitation: analysisData.invitation || null,
-        structure: analysisData.structure || null,
-        embodiment_prompt: analysisData.embodimentPrompt || null,
-        summary: summaryText || null,
-        has_analysis: withAnalysis && !!analysisData.reflection,
+        tags: tagsFromForm,
+        has_analysis: false,
       }).select().single();
 
       if (dbError) throw dbError;
       savedRef.current = true;
       resetPauseCounts();
       refreshDreamCount();
-      navigate(`/dream/${data.id}`);
+
+      if (!withAnalysis) {
+        navigate(`/dream/${data.id}`);
+        return;
+      }
+
+      // Phase 2: gather associations, then open modal
+      setSavedDreamId(data.id);
+      setAssociationsLoading(true);
+      setShowAssociationsModal(true);
+
+      const assocs = await gatherAssociations(form.body);
+      setPendingAssociations(assocs);
+      setAssociationsLoading(false);
+      // loading stays true until runAnalysis completes
+
+    } catch (err) {
+      setAiError(err);
+      setLoading(false);
+    }
+  }
+
+  async function runAnalysis(associations) {
+    try {
+      const [analysisData, summaryText] = await Promise.all([
+        analyzeDream({
+          title: form.title,
+          body: form.body,
+          mood: form.moods,
+          privacySettings,
+          notes: privacySettings.share_notes_with_ai ? form.dreamer_associations : undefined,
+          analyst_session: privacySettings.share_analyst_session_with_ai ? form.analyst_session : undefined,
+          analystFocus: activeFocus?.focus_text,
+          dreamContext: dreamContextRef.current,
+          associations,
+        }),
+        generateDreamSummary({ title: form.title, body: form.body, mood: form.moods }),
+      ]);
+
+      const { error: dbErr } = await supabase
+        .from('dreams')
+        .update({
+          title: form.title.trim() || analysisData.title || null,
+          tags: analysisData.tags || [],
+          archetypes: analysisData.archetypes || [],
+          symbols: analysisData.symbols || [],
+          reflection: analysisData.reflection || null,
+          invitation: analysisData.invitation || null,
+          structure: analysisData.structure || null,
+          embodiment_prompt: analysisData.embodimentPrompt || null,
+          summary: summaryText || null,
+          has_analysis: !!analysisData.reflection,
+        })
+        .eq('id', savedDreamId);
+
+      if (dbErr) throw dbErr;
+      navigate(`/dream/${savedDreamId}`);
     } catch (err) {
       setAiError(err);
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleAssociationsProceed(responses) {
+    setShowAssociationsModal(false);
+    runAnalysis(responses.length ? responses : null);
+  }
+
+  function handleAssociationsSkip() {
+    setShowAssociationsModal(false);
+    runAnalysis(null);
   }
 
   const analystLabel = profile?.analyst_name || 'Analyst';
@@ -420,6 +486,15 @@ export default function NewDream() {
             </div>
           </div>
         </>
+      )}
+
+      {showAssociationsModal && (
+        <AssociationsModal
+          associations={pendingAssociations}
+          isLoading={associationsLoading}
+          onProceed={handleAssociationsProceed}
+          onSkip={handleAssociationsSkip}
+        />
       )}
     </div>
   );
