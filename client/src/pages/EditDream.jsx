@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { MOODS } from '../lib/constants';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import { analyzeDream, buildDreamContext, AiError } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
@@ -15,6 +14,7 @@ export default function EditDream() {
   const { privacySettings } = usePrivacySettings();
 
   const [form, setForm] = useState(null);
+  const [lastAnalyzedAt, setLastAnalyzedAt] = useState(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [showConfirm, setShowConfirm] = useState(false);
@@ -29,17 +29,13 @@ export default function EditDream() {
   async function fetchDream() {
     const { data } = await supabase.from('dreams').select('*').eq('id', id).eq('user_id', user.id).single();
     if (!data) { navigate('/archive'); return; }
+    setLastAnalyzedAt(data.last_analyzed_at || null);
     setForm({
       dream_date: data.dream_date,
       title: data.title || '',
       body: data.body || '',
       dreamer_associations: data.dreamer_associations || '',
-      moods: data.mood || [],
       is_big_dream: data.is_big_dream || false,
-      notes: data.notes || '',
-      analyst_session: data.analyst_session || '',
-      tags: (data.tags || []).join(', '),
-      last_analyzed_at: data.last_analyzed_at || null,
     });
   }
 
@@ -51,12 +47,15 @@ export default function EditDream() {
     if (!form.body.trim()) { setError('Dream body cannot be empty.'); return; }
     setSaving(true);
     setError('');
-    const { moods, tags: rawTags, ...rest } = form;
-    const tags = rawTags ? rawTags.split(',').map(t => t.trim()).filter(Boolean) : [];
-    const mood = moods.length > 0 ? moods : null;
     const { error: dbErr } = await supabase
       .from('dreams')
-      .update({ ...rest, mood, tags })
+      .update({
+        dream_date: form.dream_date,
+        title: form.title,
+        body: form.body,
+        dreamer_associations: form.dreamer_associations,
+        is_big_dream: form.is_big_dream,
+      })
       .eq('id', id);
     if (dbErr) { setError(dbErr.message); setSaving(false); return; }
     navigate(`/dream/${id}`);
@@ -87,14 +86,12 @@ export default function EditDream() {
       const analysisData = await analyzeDream({
         title: form.title,
         body: form.body,
-        mood: form.moods,
         dreamDate: form.dream_date,
         privacySettings,
-        notes: privacySettings.share_notes_with_ai ? form.notes : undefined,
-        analyst_session: privacySettings.share_analyst_session_with_ai ? form.analyst_session : undefined,
         dreamContext,
       });
 
+      const now = new Date().toISOString();
       const { error: dbErr } = await supabase
         .from('dreams')
         .update({
@@ -106,13 +103,13 @@ export default function EditDream() {
           invitation: analysisData.invitation || null,
           embodiment_prompt: analysisData.embodimentPrompt || null,
           has_analysis: !!analysisData.reflection,
-          last_analyzed_at: new Date().toISOString(),
+          last_analyzed_at: now,
         })
         .eq('id', id);
 
       if (dbErr) throw dbErr;
+      setLastAnalyzedAt(now);
       setReanalyzed(true);
-      await fetchDream();
     } catch (err) {
       setAiError(err instanceof AiError ? err : new AiError(err.message || 'Analysis failed.', 'api_error'));
     } finally {
@@ -124,11 +121,9 @@ export default function EditDream() {
     return <div className="flex items-center justify-center h-64"><p className="font-display italic text-xl text-ink/40">Calling up the dream…</p></div>;
   }
 
-  const analystLabel = profile?.analyst_name || 'Analyst';
-
   const cooldownMinutesLeft = (() => {
-    if (!form.last_analyzed_at) return 0;
-    const elapsed = (Date.now() - new Date(form.last_analyzed_at).getTime()) / 60000;
+    if (!lastAnalyzedAt) return 0;
+    const elapsed = (Date.now() - new Date(lastAnalyzedAt).getTime()) / 60000;
     return Math.max(0, Math.ceil(60 - elapsed));
   })();
   const isOnCooldown = cooldownMinutesLeft > 0;
@@ -158,25 +153,9 @@ export default function EditDream() {
         </div>
 
         <div>
-          <label className="field-label">Before analysis — what words, images, or feelings stand out to you from this dream?</label>
+          <label className="field-label">Your Notes</label>
           <textarea value={form.dreamer_associations} onChange={e => setField('dreamer_associations', e.target.value)} rows={3} className="field-input resize-y"
             placeholder="Free associations, first impressions, anything that catches your attention…" />
-        </div>
-
-        <div>
-          <label className="field-label">Mood <span className="normal-case tracking-normal text-xs text-ink/30">Select all that apply</span></label>
-          <div className="flex flex-wrap gap-2">
-            {MOODS.map(m => {
-              const active = form.moods.includes(m);
-              return (
-                <button key={m} type="button"
-                  onClick={() => setField('moods', active ? form.moods.filter(x => x !== m) : [...form.moods, m])}
-                  className={`px-3 py-1.5 rounded-full text-sm font-body transition-all ${active ? 'bg-plum text-white' : 'bg-black/5 dark:bg-white/10 text-ink/70 dark:text-white/60 hover:bg-black/10'}`}>
-                  {m}
-                </button>
-              );
-            })}
-          </div>
         </div>
 
         {/* Big Dream toggle */}
@@ -196,33 +175,6 @@ export default function EditDream() {
           >
             <span className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${form.is_big_dream ? 'translate-x-6' : ''}`} />
           </button>
-        </div>
-
-        <div>
-          <label className="field-label">
-            My Notes{' '}
-            {privacySettings.share_notes_with_ai
-              ? <span className="text-xs text-amber-500 normal-case tracking-normal font-body font-normal">◈ shared with AI</span>
-              : <span className="text-xs text-ink/30 dark:text-white/30 normal-case tracking-normal font-body font-normal">◎ private</span>
-            }
-          </label>
-          <textarea value={form.notes} onChange={e => setField('notes', e.target.value)} rows={3} className="field-input resize-y" />
-        </div>
-
-        <div>
-          <label className="field-label">
-            {analystLabel} Session{' '}
-            {privacySettings.share_analyst_session_with_ai
-              ? <span className="text-xs text-amber-500 normal-case tracking-normal font-body font-normal">◈ shared with AI</span>
-              : <span className="text-xs text-ink/30 dark:text-white/30 normal-case tracking-normal font-body font-normal">◎ private</span>
-            }
-          </label>
-          <textarea value={form.analyst_session} onChange={e => setField('analyst_session', e.target.value)} rows={3} className="field-input resize-y" />
-        </div>
-
-        <div>
-          <label className="field-label">Tags <span className="text-xs text-ink/30 normal-case tracking-normal">Comma-separated</span></label>
-          <input type="text" value={form.tags} onChange={e => setField('tags', e.target.value)} className="field-input" />
         </div>
 
         {error && <p className="text-red-600 text-sm font-body">{error}</p>}
