@@ -88,6 +88,7 @@ export default function EditDream() {
         body: form.body,
         dreamDate: form.dream_date,
         privacySettings,
+        notes: privacySettings.share_notes_with_ai ? form.dreamer_associations : undefined,
         dreamContext,
       });
 
