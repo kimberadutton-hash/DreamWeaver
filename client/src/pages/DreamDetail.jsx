@@ -29,7 +29,7 @@ export default function DreamDetail() {
   const [dreamSeries, setDreamSeries] = useState(null); // series this dream belongs to
 
   const [showAssociationsModal, setShowAssociationsModal] = useState(false);
-  const [pendingAssociations, setPendingAssociations] = useState([]);
+  const [pendingAssociations, setPendingAssociations] = useState({ entities: [], dynamics: [] });
   const [associationsLoading, setAssociationsLoading] = useState(false);
 
   // Shadow material panel state
@@ -756,7 +756,8 @@ export default function DreamDetail() {
 
       {showAssociationsModal && (
         <AssociationsModal
-          associations={pendingAssociations}
+          entities={pendingAssociations.entities || []}
+          dynamics={pendingAssociations.dynamics || []}
           isLoading={associationsLoading}
           onProceed={handleAssociationsProceed}
           onSkip={handleAssociationsSkip}

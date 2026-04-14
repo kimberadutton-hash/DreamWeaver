@@ -1,14 +1,62 @@
 import { useState } from 'react';
 
-export default function AssociationsModal({ associations, onProceed, onSkip, isLoading }) {
+const SECTION_LABEL_STYLE = {
+  fontSize: 11,
+  color: '#2a2420',
+  opacity: 0.4,
+};
+
+function AssocItem({ item, type, responses, setResponses }) {
+  return (
+    <div className="flex flex-col gap-2 py-4">
+      <span
+        className="font-body uppercase tracking-widest"
+        style={{ fontSize: 11, color: '#b8924a' }}
+      >
+        {item.element}
+      </span>
+      <p
+        className="font-display italic leading-snug"
+        style={{ fontSize: 16, color: '#2a2420' }}
+      >
+        {item.prompt}
+      </p>
+      <textarea
+        rows={3}
+        placeholder="…"
+        value={responses[item.element] || ''}
+        onChange={e => setResponses(r => ({ ...r, [item.element]: e.target.value }))}
+        className="w-full px-3 py-2.5 rounded-lg font-body text-sm text-ink resize-none focus:outline-none"
+        style={{
+          backgroundColor: '#faf7f2',
+          border: '1px solid rgba(61,43,74,0.2)',
+          fontSize: 14,
+        }}
+        onFocus={e => { e.target.style.borderColor = '#3d2b4a'; e.target.style.boxShadow = '0 0 0 2px rgba(61,43,74,0.12)'; }}
+        onBlur={e => { e.target.style.borderColor = 'rgba(61,43,74,0.2)'; e.target.style.boxShadow = 'none'; }}
+      />
+    </div>
+  );
+}
+
+export default function AssociationsModal({ entities, dynamics, onProceed, onSkip, isLoading }) {
   const [responses, setResponses] = useState({});
 
   function handleProceed() {
-    const filled = (associations || [])
-      .filter(a => responses[a.element]?.trim())
-      .map(a => ({ element: a.element, response: responses[a.element].trim() }));
+    const filled = [
+      ...(entities || [])
+        .filter(a => responses[a.element]?.trim())
+        .map(a => ({ element: a.element, response: responses[a.element].trim(), type: 'entity' })),
+      ...(dynamics || [])
+        .filter(a => responses[a.element]?.trim())
+        .map(a => ({ element: a.element, response: responses[a.element].trim(), type: 'dynamic' })),
+    ];
     onProceed(filled);
   }
+
+  const hasEntities = (entities || []).length > 0;
+  const hasDynamics = (dynamics || []).length > 0;
+  const showSectionLabels = hasEntities && hasDynamics;
 
   return (
     <div
@@ -42,44 +90,51 @@ export default function AssociationsModal({ associations, onProceed, onSkip, isL
           </p>
         )}
 
-        {/* Association items */}
-        {!isLoading && associations?.length > 0 && (
+        {/* Content */}
+        {!isLoading && (
           <div className="flex flex-col">
-            {associations.map((a, i) => (
-              <div key={a.element}>
-                <div className="flex flex-col gap-2 py-4">
-                  <span
-                    className="font-body uppercase tracking-widest"
-                    style={{ fontSize: 11, color: '#b8924a' }}
-                  >
-                    {a.element}
-                  </span>
-                  <p
-                    className="font-display italic leading-snug"
-                    style={{ fontSize: 16, color: '#2a2420' }}
-                  >
-                    {a.prompt}
+            {/* Entities section */}
+            {hasEntities && (
+              <div>
+                {showSectionLabels && (
+                  <p className="font-body uppercase tracking-widest mb-1" style={SECTION_LABEL_STYLE}>
+                    People, Places &amp; Figures
                   </p>
-                  <textarea
-                    rows={3}
-                    placeholder="…"
-                    value={responses[a.element] || ''}
-                    onChange={e => setResponses(r => ({ ...r, [a.element]: e.target.value }))}
-                    className="w-full px-3 py-2.5 rounded-lg font-body text-sm text-ink resize-none focus:outline-none focus:ring-2"
-                    style={{
-                      backgroundColor: '#faf7f2',
-                      border: '1px solid rgba(61,43,74,0.2)',
-                      fontSize: 14,
-                    }}
-                    onFocus={e => { e.target.style.borderColor = '#3d2b4a'; e.target.style.boxShadow = '0 0 0 2px rgba(61,43,74,0.12)'; }}
-                    onBlur={e => { e.target.style.borderColor = 'rgba(61,43,74,0.2)'; e.target.style.boxShadow = 'none'; }}
-                  />
-                </div>
-                {i < associations.length - 1 && (
-                  <div style={{ borderBottom: '1px solid rgba(42,36,32,0.08)' }} />
                 )}
+                {entities.map((a, i) => (
+                  <div key={a.element}>
+                    <AssocItem item={a} type="entity" responses={responses} setResponses={setResponses} />
+                    {i < entities.length - 1 && (
+                      <div style={{ borderBottom: '1px solid rgba(42,36,32,0.08)' }} />
+                    )}
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
+
+            {/* Section divider */}
+            {hasEntities && hasDynamics && (
+              <div style={{ borderTop: '1px solid rgba(42,36,32,0.1)', margin: '8px 0 16px' }} />
+            )}
+
+            {/* Dynamics section */}
+            {hasDynamics && (
+              <div>
+                {showSectionLabels && (
+                  <p className="font-body uppercase tracking-widest mb-1" style={SECTION_LABEL_STYLE}>
+                    Moments &amp; Dynamics
+                  </p>
+                )}
+                {dynamics.map((a, i) => (
+                  <div key={a.element}>
+                    <AssocItem item={a} type="dynamic" responses={responses} setResponses={setResponses} />
+                    {i < dynamics.length - 1 && (
+                      <div style={{ borderBottom: '1px solid rgba(42,36,32,0.08)' }} />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

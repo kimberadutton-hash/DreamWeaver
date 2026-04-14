@@ -37,7 +37,7 @@ export default function NewDream() {
   const [drawerOpen, setDrawerOpen] = useState(false);
 
   const [showAssociationsModal, setShowAssociationsModal] = useState(false);
-  const [pendingAssociations, setPendingAssociations] = useState([]);
+  const [pendingAssociations, setPendingAssociations] = useState({ entities: [], dynamics: [] });
   const [associationsLoading, setAssociationsLoading] = useState(false);
   const [savedDreamId, setSavedDreamId] = useState(null);
   const dreamContextRef = useRef(null);
@@ -490,7 +490,8 @@ export default function NewDream() {
 
       {showAssociationsModal && (
         <AssociationsModal
-          associations={pendingAssociations}
+          entities={pendingAssociations.entities || []}
+          dynamics={pendingAssociations.dynamics || []}
           isLoading={associationsLoading}
           onProceed={handleAssociationsProceed}
           onSkip={handleAssociationsSkip}

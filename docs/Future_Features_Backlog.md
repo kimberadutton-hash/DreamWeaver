@@ -101,9 +101,24 @@ shadow recognition, to waking life moments where it was owned.
   in history). What remains is a standalone per-quality detail/drill-down view if
   needed — may not be, given current ThemeCard already shows this.*
 
-**Resonance check on AI analysis**
-After any AI analysis is generated, add: "How much does this resonate with you?" 1-5
-scale, optional text. Track over time. If average resonance is low, surface a note.
+✅ **Resonance check on AI analysis** *(completed — differently)*
+Implemented as a two-part associations flow rather than a post-hoc rating.
+Pre-analysis: gatherAssociations() (Haiku) surfaces 3-6 psychologically
+significant elements; dreamer provides personal associations via modal
+before analysis runs. Associations injected into analyzeDream() system
+prompt as primary material. Post-analysis resonance dialogue (refineAnalysis)
+remains in backlog as Phase 2 — the dreamer correction → revised analysis
+loop is not yet built.
+
+**Post-analysis resonance dialogue**
+After analysis renders, dreamer can note what doesn't resonate and why.
+A refineAnalysis() function (Opus, targeted response not full regeneration)
+receives the original dream, original analysis, and dreamer's correction,
+and returns a revised reflection that explicitly acknowledges what was
+offered. The original analysis is replaced in the DB. This is the
+dialogical loop — what an analyst would actually do when pushed back on.
+Schema change needed: analysis_stage text column on dreams table
+(none → associations_pending → analysis_complete → refinement_pending → refined).
 
 ---
 
@@ -116,12 +131,11 @@ Brief optional preparation before entering the dialogue space.
 - Guidance on distinguishing conscious from unconscious voice (collapsed, expandable)
 - "I am present →" entry button
 
-**Personal symbol associations**
-Users annotate symbols in their lexicon with personal meaning.
-- "Water means X to me specifically"
-- New table: symbol_associations(user_id, symbol, association)
-- Builds over time into a genuinely personal symbolic vocabulary
-- Schema change required
+✅ **Personal symbol associations** *(partially completed)*
+Pre-analysis associations pass built and wired. Personal lexicon
+(dedicated page + dream detail entry point) remains to be built —
+see Phase 3 backlog. New table personal_associations(user_id, subject,
+subject_type, associations_text) not yet created.
 
 
 

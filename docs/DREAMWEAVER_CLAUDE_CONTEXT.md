@@ -184,6 +184,7 @@ Sign out
 │   └── src/
 │       ├── components/
 │       │   ├── AiErrorMessage.jsx
+│       │   ├── AssociationsModal.jsx
 │       │   ├── DreamPreviewDrawer.jsx
 │       │   ├── EmbodimentCheckIn.jsx
 │       │   ├── JungianTerm.jsx
@@ -299,7 +300,8 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 
 | Function | Model | Purpose |
 |----------|-------|---------|
-| `analyzeDream()` | Opus | Full Jungian analysis with structure, archetypes, symbols, embodiment prompt |
+| `gatherAssociations()` | Haiku | Pre-analysis extraction of 3-6 psychologically significant elements (figures, symbols, charged moments); returns array of { element, prompt } for dreamer associations modal |
+| `analyzeDream()` | Opus | Full Jungian analysis with structure, archetypes, symbols, embodiment prompt; accepts optional associations parameter — dreamer responses injected as primary material before interpretation |
 | `generateIndividuationNarrative()` | Opus | First-time full archive narrative |
 | `updateIndividuationNarrative()` | Opus | Progressive update with new dreams only |
 | `reflectOnSession()` | Opus | Post active imagination analyst reflection |
@@ -355,6 +357,8 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Waking resonances
 - ✅ Dream series linking
 - ✅ Symbols & Archetypes page — formally retired. `Symbols.jsx`, `/symbols` route, `quickTagDream()`, `generatePersonalThemes()`, and `AI_MODELS.tagging` all removed from codebase.
+- ✅ Pre-analysis associations pass — gatherAssociations() (Haiku) surfaces 3-6 psychologically significant dream elements before analysis runs. AssociationsModal presents each with an open analyst-style question; dreamer responses are optional per element. On Proceed, associations injected into analyzeDream() system prompt as primary material weighted above archetypal defaults. Skip path available for fast analysis. Wired into both NewDream.jsx (new dreams) and DreamDetail.jsx (re-analysis). Fallback graceful — single open question if extraction fails.
+- ✅ EditDream.jsx simplified — removed mood chips, notes, analyst_session, tags fields. Now contains only: body, title, dream_date, is_big_dream, dreamer_associations (labeled "Your Notes"). Explicit save object replaces implicit spread. handleReanalyze() fixed — patches only AI-generated fields after re-analysis rather than resetting entire form state.
 - ✅ Re-analyze Dream button on EditDream — triggers fresh Jungian analysis using correct chronological context, replaces AI-generated fields only, leaves all user-authored content untouched
 - ✅ Anima/animus recognition in dream analysis — system prompt addition to analyzeDream() guides recognition of contra-sexual and magnetically compelling figures in plain language, without clinical labeling. Terms anima/animus deliberately avoided unless dreamer uses them first. jungianTerms.js and Reference.jsx already contained complete entries.
 - ✅ 1-hour re-analysis cooldown — `last_analyzed_at` timestamp written on each re-analysis; button shows remaining time and goes muted until cooldown expires
@@ -380,8 +384,10 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 ### What's Next — Priority Order
 
 1. **Show Doug** — Review `QUESTIONS_FOR_DOUG.md`; collect input on guide access system and analytical ethics before any public launch
-2. **Guide access system** — After Doug's input
-3. **Psyche Map** — After 6 months personal use
+2. **Post-analysis resonance dialogue** — refineAnalysis() Opus function + UI for selecting what doesn't resonate + targeted revised reflection. Requires analysis_stage column on dreams table.
+3. **Personal Lexicon** — personal_associations table + dedicated Lexicon page in The Web + entry point from dream detail symbols/figures.
+4. **Guide access system** — After Doug's input
+5. **Psyche Map** — After 6 months personal use
 
 ---
 
