@@ -284,6 +284,10 @@ export default function NewDream() {
 
   function handleAssociationsProceed(responses) {
     setShowAssociationsModal(false);
+    if (responses.length && savedDreamId) {
+      supabase.from('dreams').update({ modal_associations: responses }).eq('id', savedDreamId)
+        .then(({ error }) => { if (error) console.error('modal_associations save failed:', error); });
+    }
     runAnalysis(responses.length ? responses : null);
   }
 

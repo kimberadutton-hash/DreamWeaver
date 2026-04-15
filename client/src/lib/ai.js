@@ -220,11 +220,13 @@ Analyze the dream below as it stood at the time it occurred. Note what continues
 
   const entityAssocs = (associations || []).filter(a => a.type === 'entity');
   const dynamicAssocs = (associations || []).filter(a => a.type === 'dynamic');
+  const additionalAssoc = (associations || []).find(a => a.type === 'additional');
   const entityLines = entityAssocs.map(a => `• ${a.element}: ${a.response}`).join('\n');
   const dynamicLines = dynamicAssocs.map(a => `• ${a.element}: ${a.response}`).join('\n');
   const entitySection = entityAssocs.length ? `FIGURES, PLACES & SYMBOLS:\n${entityLines}` : '';
   const dynamicSection = dynamicAssocs.length ? `CHARGED MOMENTS & DYNAMICS:\n${dynamicLines}` : '';
-  const assocBody = [entitySection, dynamicSection].filter(Boolean).join('\n\n');
+  const additionalSection = additionalAssoc ? `ADDITIONAL NOTES FROM THE DREAMER:\n• ${additionalAssoc.response}` : '';
+  const assocBody = [entitySection, dynamicSection, additionalSection].filter(Boolean).join('\n\n');
   const associationsSection = assocBody
     ? `\n\nDREAMER'S OWN ASSOCIATIONS (provided before analysis):\nThese are the dreamer's personal responses to key elements of the dream. Weight these heavily — they are primary material, not secondary.\n\n${assocBody}\n\nDo not contradict these associations without strong archetypal reason. If an association reveals personal meaning that differs from the archetypal default, the personal meaning takes precedence.`
     : '';

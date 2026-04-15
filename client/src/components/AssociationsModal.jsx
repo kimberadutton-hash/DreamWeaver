@@ -98,6 +98,7 @@ function EarlierNotes({ text }) {
 
 export default function AssociationsModal({ entities, dynamics, onProceed, onSkip, isLoading, existingAssociations = null }) {
   const [responses, setResponses] = useState({});
+  const [additionalNotes, setAdditionalNotes] = useState('');
 
   function handleProceed() {
     const filled = [
@@ -108,6 +109,9 @@ export default function AssociationsModal({ entities, dynamics, onProceed, onSki
         .filter(a => responses[a.element]?.trim())
         .map(a => ({ element: a.element, response: responses[a.element].trim(), type: 'dynamic' })),
     ];
+    if (additionalNotes.trim()) {
+      filled.push({ element: 'Additional notes', response: additionalNotes.trim(), type: 'additional' });
+    }
     onProceed(filled);
   }
 
@@ -197,6 +201,31 @@ export default function AssociationsModal({ entities, dynamics, onProceed, onSki
                 ))}
               </div>
             )}
+
+            {/* Anything Else */}
+            <div style={{ borderTop: '1px solid rgba(42,36,32,0.1)', margin: '8px 0 16px' }} />
+            <div>
+              <p className="font-body uppercase tracking-widest" style={{ fontSize: 11, color: 'rgba(42,36,32,0.4)', marginBottom: 4 }}>
+                Anything Else
+              </p>
+              <p className="font-body italic" style={{ fontSize: 12, color: 'rgba(42,36,32,0.5)', marginBottom: 8 }}>
+                Details remembered, feelings that surfaced, anything that didn't fit above
+              </p>
+              <textarea
+                rows={3}
+                placeholder="…"
+                value={additionalNotes}
+                onChange={e => setAdditionalNotes(e.target.value)}
+                className="w-full px-3 py-2.5 rounded-lg font-body text-sm text-ink resize-none focus:outline-none"
+                style={{
+                  backgroundColor: '#faf7f2',
+                  border: '1px solid rgba(61,43,74,0.2)',
+                  fontSize: 14,
+                }}
+                onFocus={e => { e.target.style.borderColor = '#3d2b4a'; e.target.style.boxShadow = '0 0 0 2px rgba(61,43,74,0.12)'; }}
+                onBlur={e => { e.target.style.borderColor = 'rgba(61,43,74,0.2)'; e.target.style.boxShadow = 'none'; }}
+              />
+            </div>
           </div>
         )}
 

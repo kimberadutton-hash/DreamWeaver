@@ -77,6 +77,10 @@ export default function EditDream() {
 
   function handleAssociationsProceed(responses) {
     setShowAssociationsModal(false);
+    if (responses.length) {
+      supabase.from('dreams').update({ modal_associations: responses }).eq('id', id)
+        .then(({ error }) => { if (error) console.error('modal_associations save failed:', error); });
+    }
     runReanalyze(responses.length ? responses : null);
   }
 

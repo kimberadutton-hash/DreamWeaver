@@ -239,6 +239,11 @@ export default function DreamDetail() {
 
   function handleAssociationsProceed(responses) {
     setShowAssociationsModal(false);
+    if (responses.length) {
+      supabase.from('dreams').update({ modal_associations: responses }).eq('id', dream.id)
+        .then(({ error }) => { if (error) console.error('modal_associations save failed:', error); });
+      setDream(prev => ({ ...prev, modal_associations: responses }));
+    }
     runAnalyzeNow(responses.length ? responses : null);
   }
 
@@ -442,6 +447,84 @@ export default function DreamDetail() {
             <span style={{ fontSize: 9, letterSpacing: '0.1em', color: 'rgba(184,146,74,0.6)', fontFamily: 'monospace' }}>✦ AI</span>
           </h2>
           <p className="font-dream whitespace-pre-wrap text-ink dark:text-white/90">{dream.reflection}</p>
+
+          {/* ── Your Associations (saved modal_associations) ── */}
+          {dream.modal_associations?.length > 0 && (() => {
+            const entities = dream.modal_associations.filter(a => a.type === 'entity');
+            const dynamics = dream.modal_associations.filter(a => a.type === 'dynamic');
+            const additional = dream.modal_associations.filter(a => a.type === 'additional');
+            const assocOpen = isSectionOpen('modal-associations');
+            return (
+              <div className="mt-5">
+                <button
+                  onClick={() => toggleSection('modal-associations')}
+                  className="w-full flex items-center justify-between text-left"
+                >
+                  <span style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 11, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'rgba(42,36,32,0.4)' }}>
+                    Your Associations
+                  </span>
+                  <span style={{ display: 'inline-block', transform: assocOpen ? 'rotate(90deg)' : 'rotate(0deg)', transition: 'transform 0.2s ease', color: 'rgba(42,36,32,0.25)', fontSize: 18, lineHeight: 1 }}>
+                    ›
+                  </span>
+                </button>
+                <div style={{ maxHeight: assocOpen ? '4000px' : '0', overflow: 'hidden', opacity: assocOpen ? 1 : 0, transition: 'max-height 0.3s ease, opacity 0.2s ease' }}>
+                  <div style={{ paddingTop: 12 }}>
+                    {entities.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(42,36,32,0.3)', marginBottom: 12 }}>
+                          People, Places &amp; Figures
+                        </p>
+                        {entities.map((item, i) => (
+                          <div key={i} style={{ marginBottom: 16 }}>
+                            <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: '#b8924a', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                              {item.element}
+                            </p>
+                            <p style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: 'italic', fontSize: 16, color: '#2a2420' }}>
+                              {item.response}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {entities.length > 0 && dynamics.length > 0 && (
+                      <hr style={{ border: 'none', borderTop: '1px solid rgba(42,36,32,0.08)', margin: '16px 0' }} />
+                    )}
+                    {dynamics.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(42,36,32,0.3)', marginBottom: 12 }}>
+                          Moments &amp; Dynamics
+                        </p>
+                        {dynamics.map((item, i) => (
+                          <div key={i} style={{ marginBottom: 16 }}>
+                            <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 12, color: '#b8924a', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                              {item.element}
+                            </p>
+                            <p style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: 'italic', fontSize: 16, color: '#2a2420' }}>
+                              {item.response}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {(entities.length > 0 || dynamics.length > 0) && additional.length > 0 && (
+                      <hr style={{ border: 'none', borderTop: '1px solid rgba(42,36,32,0.08)', margin: '16px 0' }} />
+                    )}
+                    {additional.length > 0 && (
+                      <div>
+                        <p style={{ fontFamily: '"DM Sans", sans-serif', fontSize: 10, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'rgba(42,36,32,0.3)', marginBottom: 12 }}>
+                          Additional Notes
+                        </p>
+                        <p style={{ fontFamily: '"Cormorant Garamond", serif', fontStyle: 'italic', fontSize: 16, color: '#2a2420' }}>
+                          {additional[0].response}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
+
           {dream.invitation && (
             <p className="mt-4 font-dream italic text-[15px] text-ink/60 dark:text-white/50 leading-relaxed">{dream.invitation}</p>
           )}

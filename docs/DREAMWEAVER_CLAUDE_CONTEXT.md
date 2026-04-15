@@ -191,6 +191,7 @@ Sign out
 │       │   ├── Layout.jsx
 │       │   ├── MilestoneModal.jsx
 │       │   ├── PracticeOrientation.jsx
+│       │   ├── ResonanceSection.jsx
 │       │   └── Sidebar.jsx
 │       ├── contexts/
 │       │   └── AuthContext.jsx
@@ -248,7 +249,7 @@ Sign out
 
 **Core tables:**
 - `profiles` — extends auth.users; includes `display_name`, `analyst_name`, `analyst_email`, `dark_mode`, `privacy_settings` (jsonb), `onboarding_complete`, `milestones_seen`, `solo_practitioner`, `working_together_length`, `meeting_frequency`
-- `dreams` — core content: `body`, `title`, `mood` (text[]), `archetypes`, `symbols`, `tags`, `reflection`, `invitation`, `embodiment_prompt`, `embodiment_response`, `structure` (jsonb), `shadow_analysis` (jsonb), `series_id`, `is_big_dream`, `dreamer_associations`, `incubation_intention`, `waking_resonances`, `has_analysis`, `last_analyzed_at`
+- `dreams` — core content: `body`, `title`, `mood` (text[]), `archetypes`, `symbols`, `tags`, `reflection`, `invitation`, `embodiment_prompt`, `embodiment_response`, `structure` (jsonb), `shadow_analysis` (jsonb), `series_id`, `is_big_dream`, `dreamer_associations`, `incubation_intention`, `waking_resonances`, `has_analysis`, `last_analyzed_at`, `resonance_score` (integer 1-5), `resonance_note` (text), `analysis_stage` (text: complete|refined, default complete), `modal_associations` (jsonb — array of { element, response, type } from associations modal; type is entity | dynamic | additional)
 - `archive_queries` — saved Ask the Archive conversations: `question`, `answer`, `messages` (jsonb, array of `{role, content, timestamp}`)
 - `user_themes` — AI-generated personal recurring themes
 
@@ -316,6 +317,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 | `transcribeImage()` | Opus | Handwritten dream photo to text |
 | `askArchive()` | Opus | Natural language Q&A over dream archive with conversation history; every response closes with a ✦ embodiment prompt; signature: `(question, dreams, apiKey, priorMessages=[])` |
 | `groupShadowQualities()` | Haiku | Shadow Work page: organize qualities into psychological theme clusters; returns `clusterName`, `qualities`, `descriptor` (one sentence naming the psyche quality), `watchFor` (one sentence beginning "Watch for:") |
+| `refineAnalysis()` | Opus | Receives original dream, current analysis structure, and dreamer's resonance note; returns `{ reflection, invitation }` — a full revised reflection integrating the dreamer's correction woven throughout, plus a revised living question. Targeted response, not full JSON regeneration. |
 | `buildDreamContext()` | — | Pure JS helper, no API call |
 
 ---
@@ -358,6 +360,9 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ Dream series linking
 - ✅ Symbols & Archetypes page — formally retired. `Symbols.jsx`, `/symbols` route, `quickTagDream()`, `generatePersonalThemes()`, and `AI_MODELS.tagging` all removed from codebase.
 - ✅ Pre-analysis associations pass — gatherAssociations() (Haiku) surfaces 3-6 psychologically significant dream elements before analysis runs. AssociationsModal presents each with an open analyst-style question; dreamer responses are optional per element. On Proceed, associations injected into analyzeDream() system prompt as primary material weighted above archetypal defaults. Skip path available for fast analysis. Wired into both NewDream.jsx (new dreams) and DreamDetail.jsx (re-analysis). Fallback graceful — single open question if extraction fails.
+- ✅ Post-analysis resonance dialogue — ResonanceSection renders after every completed analysis. Dreamer rates resonance 1-5 and notes what feels off or incomplete. refineAnalysis() (Opus) returns a full revised reflection with the correction woven throughout (not spotlighted) plus a revised living question via [INVITATION] marker. Refined reflection and question replace originals in DB and local state. Dialogue is continuous — section never collapses, alreadyRefined indicator appears after first refinement, further refinement always available. resonance_score, resonance_note, analysis_stage written to dreams table on each refinement.
+- ✅ Associations modal pre-population — When dreamer_associations exists on the dream being analyzed or re-analyzed, a gold-tinted reference block shows prior notes above the per-element questions. existingAssociations prop added to AssociationsModal. All three entry points (NewDream, DreamDetail, EditDream) pass existing notes.
+- ✅ EditDream re-analyze wired through associations modal — Re-analyze in EditDream now follows the same flow as DreamDetail: confirm dialog → cooldown check → gatherAssociations() → AssociationsModal → runReanalyze(associations). Existing dreamer_associations shown as reference in modal.
 - ✅ EditDream.jsx simplified — removed mood chips, notes, analyst_session, tags fields. Now contains only: body, title, dream_date, is_big_dream, dreamer_associations (labeled "Your Notes"). Explicit save object replaces implicit spread. handleReanalyze() fixed — patches only AI-generated fields after re-analysis rather than resetting entire form state.
 - ✅ Re-analyze Dream button on EditDream — triggers fresh Jungian analysis using correct chronological context, replaces AI-generated fields only, leaves all user-authored content untouched
 - ✅ Anima/animus recognition in dream analysis — system prompt addition to analyzeDream() guides recognition of contra-sexual and magnetically compelling figures in plain language, without clinical labeling. Terms anima/animus deliberately avoided unless dreamer uses them first. jungianTerms.js and Reference.jsx already contained complete entries.
@@ -378,16 +383,16 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ NewDream form cleanup — removed Today's Reflection daily prompt card, Current Analytical Focus banner, mood chips, manual tag input, and the separate "Before Analysis" / "My Notes" / incubation intention textareas; merged into a single **"Your Reflections"** textarea (saves to `dreamer_associations`, shows gold ✦ shared with AI indicator when `share_notes_with_ai` is on); analyst session moved into a slide-in right drawer (400px desktop / full-width mobile, parchment bg, 300ms CSS transition) triggered by quiet "+ Analyst notes" link below action buttons — drawer only renders when `hasGuide` is true; `share_analyst_session_with_ai` privacy logic unchanged; `activeFocus` still fetched and passed to `analyzeDream()`
 - ✅ `jungianTerms.js` — `self` entry updated: new oneLiner ("The organizing center of the whole psyche — not something you arrive at, but something you were never separate from."); body and `inYourDreams` rewritten to carry the "coming home / never separate / always already there" voice; `inYourDreams` uses wise elder, luminous child, still center in chaos, numinous quality imagery; `relatedTerms` adds `shadow`
 - ✅ `generateIndividuationNarrative()` and `updateIndividuationNarrative()` in `ai.js` — closing instruction added before JSON spec in both functions shaping the existing `closingInvitation` field toward "What is the Self asking of you right now?" orientation; no JSON structure changed, no other functions touched
+- ✅ Modal associations saved and displayed — associations entered in the pre-analysis modal are saved to dreams.modal_associations (jsonb) on Proceed across all three entry points (NewDream, DreamDetail, EditDream). Displayed on DreamDetail in a collapsible YOUR ASSOCIATIONS section (collapsed by default) between the reflection prose and living question. Three groups: entities, dynamics, additional notes. Additional free-text field added to modal bottom for anything that didn't fit the per-element questions or details remembered while writing. Additional notes injected into analyzeDream() as third associations section.
 
 ---
 
 ### What's Next — Priority Order
 
 1. **Show Doug** — Review `QUESTIONS_FOR_DOUG.md`; collect input on guide access system and analytical ethics before any public launch
-2. **Post-analysis resonance dialogue** — refineAnalysis() Opus function + UI for selecting what doesn't resonate + targeted revised reflection. Requires analysis_stage column on dreams table.
-3. **Personal Lexicon** — personal_associations table + dedicated Lexicon page in The Web + entry point from dream detail symbols/figures.
-4. **Guide access system** — After Doug's input
-5. **Psyche Map** — After 6 months personal use
+2. **Personal Lexicon** — personal_associations table + dedicated Lexicon page in The Web + entry point from dream detail symbols/figures. modal_associations.entity responses across dreams are the seed data for lexicon pre-population — data already exists, waiting to be surfaced.
+3. **Guide access system** — After Doug's input
+4. **Psyche Map** — After 6 months personal use
 
 ---
 
