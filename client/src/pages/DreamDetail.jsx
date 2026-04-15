@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
-import { analyzeDream, buildDreamContext, generateDreamSummary, gatherAssociations, suggestAdditionalTags, identifyShadowMaterial } from '../lib/ai';
+import { analyzeDream, buildDreamContext, generateDreamSummary, gatherAssociations, suggestAdditionalTags, identifyShadowMaterial, refineAnalysis } from '../lib/ai';
 import { incrementAnalysisCount } from '../hooks/usePauseGate';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
 import AiErrorMessage from '../components/AiErrorMessage';
+import ResonanceSection from '../components/ResonanceSection';
 import AssociationsModal from '../components/AssociationsModal';
 import JungianTerm from '../components/JungianTerm';
 import { formatDateLong, todayString } from '../lib/constants';
@@ -109,6 +110,24 @@ export default function DreamDetail() {
       embodiment_checked_at: new Date().toISOString(),
     }).eq('id', id);
     setDream(prev => ({ ...prev, embodiment_checked_at: new Date().toISOString() }));
+  }
+
+  async function handleRefined(result, score, note) {
+    await supabase.from('dreams').update({
+      reflection: result.reflection,
+      invitation: result.invitation ?? dream.invitation,
+      resonance_score: score,
+      resonance_note: note,
+      analysis_stage: 'refined',
+    }).eq('id', dream.id);
+    setDream(prev => ({
+      ...prev,
+      reflection: result.reflection,
+      invitation: result.invitation ?? prev.invitation,
+      resonance_score: score,
+      resonance_note: note,
+      analysis_stage: 'refined',
+    }));
   }
 
   async function handleSaveEncounter() {
@@ -445,6 +464,16 @@ export default function DreamDetail() {
         </div>
       )}
 
+      {/* ── Resonance dialogue ── */}
+      {dream.has_analysis && (
+        <ResonanceSection
+          dream={dream}
+          onRefined={handleRefined}
+          apiKey={null}
+          alreadyRefined={dream.analysis_stage === 'refined'}
+        />
+      )}
+
       {/* ── F. Shadow Material ── */}
       {dream.has_analysis && (
         <div className="mb-8">
@@ -758,6 +787,7 @@ export default function DreamDetail() {
         <AssociationsModal
           entities={pendingAssociations.entities || []}
           dynamics={pendingAssociations.dynamics || []}
+          existingAssociations={dream.dreamer_associations || null}
           isLoading={associationsLoading}
           onProceed={handleAssociationsProceed}
           onSkip={handleAssociationsSkip}

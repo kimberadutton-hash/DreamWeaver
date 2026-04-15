@@ -3,8 +3,9 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { usePrivacySettings } from '../hooks/usePrivacySettings';
-import { analyzeDream, buildDreamContext, AiError } from '../lib/ai';
+import { analyzeDream, buildDreamContext, gatherAssociations, AiError } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
+import AssociationsModal from '../components/AssociationsModal';
 
 export default function EditDream() {
   const { id } = useParams();
@@ -21,6 +22,9 @@ export default function EditDream() {
   const [reanalyzing, setReanalyzing] = useState(false);
   const [aiError, setAiError] = useState(null);
   const [reanalyzed, setReanalyzed] = useState(false);
+  const [showAssociationsModal, setShowAssociationsModal] = useState(false);
+  const [pendingAssociations, setPendingAssociations] = useState({ entities: [], dynamics: [] });
+  const [associationsLoading, setAssociationsLoading] = useState(false);
 
   useEffect(() => {
     fetchDream();
@@ -61,8 +65,27 @@ export default function EditDream() {
     navigate(`/dream/${id}`);
   }
 
-  async function handleReanalyze() {
+  async function handleReanalyzeClick() {
+    if (isOnCooldown) return;
     setShowConfirm(false);
+    setAssociationsLoading(true);
+    setShowAssociationsModal(true);
+    const assocs = await gatherAssociations(form.body);
+    setPendingAssociations(assocs);
+    setAssociationsLoading(false);
+  }
+
+  function handleAssociationsProceed(responses) {
+    setShowAssociationsModal(false);
+    runReanalyze(responses.length ? responses : null);
+  }
+
+  function handleAssociationsSkip() {
+    setShowAssociationsModal(false);
+    runReanalyze(null);
+  }
+
+  async function runReanalyze(associations) {
     setAiError(null);
     setReanalyzed(false);
     setReanalyzing(true);
@@ -90,6 +113,7 @@ export default function EditDream() {
         privacySettings,
         notes: privacySettings.share_notes_with_ai ? form.dreamer_associations : undefined,
         dreamContext,
+        associations,
       });
 
       const now = new Date().toISOString();
@@ -220,7 +244,7 @@ export default function EditDream() {
             </p>
             <div className="flex gap-3">
               <button
-                onClick={handleReanalyze}
+                onClick={handleReanalyzeClick}
                 className="flex-1 py-2.5 rounded-xl font-body text-sm font-medium bg-gold text-white hover:bg-gold/90 transition-colors">
                 Continue
               </button>
@@ -232,6 +256,17 @@ export default function EditDream() {
             </div>
           </div>
         </div>
+      )}
+
+      {showAssociationsModal && (
+        <AssociationsModal
+          entities={pendingAssociations.entities || []}
+          dynamics={pendingAssociations.dynamics || []}
+          existingAssociations={form.dreamer_associations || null}
+          isLoading={associationsLoading}
+          onProceed={handleAssociationsProceed}
+          onSkip={handleAssociationsSkip}
+        />
       )}
     </div>
   );

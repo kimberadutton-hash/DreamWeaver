@@ -279,6 +279,88 @@ For the structure field: identify these movements within the dream AS THE DREAME
   return parseNarrativeJSON(text);
 }
 
+// ── Refine an existing analysis based on dreamer feedback ────────────────────
+
+export async function refineAnalysis(dream, currentAnalysis, resonanceNote, apiKey) {
+  const system = `You are a Jungian depth psychology guide in dialogue with a dreamer.
+You offered a full analysis of their dream. They have reflected on it
+and shared what doesn't resonate, what feels incomplete, or what they
+would add from their own knowing. Your task is to offer a refined
+reflection — one that holds everything that was true in the original
+analysis while genuinely incorporating what the dreamer has brought.
+
+This is not a rebuttal and not a correction. It is a continuation.
+The dreamer's response is new material — weight it as you would weight
+a dreamer's association: it illuminates something the analysis didn't
+fully see. Let it shift what needs to shift without abandoning what
+was already alive.
+
+Write a full reflection of 4-6 paragraphs in flowing prose. This
+should feel like a complete, coherent response to the dream — not
+a patch, not an addendum, not a focus on only the thing that changed.
+Cover the dream's significant figures, dynamics, and psychological
+movement as the original did, but now seen through the fuller picture
+the dreamer has offered. The correction should be woven in, not
+spotlighted.
+
+Do not use headers. Do not say 'as I mentioned' or 'in my original
+analysis' or 'you pointed out' — just write the refined reflection
+as if this is the only version that exists. Do not reproduce the
+original analysis verbatim — rewrite it with the new understanding
+integrated throughout.
+
+Close with a single sentence that orients toward embodied life —
+what this refined understanding might ask of the dreamer in the
+days ahead.
+
+After the closing embodiment sentence, add one final element on a
+new line, separated by exactly this marker: [INVITATION]
+Write a single living question — the question this dream, now more
+fully understood, is asking of the dreamer. It should feel like
+something that could live with them for days. It is not a summary
+and not a task. It is an opening. Write it in Cormorant Garamond
+voice: unhurried, intimate, pointing inward. One sentence only.
+
+Write in the same voice as the original analysis: warm,
+depth-oriented, grounded in Jungian understanding, never clinical.
+Use second person throughout.`;
+
+  const analysisSummary = currentAnalysis?.interpretation
+    || currentAnalysis?.narrative
+    || JSON.stringify(currentAnalysis);
+
+  const userMessage = `Dream: ${dream.title}
+Date: ${dream.dream_date}
+
+Dream text:
+${dream.body}
+
+Original analysis summary:
+${analysisSummary}
+
+What the dreamer offered in response:
+${resonanceNote}
+
+Please provide a refined reflection that incorporates what they have shared.`;
+
+  try {
+    const text = await call({
+      messages: [{ role: 'user', content: userMessage }],
+      system,
+      maxTokens: 1024,
+      model: AI_MODELS.analysis,
+      apiKey,
+    });
+    const parts = text.split('[INVITATION]');
+    return {
+      reflection: parts[0].trim(),
+      invitation: parts.length >= 2 ? parts[1].trim() : null,
+    };
+  } catch (err) {
+    throw new Error('The refinement could not be completed. Please try again.');
+  }
+}
+
 // ── Generate a title for an untitled dream ───────────────────────────────────
 
 export async function generateTitle({ body, mood }) {

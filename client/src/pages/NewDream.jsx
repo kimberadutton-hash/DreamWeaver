@@ -492,6 +492,7 @@ export default function NewDream() {
         <AssociationsModal
           entities={pendingAssociations.entities || []}
           dynamics={pendingAssociations.dynamics || []}
+          existingAssociations={form.dreamer_associations || null}
           isLoading={associationsLoading}
           onProceed={handleAssociationsProceed}
           onSkip={handleAssociationsSkip}

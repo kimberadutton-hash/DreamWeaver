@@ -39,7 +39,64 @@ function AssocItem({ item, type, responses, setResponses }) {
   );
 }
 
-export default function AssociationsModal({ entities, dynamics, onProceed, onSkip, isLoading }) {
+function EarlierNotes({ text }) {
+  const [expanded, setExpanded] = useState(false);
+  // Estimate overflow: 4 lines at ~20px each = 80px. We use line-clamp via CSS.
+  const THRESHOLD = 280; // rough char count where 4 lines overflow
+  const isLong = text.length > THRESHOLD;
+
+  return (
+    <div style={{
+      background: 'rgba(184,146,74,0.08)',
+      borderLeft: '2px solid rgba(184,146,74,0.4)',
+      padding: '12px 16px',
+      marginBottom: 24,
+      borderRadius: '0 4px 4px 0',
+    }}>
+      <p className="font-body uppercase tracking-widest" style={{ fontSize: 11, color: 'rgba(42,36,32,0.4)', marginBottom: 6 }}>
+        Your Earlier Notes
+      </p>
+      <div style={{ position: 'relative' }}>
+        <p
+          className="font-display italic"
+          style={{
+            fontSize: 15,
+            color: 'rgba(42,36,32,0.7)',
+            lineHeight: 1.55,
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitBoxOrient: 'vertical',
+            WebkitLineClamp: expanded ? 'unset' : 4,
+          }}
+        >
+          {text}
+        </p>
+        {isLong && !expanded && (
+          <div style={{
+            position: 'absolute',
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: 28,
+            background: 'linear-gradient(to bottom, rgba(245,240,232,0), rgba(245,240,232,0.95))',
+            pointerEvents: 'none',
+          }} />
+        )}
+      </div>
+      {isLong && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="font-body"
+          style={{ fontSize: 10, color: '#b8924a', background: 'none', border: 'none', padding: '4px 0 0', cursor: 'pointer' }}
+        >
+          {expanded ? 'show less' : 'show more'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+export default function AssociationsModal({ entities, dynamics, onProceed, onSkip, isLoading, existingAssociations = null }) {
   const [responses, setResponses] = useState({});
 
   function handleProceed() {
@@ -93,6 +150,11 @@ export default function AssociationsModal({ entities, dynamics, onProceed, onSki
         {/* Content */}
         {!isLoading && (
           <div className="flex flex-col">
+            {/* Earlier notes reference */}
+            {existingAssociations && existingAssociations.trim() && (
+              <EarlierNotes text={existingAssociations.trim()} />
+            )}
+
             {/* Entities section */}
             {hasEntities && (
               <div>
