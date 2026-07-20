@@ -20,6 +20,7 @@ import ActiveImagination from './pages/ActiveImagination';
 import ShadowWork from './pages/ShadowWork';
 import DreamSeries from './pages/DreamSeries';
 import ResetPassword from './pages/ResetPassword';
+import PersonalLexicon from './pages/PersonalLexicon';
 
 
 function LoadingScreen() {
@@ -71,6 +72,7 @@ export default function App() {
                     <Route path="/dream/:id/edit" element={<EditDream />} />
                     <Route path="/timeline" element={<Timeline />} />
                     <Route path="/ask" element={<AskArchive />} />
+                    <Route path="/lexicon" element={<PersonalLexicon />} />
                     <Route path="/focus" element={<AnalystFocus />} />
                     <Route path="/letter" element={<GuideLetter />} />
                     <Route path="/reference" element={<Reference />} />

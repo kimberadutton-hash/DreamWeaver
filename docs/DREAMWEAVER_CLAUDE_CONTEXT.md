@@ -133,7 +133,7 @@ Tiered — unlocks based on dream count. Guide status controls The Witness secti
 ALWAYS:          Record a Dream (standalone button, above all sections)
 THE THREAD:      Dream Archive, Waking Life (always unlocked)
 THE LOOM (3+):   Shadow Work, Active Imagination
-THE WEB (10+):   Ask the Archive, My Journey
+THE WEB (10+):   Ask the Archive, My Journey, Personal Lexicon
 THE WITNESS:     Analyst Focus, Session Letter  [guide only — hidden entirely when no guide]
 ```
 
@@ -222,6 +222,7 @@ Sign out
 │           ├── NewDream.jsx
 │           ├── Onboarding.jsx
 │           ├── Reference.jsx
+│           ├── PersonalLexicon.jsx
 │           ├── Settings.jsx
 │           ├── ShadowWork.jsx
 │           ├── Timeline.jsx
@@ -254,6 +255,7 @@ Sign out
 - `user_themes` — AI-generated personal recurring themes
 
 **Practice tables:**
+- `personal_associations` — `user_id`, `subject` (text), `subject_type` (text: figure|symbol|dynamic), `synthesis` (text), `synthesis_generated_at` (timestamptz), `dream_sources` (jsonb array of { dream_id, dream_title, dream_date, association_text }), `last_dream_added_at` (timestamptz); RLS enabled
 - `shadow_theme_notes` — `user_id`, `theme_name`, `notes` (jsonb array of `{content, created_at}`), `updated_at`; unique on `(user_id, theme_name)`; RLS enabled
 - `complexes` — `name`, `description`, `origin_story`, `dream_manifestations`, `waking_manifestations`, `what_it_needs`, `integration_status`, `ai_suggested`, `related_archetypes`
 - `dream_series` — `name`, `description` (dreams link via `series_id` FK)
@@ -318,6 +320,7 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 | `askArchive()` | Opus | Natural language Q&A over dream archive with conversation history; every response closes with a ✦ embodiment prompt; signature: `(question, dreams, apiKey, priorMessages=[])` |
 | `groupShadowQualities()` | Haiku | Shadow Work page: organize qualities into psychological theme clusters; returns `clusterName`, `qualities`, `descriptor` (one sentence naming the psyche quality), `watchFor` (one sentence beginning "Watch for:") |
 | `refineAnalysis()` | Opus | Receives original dream, current analysis structure, and dreamer's resonance note; returns `{ reflection, invitation }` — a full revised reflection integrating the dreamer's correction woven throughout, plus a revised living question. Targeted response, not full JSON regeneration. |
+| `synthesizeLexiconEntry()` | Opus | Personal Lexicon: reads all dream source associations for a subject and returns a 2-4 sentence personal synthesis in second person; no archetypal interpretation, no closing question |
 | `buildDreamContext()` | — | Pure JS helper, no API call |
 
 ---
@@ -384,15 +387,15 @@ All media in Supabase Storage requires signed URLs for display. `getSignedUrl()`
 - ✅ `jungianTerms.js` — `self` entry updated: new oneLiner ("The organizing center of the whole psyche — not something you arrive at, but something you were never separate from."); body and `inYourDreams` rewritten to carry the "coming home / never separate / always already there" voice; `inYourDreams` uses wise elder, luminous child, still center in chaos, numinous quality imagery; `relatedTerms` adds `shadow`
 - ✅ `generateIndividuationNarrative()` and `updateIndividuationNarrative()` in `ai.js` — closing instruction added before JSON spec in both functions shaping the existing `closingInvitation` field toward "What is the Self asking of you right now?" orientation; no JSON structure changed, no other functions touched
 - ✅ Modal associations saved and displayed — associations entered in the pre-analysis modal are saved to dreams.modal_associations (jsonb) on Proceed across all three entry points (NewDream, DreamDetail, EditDream). Displayed on DreamDetail in a collapsible YOUR ASSOCIATIONS section (collapsed by default) between the reflection prose and living question. Three groups: entities, dynamics, additional notes. Additional free-text field added to modal bottom for anything that didn't fit the per-element questions or details remembered while writing. Additional notes injected into analyzeDream() as third associations section.
+- ✅ Personal Lexicon — /lexicon page in The Web (unlocks at 10+ dreams); manual entry creation with subject name and type (figure/symbol/dynamic); dream sources pulled from modal_associations or free-text input; on-demand AI synthesis via synthesizeLexiconEntry() (Opus); synthesis edit mode; "new material available" notice when last_dream_added_at > synthesis_generated_at; entries grouped by type in three collapsible sections; entry detail in right-side drawer
 
 ---
 
 ### What's Next — Priority Order
 
 1. **Show Doug** — Review `QUESTIONS_FOR_DOUG.md`; collect input on guide access system and analytical ethics before any public launch
-2. **Personal Lexicon** — personal_associations table + dedicated Lexicon page in The Web + entry point from dream detail symbols/figures. modal_associations.entity responses across dreams are the seed data for lexicon pre-population — data already exists, waiting to be surfaced.
-3. **Guide access system** — After Doug's input
-4. **Psyche Map** — After 6 months personal use
+2. **Guide access system** — After Doug's input
+3. **Psyche Map** — After 6 months personal use
 
 ---
 

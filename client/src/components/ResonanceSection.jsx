@@ -12,7 +12,14 @@ export default function ResonanceSection({ dream, onRefined, apiKey, alreadyRefi
     setIsRefining(true);
     setError(null);
     try {
-      const result = await refineAnalysis(dream, dream.structure, note, apiKey || null);
+      const currentAnalysis = {
+        reflection: dream.reflection,
+        invitation: dream.invitation,
+        associations: dream.modal_associations || [],
+        dreamerNotes: dream.dreamer_associations || '',
+        resonanceHistory: dream.resonance_note || '',
+      };
+      const result = await refineAnalysis(dream, currentAnalysis, note, apiKey || null);
       onRefined(result, score, note);
       setScore(null);
       setNote('');

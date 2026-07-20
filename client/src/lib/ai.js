@@ -145,7 +145,7 @@ export async function gatherAssociations(dreamBody, apiKey) {
 
 ENTITIES (2-4 items): Named or specific figures, animals, places, and symbols that carry personal meaning. This means: named people (Alex, Jessi, Dad), named animals (the wolf, the black dog), named or specific places (Indonesia, the childhood home), and objects with a proper-noun quality — things that feel like someone rather than just something. Do not include unnamed background figures or generic objects. For each entity, write a single open question inviting the dreamer's personal association with that specific entity — not what it means archetypally, but what it means to them personally. What history, feeling, or meaning does this entity carry for the dreamer?
 
-DYNAMICS (2-3 items): Charged moments, emotional shifts, relational patterns, or spatial/architectural strangeness that carry psychological weight — the moments where something pivots or where the emotional tone is most alive. For each dynamic, write a single open question inviting the dreamer's personal association — curious, not leading, not interpretive.
+DYNAMICS (2-3 items): Charged moments or emotional pivots in the dream. Name each one as briefly as possible — 2-5 words, just enough to identify the moment. Examples: 'the mermaid solo', 'finding the locked door', 'when she turns away'. Never interpret or characterize the dynamic — just name the scene or moment plainly. For each, ask only: 'What comes up for you around this?' Nothing more leading than that.
 
 Return only a JSON object with exactly two keys: 'entities' and 'dynamics'. Each is an array of objects with 'element' and 'prompt' fields. No preamble, no markdown, no backticks, no explanation.`,
     });
@@ -327,9 +327,28 @@ Write in the same voice as the original analysis: warm,
 depth-oriented, grounded in Jungian understanding, never clinical.
 Use second person throughout.`;
 
-  const analysisSummary = currentAnalysis?.interpretation
-    || currentAnalysis?.narrative
-    || JSON.stringify(currentAnalysis);
+  const assocLines = (currentAnalysis?.associations || [])
+    .filter(a => a.response?.trim())
+    .map(a => `• ${a.element}: ${a.response}`)
+    .join('\n');
+
+  const analysisSummary = [
+    currentAnalysis?.reflection
+      ? `REFLECTION:\n${currentAnalysis.reflection}`
+      : null,
+    currentAnalysis?.invitation
+      ? `LIVING QUESTION:\n${currentAnalysis.invitation}`
+      : null,
+    assocLines
+      ? `DREAMER'S ASSOCIATIONS:\n${assocLines}`
+      : null,
+    currentAnalysis?.dreamerNotes?.trim()
+      ? `DREAMER'S NOTES:\n${currentAnalysis.dreamerNotes}`
+      : null,
+    currentAnalysis?.resonanceHistory?.trim()
+      ? `PREVIOUS RESONANCE NOTE:\n${currentAnalysis.resonanceHistory}`
+      : null,
+  ].filter(Boolean).join('\n\n');
 
   const userMessage = `Dream: ${dream.title}
 Date: ${dream.dream_date}
@@ -349,7 +368,7 @@ Please provide a refined reflection that incorporates what they have shared.`;
     const text = await call({
       messages: [{ role: 'user', content: userMessage }],
       system,
-      maxTokens: 1024,
+      maxTokens: 2048,
       model: AI_MODELS.analysis,
       apiKey,
     });
@@ -361,6 +380,55 @@ Please provide a refined reflection that incorporates what they have shared.`;
   } catch (err) {
     throw new Error('The refinement could not be completed. Please try again.');
   }
+}
+
+// ── Synthesize a personal lexicon entry from dream associations ───────────────
+
+export async function synthesizeLexiconEntry(subject, subjectType, dreamSources, apiKey) {
+  const sourceText = dreamSources
+    .map(s => `Dream: "${s.dream_title}" (${s.dream_date})\nWhat you said: ${s.association_text}`)
+    .join('\n\n');
+
+  const response = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: AI_MODELS.analysis,
+      max_tokens: 400,
+      system: `You are a depth psychology companion helping a dreamer
+understand what a recurring ${subjectType} means in their personal
+psyche — not in Jungian literature, but for them specifically.
+
+You will receive everything they have said about this ${subjectType}
+across multiple dreams. Your task is to synthesize these personal
+associations into a single paragraph that reflects what this
+${subjectType} appears to carry in their inner world.
+
+Speak in second person, warmly and directly. Do not interpret beyond
+what they have offered. Do not reference Jungian theory or archetypal
+meanings. Do not end with a question. This is a mirror, not an
+analysis. 2-4 sentences maximum.`,
+      messages: [
+        {
+          role: 'user',
+          content: `The ${subjectType} is: ${subject}\n\nHere is what I have said about it across my dreams:\n\n${sourceText}`
+        }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    throw { type: 'api_error', message: error.error?.message || 'Synthesis failed' };
+  }
+
+  const data = await response.json();
+  return data.content[0].text.trim();
 }
 
 // ── Generate a title for an untitled dream ───────────────────────────────────

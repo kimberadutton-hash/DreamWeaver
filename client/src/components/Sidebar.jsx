@@ -197,6 +197,10 @@ export default function Sidebar({ open, onClose }) {
             ? <NavItem to="/individuation" label="My Journey" onClick={onClose} />
             : <LockedItem label="My Journey" requirement={unlockRequirement.myJourney} />
           }
+          {unlocked.askArchive
+            ? <NavItem to="/lexicon" label="Personal Lexicon" onClick={onClose} />
+            : <LockedItem label="Personal Lexicon" requirement={unlockRequirement.askArchive} />
+          }
         </div>
 
         {/* THE WITNESS — guide users only */}

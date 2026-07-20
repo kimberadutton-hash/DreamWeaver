@@ -131,11 +131,15 @@ Brief optional preparation before entering the dialogue space.
 - Guidance on distinguishing conscious from unconscious voice (collapsed, expandable)
 - "I am present →" entry button
 
-✅ **Personal symbol associations** *(partially completed)*
-Pre-analysis associations pass built and wired. Personal lexicon
-(dedicated page + dream detail entry point) remains to be built —
-see Phase 3 backlog. New table personal_associations(user_id, subject,
-subject_type, associations_text) not yet created.
+✅ **Personal symbol associations** *(completed)*
+Pre-analysis associations pass built and wired. Personal Lexicon
+page built at /lexicon in The Web tier. personal_associations
+table created with subject, subject_type (figure|symbol|dynamic),
+synthesis, synthesis_generated_at, dream_sources (jsonb), and
+last_dream_added_at. synthesizeLexiconEntry() (Opus) generates
+personal synthesis from accumulated dream source associations.
+Dream detail entry point deferred — manual curation from the
+Lexicon page is the intentional design.
 
 
 

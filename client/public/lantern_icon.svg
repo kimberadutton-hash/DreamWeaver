@@ -1,0 +1,44 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="42%" r="55%">
+      <stop offset="0%" stop-color="#f6dfa3" stop-opacity="0.95"/>
+      <stop offset="55%" stop-color="#b8924a" stop-opacity="0.55"/>
+      <stop offset="100%" stop-color="#b8924a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#4a3660"/>
+      <stop offset="100%" stop-color="#3d2b4a"/>
+    </linearGradient>
+  </defs>
+
+  <!-- background field -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- soft glow behind lantern -->
+  <circle cx="256" cy="230" r="170" fill="url(#glow)"/>
+
+  <!-- lantern ring/hook -->
+  <path d="M244 96 h24 v20 h-24 z" fill="#b8924a"/>
+  <path d="M232 92 h48 v12 h-48 z" fill="#b8924a"/>
+
+  <!-- lantern top cap -->
+  <path d="M196 128 L316 128 L296 156 L216 156 Z" fill="#b8924a"/>
+
+  <!-- lantern body -->
+  <path d="M212 156 L300 156 L312 340 L200 340 Z" fill="#faf7f2" opacity="0.12"/>
+  <path d="M212 156 L300 156 L312 340 L200 340 Z" fill="none" stroke="#b8924a" stroke-width="7"/>
+
+  <!-- vertical ribs -->
+  <path d="M232 160 L226 336" stroke="#b8924a" stroke-width="4" opacity="0.65"/>
+  <path d="M280 160 L286 336" stroke="#b8924a" stroke-width="4" opacity="0.65"/>
+
+  <!-- inner light -->
+  <ellipse cx="256" cy="248" rx="34" ry="46" fill="#f6dfa3"/>
+
+  <!-- lantern base -->
+  <path d="M196 340 L316 340 L308 366 L204 366 Z" fill="#b8924a"/>
+
+  <!-- base feet -->
+  <path d="M214 366 h20 v14 h-20 z" fill="#b8924a"/>
+  <path d="M278 366 h20 v14 h-20 z" fill="#b8924a"/>
+</svg>
