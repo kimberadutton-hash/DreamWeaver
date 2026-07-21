@@ -51,7 +51,6 @@ export default function GuideLetter() {
       .from('dreams')
       .select('id, dream_date, body, dreamer_associations, title, is_big_dream')
       .eq('user_id', user.id)
-      .eq('has_analysis', true)
       .order('dream_date', { ascending: false })
       .limit(14);
     const dreams = data || [];
@@ -320,7 +319,7 @@ export default function GuideLetter() {
                   <p className="text-sm font-body text-ink/40 dark:text-white/30 italic">Loading…</p>
                 ) : availableDreams.length === 0 ? (
                   <p className="text-sm font-body text-ink/40 dark:text-white/30 italic">
-                    No analyzed dreams yet. Record and analyze a dream to get started.
+                    No dreams yet. Record a dream to get started.
                   </p>
                 ) : (
                   <div className="space-y-2">
