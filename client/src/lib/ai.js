@@ -465,7 +465,7 @@ export async function askArchive(question, dreams, apiKey, priorMessages = []) {
   const dreamContext = dreams
     .map(
       (d) =>
-        `Dream (${d.dream_date}): ${d.title || 'Untitled'}\n${d.body}\n` +
+        `Dream (${d.dream_date}): ${d.title || 'Untitled'}\n${d.body || '(no text recorded)'}\n` +
         (d.archetypes?.length ? `Archetypes: ${d.archetypes.join(', ')}\n` : '') +
         (d.symbols?.length ? `Symbols: ${d.symbols.join(', ')}\n` : '') +
         (d.tags?.length ? `Tags: ${d.tags.join(', ')}\n` : '') +
@@ -473,9 +473,15 @@ export async function askArchive(question, dreams, apiKey, priorMessages = []) {
     )
     .join('\n---\n');
 
+  const archiveSummary = dreams.length > 0
+    ? `Archive: ${dreams.length} dream${dreams.length !== 1 ? 's' : ''}, ${dreams[0].dream_date} – ${dreams[dreams.length - 1].dream_date}.`
+    : 'Archive: no dreams.';
+
   const systemPrompt = `You are a depth psychological companion helping someone explore their dream archive through the lens of Jungian psychology.
 
-You have access to the person's full dream archive below. Answer questions about patterns, symbols, recurring figures, emotional threads, and the individuation journey visible across their dreams.
+${archiveSummary} Every dream, date, title, and detail in your response must appear explicitly in the DREAM ARCHIVE below. Do not invent, extrapolate, or describe any dream content that is not present there. If asked about something not in the archive, say so honestly.
+
+Answer questions about patterns, symbols, recurring figures, emotional threads, and the individuation journey visible across their dreams.
 
 Speak with warmth and depth. Avoid clinical detachment. Use the language of the soul — not diagnosis. Reference specific dreams when relevant, including their dates. Be honest when patterns are unclear or absent.
 
