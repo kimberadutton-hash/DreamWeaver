@@ -341,8 +341,9 @@ function ArchiveThread({ queryRecord, dreams, apiKey, onThreadUpdated, userId })
 
 // ─── QueryCard ───────────────────────────────────────────────────────────────
 
-function QueryCard({ queryRecord, dreams, apiKey, onThreadUpdated, defaultOpen, userId }) {
+function QueryCard({ queryRecord, dreams, apiKey, onThreadUpdated, onDelete, defaultOpen, userId }) {
   const [open, setOpen] = useState(defaultOpen || false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const messages = queryRecord.messages || [];
   const exchangeCount = Math.floor(messages.length / 2);
   const scopeBadgeText = parseScopeBadgeText(queryRecord.query_scope);
@@ -350,38 +351,66 @@ function QueryCard({ queryRecord, dreams, apiKey, onThreadUpdated, defaultOpen, 
   return (
     <div className="bg-white/70 rounded-2xl border border-gold/15 overflow-hidden">
       {/* Collapsed header — always visible, click to expand */}
-      <button
-        onClick={() => setOpen((v) => !v)}
-        className="w-full text-left px-6 py-5 flex items-start justify-between gap-4 group"
-      >
-        <div className="flex-1 min-w-0">
-          <p className="font-serif italic text-ink text-base leading-snug line-clamp-2 group-hover:text-plum transition-colors">
-            {queryRecord.question}
-          </p>
-          {scopeBadgeText && (
-            <p className="text-[11px] font-sans italic text-gold/70 mt-1">
-              {scopeBadgeText}
-            </p>
-          )}
-          <div className="flex items-center gap-3 mt-2">
-            <span className="text-[11px] font-mono text-ink/40">
-              {formatDate(queryRecord.created_at)}
-            </span>
-            {exchangeCount > 1 && (
-              <span className="text-[11px] font-mono text-gold/70">
-                {exchangeCount} exchanges
-              </span>
-            )}
-          </div>
-        </div>
-        <span
-          className={`text-gold/50 mt-1 transition-transform duration-200 select-none text-lg ${
-            open ? 'rotate-180' : ''
-          }`}
+      <div className="flex items-start">
+        <button
+          onClick={() => setOpen((v) => !v)}
+          className="flex-1 min-w-0 text-left px-6 py-5 flex items-start justify-between gap-4 group"
         >
-          ▾
-        </span>
-      </button>
+          <div className="flex-1 min-w-0">
+            <p className="font-serif italic text-ink text-base leading-snug line-clamp-2 group-hover:text-plum transition-colors">
+              {queryRecord.question}
+            </p>
+            {scopeBadgeText && (
+              <p className="text-[11px] font-sans italic text-gold/70 mt-1">
+                {scopeBadgeText}
+              </p>
+            )}
+            <div className="flex items-center gap-3 mt-2">
+              <span className="text-[11px] font-mono text-ink/40">
+                {formatDate(queryRecord.created_at)}
+              </span>
+              {exchangeCount > 1 && (
+                <span className="text-[11px] font-mono text-gold/70">
+                  {exchangeCount} exchanges
+                </span>
+              )}
+            </div>
+          </div>
+          <span
+            className={`text-gold/50 mt-1 transition-transform duration-200 select-none text-lg shrink-0 ${
+              open ? 'rotate-180' : ''
+            }`}
+          >
+            ▾
+          </span>
+        </button>
+        <div className="flex items-center pr-4 pt-5">
+          {confirmDelete ? (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => onDelete(queryRecord.id)}
+                className="text-[11px] font-mono text-red-400 hover:text-red-600 transition-colors whitespace-nowrap"
+              >
+                Delete
+              </button>
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="text-[11px] font-mono text-ink/30 hover:text-ink/60 transition-colors"
+              >
+                Cancel
+              </button>
+            </div>
+          ) : (
+            <button
+              onClick={() => setConfirmDelete(true)}
+              className="text-ink/20 hover:text-ink/50 transition-colors text-sm leading-none"
+              title="Delete conversation"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+      </div>
 
       {/* Expanded: full thread + follow-up input */}
       {open && (
@@ -455,6 +484,11 @@ export default function AskArchive() {
     setQueries((prev) =>
       prev.map((q) => (q.id === queryId ? { ...q, messages: newMessages } : q))
     );
+  }
+
+  async function handleDelete(queryId) {
+    await supabase.from('archive_queries').delete().eq('id', queryId).eq('user_id', user.id);
+    setQueries((prev) => prev.filter((q) => q.id !== queryId));
   }
 
   async function handleAsk(e) {
@@ -620,6 +654,7 @@ export default function AskArchive() {
                 dreams={dreams}
                 apiKey={apiKey}
                 onThreadUpdated={handleThreadUpdated}
+                onDelete={handleDelete}
                 defaultOpen={q.id === newestId}
                 userId={user.id}
               />
