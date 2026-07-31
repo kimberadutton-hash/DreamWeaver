@@ -196,7 +196,7 @@ function ArchiveThread({ queryRecord, dreams, apiKey, onThreadUpdated, userId })
   async function handleFollowUp(e) {
     e.preventDefault();
     const q = followUp.trim();
-    if (!q || loading) return;
+    if (!q || loading || dreams.length === 0) return;
 
     setError(null);
     setLoading(true);
@@ -324,7 +324,7 @@ function ArchiveThread({ queryRecord, dreams, apiKey, onThreadUpdated, userId })
         />
         <button
           type="submit"
-          disabled={!followUp.trim() || loading}
+          disabled={!followUp.trim() || loading || dreams.length === 0}
           className="self-end px-5 py-3 rounded-xl bg-gold text-white text-sm font-sans
                      hover:bg-gold/90 active:scale-95 transition-all
                      disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
