@@ -435,6 +435,8 @@ export default function AskArchive() {
   const { apiKey } = useApiKey();
 
   const [dreams, setDreams] = useState([]);
+  const [dreamsLoading, setDreamsLoading] = useState(true);
+  const [dreamsError, setDreamsError] = useState(null);
   const [queries, setQueries] = useState([]);
   const [question, setQuestion] = useState('');
   const [loading, setLoading] = useState(false);
@@ -454,12 +456,22 @@ export default function AskArchive() {
 
   useEffect(() => {
     if (!user) return;
+    setDreamsLoading(true);
+    setDreamsError(null);
     supabase
       .from('dreams')
       .select('id, title, body, dream_date, archetypes, symbols, tags, reflection')
       .eq('user_id', user.id)
       .order('dream_date', { ascending: true })
-      .then(({ data }) => setDreams(data || []));
+      .then(({ data, error: fetchError }) => {
+        if (fetchError) {
+          setDreamsError(fetchError.message || 'Failed to load dreams');
+          setDreams([]);
+        } else {
+          setDreams(data || []);
+        }
+        setDreamsLoading(false);
+      });
   }, [user]);
 
   useEffect(() => {
@@ -582,6 +594,18 @@ export default function AskArchive() {
           setCustomTo={setCustomTo}
           showCustomRange={showCustomRange}
         />
+      )}
+
+      {dreamsError && (
+        <div className="bg-red-50 border border-red-200 rounded-xl px-5 py-4 text-sm text-red-700 font-sans">
+          Could not load dream archive: {dreamsError}
+        </div>
+      )}
+
+      {!dreamsError && !dreamsLoading && (
+        <p className="text-xs font-mono text-ink/30">
+          Archive loaded: {dreams.length} dream{dreams.length !== 1 ? 's' : ''}
+        </p>
       )}
 
       {!hasApiKey && (
