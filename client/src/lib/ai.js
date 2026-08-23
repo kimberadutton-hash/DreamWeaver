@@ -274,7 +274,7 @@ For the structure field: identify these movements within the dream AS THE DREAME
 
   const text = await call({
     messages: [{ role: 'user', content: fullPrompt }],
-    maxTokens: 2048,
+    maxTokens: 4096,
     model: AI_MODELS.analysis,
   });
 
