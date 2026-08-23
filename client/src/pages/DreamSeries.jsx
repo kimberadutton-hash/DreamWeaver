@@ -553,7 +553,7 @@ function SeriesDetail({ seriesId }) {
     setAvailableLoading(true);
     const { data } = await supabase
       .from('dreams')
-      .select('id, title, dream_date')
+      .select('id, title, dream_date, body, tags, archetypes, symbols')
       .eq('user_id', user.id)
       .is('series_id', null)
       .order('dream_date', { ascending: false });
@@ -949,10 +949,18 @@ function SeriesDetail({ seriesId }) {
               )}
 
               {!availableLoading && (() => {
-                const filtered = searchQuery.trim()
-                  ? availableDreams.filter(d =>
-                      (d.title || '').toLowerCase().includes(searchQuery.toLowerCase())
-                    )
+                const q = searchQuery.trim().toLowerCase();
+                const filtered = q
+                  ? availableDreams.filter(d => {
+                      const terms = [
+                        d.title,
+                        d.body,
+                        ...(d.tags || []),
+                        ...(d.archetypes || []),
+                        ...(d.symbols || []),
+                      ].filter(Boolean).join(' ').toLowerCase();
+                      return terms.includes(q);
+                    })
                   : availableDreams;
 
                 if (searchQuery.trim() && filtered.length === 0) {
