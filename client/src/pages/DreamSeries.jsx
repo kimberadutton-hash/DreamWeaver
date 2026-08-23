@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDate } from '../lib/constants';
 import DreamPreviewDrawer from '../components/DreamPreviewDrawer';
-import { suggestDreamSeries, suggestSeriesAdditions } from '../lib/ai';
+import { suggestDreamSeries, suggestSeriesAdditions, analyzeSeriesPatterns } from '../lib/ai';
 import AiErrorMessage from '../components/AiErrorMessage';
 import { useApiKey } from '../hooks/useApiKey';
 import PracticeOrientation from '../components/PracticeOrientation';
@@ -574,6 +574,10 @@ function SeriesDetail({ seriesId }) {
   const [suggestStatus, setSuggestStatus] = useState('idle'); // 'idle' | 'loading' | 'done' | 'error'
   const [suggestError, setSuggestError] = useState(null);
 
+  // Pattern analysis
+  const [analysisStatus, setAnalysisStatus] = useState('idle'); // 'idle' | 'generating' | 'error'
+  const [analysisError, setAnalysisError] = useState(null);
+
   useEffect(() => {
     fetchSeries();
   }, [seriesId]);
@@ -727,6 +731,36 @@ function SeriesDetail({ seriesId }) {
     setSuggestions(prev => prev.filter((_, i) => i !== idx));
   }
 
+  async function handleAnalyzePatterns() {
+    if (analysisStatus === 'generating') return;
+    setAnalysisStatus('generating');
+    setAnalysisError(null);
+    try {
+      const { data: dreamData } = await supabase
+        .from('dreams')
+        .select('id, title, dream_date, body, mood, tags, archetypes, symbols, reflection, is_big_dream')
+        .eq('series_id', seriesId)
+        .eq('user_id', user.id)
+        .order('dream_date', { ascending: true });
+
+      const result = await analyzeSeriesPatterns({ series, dreams: dreamData || [] });
+      const now = new Date().toISOString();
+      const dreamCount = (dreamData || []).length;
+
+      await supabase
+        .from('dream_series')
+        .update({ analysis: result, analysis_generated_at: now, analysis_dream_count: dreamCount })
+        .eq('id', seriesId)
+        .eq('user_id', user.id);
+
+      setSeries(prev => ({ ...prev, analysis: result, analysis_generated_at: now, analysis_dream_count: dreamCount }));
+      setAnalysisStatus('idle');
+    } catch (err) {
+      setAnalysisError(err);
+      setAnalysisStatus('error');
+    }
+  }
+
   function openPreview(title) {
     setPreviewTitle(title);
     setPreviewOpen(true);
@@ -867,6 +901,104 @@ function SeriesDetail({ seriesId }) {
           >
             + Add dreams to this series
           </button>
+        )}
+
+        {/* Pattern analysis */}
+        {(series.analysis || (hasKey && dreams.length >= 2) || analysisStatus === 'error') && (
+          <div className="mt-10 pt-8 border-t border-black/8 dark:border-white/8">
+            {!series.analysis && analysisStatus !== 'error' && (
+              <div className="text-center">
+                <button
+                  onClick={handleAnalyzePatterns}
+                  disabled={analysisStatus === 'generating'}
+                  className="px-5 py-2.5 rounded-xl text-sm font-body border border-[#b8924a]/50 text-[#b8924a] hover:bg-[#b8924a]/10 transition-colors disabled:opacity-50"
+                >
+                  {analysisStatus === 'generating' ? 'Reading the patterns…' : '◆ Analyze series patterns'}
+                </button>
+              </div>
+            )}
+
+            {analysisStatus === 'error' && analysisError && (
+              <div>
+                <AiErrorMessage error={analysisError} />
+                <button
+                  onClick={handleAnalyzePatterns}
+                  className="mt-2 text-sm font-body text-ink/40 hover:text-ink dark:text-white/35 dark:hover:text-white transition-colors"
+                >
+                  Try again
+                </button>
+              </div>
+            )}
+
+            {series.analysis && (
+              <div>
+                <div className="flex items-start justify-between gap-4 mb-5">
+                  <div>
+                    <p className="text-xs uppercase tracking-widest text-[#b8924a]/70 dark:text-[#b8924a]/60 font-body mb-1.5">Pattern Analysis</p>
+                    <h2 className="font-display italic text-2xl text-ink dark:text-white">
+                      {series.analysis.title}
+                    </h2>
+                  </div>
+                  {hasKey && (
+                    <button
+                      onClick={handleAnalyzePatterns}
+                      disabled={analysisStatus === 'generating'}
+                      className="shrink-0 text-xs font-body text-ink/30 hover:text-ink dark:text-white/25 dark:hover:text-white transition-colors disabled:opacity-40 mt-1"
+                    >
+                      {analysisStatus === 'generating' ? 'Regenerating…' : 'Regenerate'}
+                    </button>
+                  )}
+                </div>
+
+                <p className="text-sm font-body text-ink/70 dark:text-white/60 leading-relaxed mb-6">
+                  {series.analysis.essence}
+                </p>
+
+                {series.analysis.recurringElements?.length > 0 && (
+                  <div className="mb-6">
+                    <p className="text-xs uppercase tracking-widest text-ink/30 dark:text-white/25 font-body mb-3">Recurring Elements</p>
+                    <div className="space-y-3">
+                      {series.analysis.recurringElements.map((el, i) => (
+                        <div key={i} className="flex gap-3">
+                          <span className="shrink-0 text-[#b8924a]/50 text-sm mt-0.5">◌</span>
+                          <div>
+                            <span className="text-sm font-body font-medium text-ink dark:text-white">{el.element}</span>
+                            <span className="text-sm font-body text-ink/55 dark:text-white/45"> — {el.significance}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {series.analysis.movement && (
+                  <div className="mb-6">
+                    <p className="text-xs uppercase tracking-widest text-ink/30 dark:text-white/25 font-body mb-2">Movement Across the Series</p>
+                    <p className="text-sm font-body text-ink/65 dark:text-white/55 leading-relaxed">{series.analysis.movement}</p>
+                  </div>
+                )}
+
+                {series.analysis.whatIsBeingAsked && (
+                  <div className="mb-5">
+                    <p className="text-xs uppercase tracking-widest text-ink/30 dark:text-white/25 font-body mb-2">What Is Being Asked</p>
+                    <p className="text-sm font-body text-ink/65 dark:text-white/55 leading-relaxed">{series.analysis.whatIsBeingAsked}</p>
+                  </div>
+                )}
+
+                {series.analysis.invitation && (
+                  <p className="font-display italic text-base text-ink/45 dark:text-white/35 border-t border-black/6 dark:border-white/6 pt-4">
+                    {series.analysis.invitation}
+                  </p>
+                )}
+
+                {series.analysis_generated_at && (
+                  <p className="text-xs font-body text-ink/20 dark:text-white/15 mt-4">
+                    Generated from {series.analysis_dream_count} dream{series.analysis_dream_count !== 1 ? 's' : ''} · {formatDate(series.analysis_generated_at.slice(0, 10))}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
         )}
 
         {/* AI suggestions panel */}

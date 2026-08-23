@@ -21,6 +21,7 @@ const AI_MODELS = {
   haiku:           'claude-haiku-4-5-20251001',
   series:          'claude-opus-4-5',
   seriesAdditions: 'claude-opus-4-5',
+  seriesAnalysis:  'claude-opus-4-5',
 };
 
 function getStoredApiKey() {
@@ -1136,4 +1137,55 @@ ${candidateList}`;
   });
 
   return parseResponseArray(text);
+}
+
+// ── Analyze patterns across a dream series ───────────────────────────────────
+
+export async function analyzeSeriesPatterns({ series, dreams }) {
+  const dreamList = dreams.map((d, i) => {
+    const moodStr = Array.isArray(d.mood) ? d.mood.join(', ') : (d.mood || '');
+    const bigFlag = d.is_big_dream ? ' ✦ [BIG DREAM]' : '';
+    return `Dream ${i + 1} — ${d.dream_date}${bigFlag}: "${d.title || 'Untitled'}"
+Mood: ${moodStr || '—'}
+Body: ${(d.body || '').slice(0, 500)}
+Archetypes: ${(d.archetypes || []).join(', ') || '—'}
+Symbols: ${(d.symbols || []).join(', ') || '—'}
+${d.reflection ? `Reflection: ${d.reflection.slice(0, 200)}` : ''}`.trim();
+  }).join('\n\n---\n\n');
+
+  const seriesContext = series.description
+    ? `Series name: "${series.name}"\nDreamer's description: ${series.description}`
+    : `Series name: "${series.name}"`;
+
+  const prompt = `You are a Jungian analyst examining a named series of dreams the dreamer has grouped together because they sense a connection. Identify the underlying psychological pattern, recurring symbols, and what the unconscious is working on across this series.
+
+${seriesContext}
+
+Respond ONLY with valid JSON matching this exact structure — no prose before or after:
+{
+  "title": "A short evocative phrase (not the series name) naming what this series is actually about at a psychic level",
+  "essence": "2–3 sentences. The central psychological movement or tension. What is the dreamer's psyche circling? Be specific to these dreams.",
+  "recurringElements": [
+    {
+      "element": "Name of the symbol, figure, setting, or motif",
+      "significance": "Its specific psychological weight in this series. 1–2 sentences."
+    }
+  ],
+  "movement": "A paragraph on how the psyche's relationship to this material shifts across the series — what changes or deepens between the earliest and most recent dreams.",
+  "whatIsBeingAsked": "1–2 sentences on what the unconscious appears to be pressing toward — what recognition or transformation the series is building toward.",
+  "invitation": "A single closing sentence addressed directly to the dreamer. Quiet, contemplative. Not a question or call to action."
+}
+
+Identify 2–5 recurring elements. Ground every claim in specific dream content — do not invent details absent from the dreams below.
+
+DREAMS IN THIS SERIES (chronological):
+${dreamList}`;
+
+  const text = await call({
+    messages: [{ role: 'user', content: prompt }],
+    maxTokens: 3000,
+    model: AI_MODELS.seriesAnalysis,
+  });
+
+  return parseNarrativeJSON(text);
 }
