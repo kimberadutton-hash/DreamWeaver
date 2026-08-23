@@ -511,6 +511,39 @@ const SeriesList = forwardRef(function SeriesList({ onNew }, ref) {
   );
 });
 
+// ── Add-panel helpers ──────────────────────────────────────
+
+function highlightText(text, query) {
+  if (!query || !text) return text || '';
+  const idx = text.toLowerCase().indexOf(query.toLowerCase());
+  if (idx === -1) return text;
+  return (
+    <>
+      {text.slice(0, idx)}
+      <mark className="bg-[#b8924a]/30 dark:bg-[#b8924a]/25 text-inherit not-italic rounded px-0.5">{text.slice(idx, idx + query.length)}</mark>
+      {text.slice(idx + query.length)}
+    </>
+  );
+}
+
+function getExcerpt(d, query) {
+  if (!query) return null;
+  const q = query.toLowerCase();
+  const sources = [d.body, ...(d.tags || []), ...(d.archetypes || []), ...(d.symbols || [])].filter(Boolean);
+  for (const src of sources) {
+    const idx = src.toLowerCase().indexOf(q);
+    if (idx === -1) continue;
+    const start = Math.max(0, idx - 40);
+    const end = Math.min(src.length, idx + q.length + 60);
+    return {
+      pre: (start > 0 ? '…' : '') + src.slice(start, idx),
+      match: src.slice(idx, idx + q.length),
+      post: src.slice(idx + q.length, end) + (end < src.length ? '…' : ''),
+    };
+  }
+  return null;
+}
+
 // ── SeriesDetail ───────────────────────────────────────────
 
 function SeriesDetail({ seriesId }) {
@@ -533,6 +566,7 @@ function SeriesDetail({ seriesId }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [availableDreams, setAvailableDreams] = useState([]);
   const [availableLoading, setAvailableLoading] = useState(false);
+  const [selectedIds, setSelectedIds] = useState(new Set());
   const [removingId, setRemovingId] = useState(null);
 
   // AI suggestions
@@ -545,7 +579,7 @@ function SeriesDetail({ seriesId }) {
   }, [seriesId]);
 
   useEffect(() => {
-    if (!addPanelOpen) { setSearchQuery(''); setAvailableDreams([]); return; }
+    if (!addPanelOpen) { setSearchQuery(''); setAvailableDreams([]); setSelectedIds(new Set()); return; }
     loadAvailableDreams();
   }, [addPanelOpen]);
 
@@ -612,13 +646,24 @@ function SeriesDetail({ seriesId }) {
     setRemovingId(null);
   }
 
-  async function handleAddDream(dreamId) {
+  function toggleSelect(id) {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  }
+
+  async function handleAddSelected() {
+    if (selectedIds.size === 0) return;
+    const ids = [...selectedIds];
     await supabase
       .from('dreams')
       .update({ series_id: seriesId, updated_at: new Date().toISOString() })
-      .eq('id', dreamId)
+      .in('id', ids)
       .eq('user_id', user.id);
-    setAvailableDreams(prev => prev.filter(d => d.id !== dreamId));
+    setAvailableDreams(prev => prev.filter(d => !selectedIds.has(d.id)));
+    setSelectedIds(new Set());
     await fetchSeries();
   }
 
@@ -932,8 +977,9 @@ function SeriesDetail({ seriesId }) {
                 type="search"
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
-                placeholder="Filter by title…"
+                placeholder="Search by title, keyword, symbol…"
                 className="field-input"
+                autoFocus
               />
             </div>
 
@@ -948,22 +994,17 @@ function SeriesDetail({ seriesId }) {
                 </p>
               )}
 
-              {!availableLoading && (() => {
+              {!availableLoading && availableDreams.length > 0 && (() => {
                 const q = searchQuery.trim().toLowerCase();
                 const filtered = q
                   ? availableDreams.filter(d => {
-                      const terms = [
-                        d.title,
-                        d.body,
-                        ...(d.tags || []),
-                        ...(d.archetypes || []),
-                        ...(d.symbols || []),
-                      ].filter(Boolean).join(' ').toLowerCase();
+                      const terms = [d.title, d.body, ...(d.tags || []), ...(d.archetypes || []), ...(d.symbols || [])]
+                        .filter(Boolean).join(' ').toLowerCase();
                       return terms.includes(q);
                     })
                   : availableDreams;
 
-                if (searchQuery.trim() && filtered.length === 0) {
+                if (q && filtered.length === 0) {
                   return (
                     <p className="text-sm font-body text-ink/40 dark:text-white/30 text-center py-8">
                       No dreams match "{searchQuery}"
@@ -973,32 +1014,58 @@ function SeriesDetail({ seriesId }) {
 
                 return (
                   <div className="space-y-2">
-                    {filtered.map(d => (
-                      <div
-                        key={d.id}
-                        className="flex items-center justify-between gap-4 p-4 rounded-xl border border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/4"
-                      >
-                        <div className="min-w-0">
-                          <p className="font-display italic text-base text-ink dark:text-white truncate">
-                            {d.title || 'Untitled Dream'}
-                          </p>
-                          <p className="text-xs font-body text-ink/40 dark:text-white/30 mt-0.5">
-                            {d.dream_date ? formatDate(d.dream_date) : '—'}
-                          </p>
-                        </div>
-                        <button
-                          onClick={() => handleAddDream(d.id)}
-                          className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-body font-medium text-white transition-opacity hover:opacity-90"
-                          style={{ backgroundColor: '#3d2b4a' }}
+                    {filtered.map(d => {
+                      const isSelected = selectedIds.has(d.id);
+                      const excerpt = getExcerpt(d, q);
+                      return (
+                        <div
+                          key={d.id}
+                          onClick={() => toggleSelect(d.id)}
+                          className={`flex items-start gap-3 p-4 rounded-xl border cursor-pointer transition-all ${
+                            isSelected
+                              ? 'border-plum/40 dark:border-gold/30 bg-plum/5 dark:bg-gold/[0.06]'
+                              : 'border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/4 hover:bg-white/70 dark:hover:bg-white/8'
+                          }`}
                         >
-                          Add
-                        </button>
-                      </div>
-                    ))}
+                          <div className={`shrink-0 mt-0.5 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                            isSelected ? 'border-plum dark:border-gold bg-plum dark:bg-gold' : 'border-black/20 dark:border-white/20'
+                          }`}>
+                            {isSelected && <span className="text-white text-[8px] font-bold leading-none">✓</span>}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="font-display italic text-base text-ink dark:text-white">
+                              {highlightText(d.title || 'Untitled Dream', q)}
+                            </p>
+                            <p className="text-xs font-body text-ink/40 dark:text-white/30 mt-0.5">
+                              {d.dream_date ? formatDate(d.dream_date) : '—'}
+                            </p>
+                            {excerpt && (
+                              <p className="text-xs font-body text-ink/50 dark:text-white/40 mt-1.5 leading-relaxed">
+                                {excerpt.pre}
+                                <mark className="bg-[#b8924a]/30 dark:bg-[#b8924a]/25 text-inherit not-italic rounded px-0.5">{excerpt.match}</mark>
+                                {excerpt.post}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 );
               })()}
             </div>
+
+            {selectedIds.size > 0 && (
+              <div className="px-7 py-4 border-t border-black/8 dark:border-white/8">
+                <button
+                  onClick={handleAddSelected}
+                  className="w-full py-3 rounded-xl text-sm font-body font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ backgroundColor: '#3d2b4a' }}
+                >
+                  Add {selectedIds.size} dream{selectedIds.size !== 1 ? 's' : ''} to series
+                </button>
+              </div>
+            )}
           </div>
         </>
       )}
