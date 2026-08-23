@@ -531,8 +531,8 @@ function SeriesDetail({ seriesId }) {
   // Add dreams panel
   const [addPanelOpen, setAddPanelOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchResults, setSearchResults] = useState([]);
-  const [searching, setSearching] = useState(false);
+  const [availableDreams, setAvailableDreams] = useState([]);
+  const [availableLoading, setAvailableLoading] = useState(false);
   const [removingId, setRemovingId] = useState(null);
 
   // AI suggestions
@@ -543,6 +543,23 @@ function SeriesDetail({ seriesId }) {
   useEffect(() => {
     fetchSeries();
   }, [seriesId]);
+
+  useEffect(() => {
+    if (!addPanelOpen) { setSearchQuery(''); setAvailableDreams([]); return; }
+    loadAvailableDreams();
+  }, [addPanelOpen]);
+
+  async function loadAvailableDreams() {
+    setAvailableLoading(true);
+    const { data } = await supabase
+      .from('dreams')
+      .select('id, title, dream_date')
+      .eq('user_id', user.id)
+      .is('series_id', null)
+      .order('dream_date', { ascending: false });
+    setAvailableDreams(data || []);
+    setAvailableLoading(false);
+  }
 
   async function fetchSeries() {
     setLoading(true);
@@ -595,30 +612,14 @@ function SeriesDetail({ seriesId }) {
     setRemovingId(null);
   }
 
-  async function handleSearch(q) {
-    setSearchQuery(q);
-    if (!q.trim()) { setSearchResults([]); return; }
-    setSearching(true);
-    const { data } = await supabase
-      .from('dreams')
-      .select('id, title, dream_date')
-      .eq('user_id', user.id)
-      .is('series_id', null)
-      .ilike('title', `%${q}%`)
-      .order('dream_date', { ascending: false })
-      .limit(10);
-    setSearchResults(data || []);
-    setSearching(false);
-  }
-
   async function handleAddDream(dreamId) {
     await supabase
       .from('dreams')
       .update({ series_id: seriesId, updated_at: new Date().toISOString() })
       .eq('id', dreamId)
       .eq('user_id', user.id);
+    setAvailableDreams(prev => prev.filter(d => d.id !== dreamId));
     await fetchSeries();
-    setSearchResults(prev => prev.filter(d => d.id !== dreamId));
   }
 
   async function handleFindMoreDreams() {
@@ -908,75 +909,87 @@ function SeriesDetail({ seriesId }) {
         )}
       </div>
 
-      {/* Add dreams search panel */}
+      {/* Add dreams panel */}
       {addPanelOpen && (
         <>
           <div
             className="fixed inset-0 bg-black/30 z-40 backdrop-blur-sm"
-            onClick={() => { setAddPanelOpen(false); setSearchQuery(''); setSearchResults([]); }}
+            onClick={() => setAddPanelOpen(false)}
           />
           <div className="fixed top-0 right-0 z-50 h-full w-full sm:w-[480px] bg-[#faf7f2] dark:bg-[#1a1614] shadow-2xl flex flex-col">
             <div className="flex items-center justify-between px-7 pt-7 pb-5 border-b border-black/8 dark:border-white/8">
               <h2 className="font-display italic text-2xl text-ink dark:text-white">Add Dreams</h2>
               <button
-                onClick={() => { setAddPanelOpen(false); setSearchQuery(''); setSearchResults([]); }}
+                onClick={() => setAddPanelOpen(false)}
                 className="text-ink/40 hover:text-ink dark:text-white/40 dark:hover:text-white transition-colors text-xl"
               >
                 ×
               </button>
             </div>
 
-            <div className="px-7 py-5 flex-1 overflow-y-auto">
+            <div className="px-7 pt-5 pb-3 border-b border-black/6 dark:border-white/6">
               <input
                 type="search"
                 value={searchQuery}
-                onChange={e => handleSearch(e.target.value)}
-                placeholder="Search dreams by title…"
-                className="field-input mb-4"
-                autoFocus
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Filter by title…"
+                className="field-input"
               />
+            </div>
 
-              {searching && (
-                <p className="text-sm font-body text-ink/40 dark:text-white/30 text-center py-4">Searching…</p>
+            <div className="flex-1 overflow-y-auto px-7 py-4">
+              {availableLoading && (
+                <p className="text-sm font-body text-ink/40 dark:text-white/30 text-center py-8">Loading…</p>
               )}
 
-              {!searching && searchQuery && searchResults.length === 0 && (
-                <p className="text-sm font-body text-ink/40 dark:text-white/30 text-center py-4">
-                  No unassigned dreams match "{searchQuery}"
+              {!availableLoading && availableDreams.length === 0 && (
+                <p className="text-sm font-body text-ink/40 dark:text-white/30 text-center py-8">
+                  All your dreams are already in a series.
                 </p>
               )}
 
-              {!searching && !searchQuery && (
-                <p className="text-sm font-body text-ink/35 dark:text-white/25 text-center py-8">
-                  Search for a dream title to add it to this series.<br />
-                  Only dreams not already in a series are shown.
-                </p>
-              )}
+              {!availableLoading && (() => {
+                const filtered = searchQuery.trim()
+                  ? availableDreams.filter(d =>
+                      (d.title || '').toLowerCase().includes(searchQuery.toLowerCase())
+                    )
+                  : availableDreams;
 
-              <div className="space-y-2">
-                {searchResults.map(d => (
-                  <div
-                    key={d.id}
-                    className="flex items-center justify-between gap-4 p-4 rounded-xl border border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/4"
-                  >
-                    <div className="min-w-0">
-                      <p className="font-display italic text-base text-ink dark:text-white truncate">
-                        {d.title || 'Untitled Dream'}
-                      </p>
-                      <p className="text-xs font-body text-ink/40 dark:text-white/30 mt-0.5">
-                        {d.dream_date ? formatDate(d.dream_date) : '—'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleAddDream(d.id)}
-                      className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-body font-medium text-white transition-opacity hover:opacity-90"
-                      style={{ backgroundColor: '#3d2b4a' }}
-                    >
-                      Add
-                    </button>
+                if (searchQuery.trim() && filtered.length === 0) {
+                  return (
+                    <p className="text-sm font-body text-ink/40 dark:text-white/30 text-center py-8">
+                      No dreams match "{searchQuery}"
+                    </p>
+                  );
+                }
+
+                return (
+                  <div className="space-y-2">
+                    {filtered.map(d => (
+                      <div
+                        key={d.id}
+                        className="flex items-center justify-between gap-4 p-4 rounded-xl border border-black/8 dark:border-white/8 bg-white/40 dark:bg-white/4"
+                      >
+                        <div className="min-w-0">
+                          <p className="font-display italic text-base text-ink dark:text-white truncate">
+                            {d.title || 'Untitled Dream'}
+                          </p>
+                          <p className="text-xs font-body text-ink/40 dark:text-white/30 mt-0.5">
+                            {d.dream_date ? formatDate(d.dream_date) : '—'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => handleAddDream(d.id)}
+                          className="shrink-0 px-3 py-1.5 rounded-lg text-xs font-body font-medium text-white transition-opacity hover:opacity-90"
+                          style={{ backgroundColor: '#3d2b4a' }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
           </div>
         </>
