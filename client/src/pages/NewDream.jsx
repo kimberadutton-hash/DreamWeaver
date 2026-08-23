@@ -41,6 +41,7 @@ export default function NewDream() {
   const [associationsLoading, setAssociationsLoading] = useState(false);
   const [savedDreamId, setSavedDreamId] = useState(null);
   const dreamContextRef = useRef(null);
+  const savedAssociationsRef = useRef(undefined);
 
   const [listening, setListening] = useState(false);
   const recognitionRef = useRef(null);
@@ -283,12 +284,13 @@ export default function NewDream() {
   }
 
   function handleAssociationsProceed(responses) {
+    savedAssociationsRef.current = responses.length ? responses : null;
     setShowAssociationsModal(false);
     if (responses.length && savedDreamId) {
       supabase.from('dreams').update({ modal_associations: responses }).eq('id', savedDreamId)
         .then(({ error }) => { if (error) console.error('modal_associations save failed:', error); });
     }
-    runAnalysis(responses.length ? responses : null);
+    runAnalysis(savedAssociationsRef.current);
   }
 
   function handleAssociationsSkip() {
@@ -402,7 +404,20 @@ export default function NewDream() {
           </button>
         </div>
 
-        {aiError && <AiErrorMessage error={aiError} />}
+        {aiError && (
+          <div>
+            <AiErrorMessage error={aiError} />
+            {savedAssociationsRef.current !== undefined && (
+              <button
+                type="button"
+                onClick={() => { setAiError(null); runAnalysis(savedAssociationsRef.current); }}
+                className="mt-2 w-full py-2 rounded-xl font-body text-sm font-medium border border-plum/40 text-plum hover:bg-plum/5 transition-colors"
+              >
+                Retry analysis
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Actions */}
         <div className="flex gap-3 pt-2">

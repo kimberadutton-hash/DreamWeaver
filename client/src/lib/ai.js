@@ -549,6 +549,31 @@ function parseResponseArray(text) {
   }
 }
 
+// ── Repair JSON that contains literal newlines/tabs inside string values ──────
+// LLMs sometimes emit raw newlines inside JSON strings instead of \n escapes,
+// causing JSON.parse to fail with "Expected ',' or '}'". Walk char-by-char,
+// tracking string context, and replace bare control characters with their
+// escape sequences.
+
+function repairJSONStrings(str) {
+  let inString = false;
+  let escaped = false;
+  let result = '';
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (escaped) { result += ch; escaped = false; continue; }
+    if (ch === '\\' && inString) { escaped = true; result += ch; continue; }
+    if (ch === '"') { inString = !inString; result += ch; continue; }
+    if (inString) {
+      if (ch === '\n') { result += '\\n'; continue; }
+      if (ch === '\r') { result += '\\r'; continue; }
+      if (ch === '\t') { result += '\\t'; continue; }
+    }
+    result += ch;
+  }
+  return result;
+}
+
 // ── Parse structured narrative JSON from AI response ─────────────────────────
 // Handles: plain JSON, JSON inside ```json...``` code fences, leading/trailing prose.
 
@@ -571,10 +596,16 @@ function parseNarrativeJSON(text) {
   }
   if (end === -1) throw new AiError('Incomplete JSON in AI response — try regenerating.', 'api_error');
 
+  const raw = stripped.slice(start, end + 1);
   try {
-    return JSON.parse(stripped.slice(start, end + 1));
+    return JSON.parse(raw);
   } catch (e) {
-    throw new AiError(`Could not parse narrative JSON: ${e.message}`, 'api_error');
+    // Second attempt: repair unescaped control characters inside string values
+    try {
+      return JSON.parse(repairJSONStrings(raw));
+    } catch {
+      throw new AiError(`Could not parse narrative JSON: ${e.message}`, 'api_error');
+    }
   }
 }
 
